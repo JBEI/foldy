@@ -36,7 +36,9 @@ class TestCRUDMixin:
         with pytest.raises(ObjectDeletedError):
             User.get_by_id(user.id)
 
-    @pytest.mark.parametrize("commit,expected", [(True, "baz@bar.com"), (False, "foo@bar.com")])
+    @pytest.mark.parametrize(
+        "commit,expected", [(True, "baz@bar.com"), (False, "foo@bar.com")]
+    )
     def test_update(self, commit, expected, db):
         """Test CRUD update with and without commit."""
         user = User(email="foo@bar.com")

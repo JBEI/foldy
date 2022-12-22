@@ -64,9 +64,7 @@ def start_generic_script(invokation_id, process_args):
         final_state = "finished"
         return True
     except subprocess.SubprocessError as err:
-        raise RuntimeError(
-            f"Got error {err} and stdout:\n{_tail(''.join(stdout))}"
-        )
+        raise RuntimeError(f"Got error {err} and stdout:\n{_tail(''.join(stdout))}")
     except TimeoutError as err:
         raise RuntimeError("Somehow time ran out...")
     except KeyboardInterrupt as err:
@@ -74,11 +72,15 @@ def start_generic_script(invokation_id, process_args):
         process.send_signal(signal.SIGINT)
         process.wait()
     except ValueError as err:
-        raise RuntimeError(f"Called Popen invalidly, got error {err} and stdout:\n{_tail(''.join(stdout))}")
+        raise RuntimeError(
+            f"Called Popen invalidly, got error {err} and stdout:\n{_tail(''.join(stdout))}"
+        )
     except subprocess.CalledProcessError as err:
-        raise RuntimeError(f"Got CalledProcessError, got error {err} and stdout:\n{_tail(''.join(stdout))}")
+        raise RuntimeError(
+            f"Got CalledProcessError, got error {err} and stdout:\n{_tail(''.join(stdout))}"
+        )
     finally:
-        print(f'Invokation ending with final state {final_state}', flush=True)
+        print(f"Invokation ending with final state {final_state}", flush=True)
         # This will get executed regardless of the exceptions raised in try
         # or except statements.
         invokation.update(
@@ -86,7 +88,9 @@ def start_generic_script(invokation_id, process_args):
             log=_psql_tail("".join(stdout)),
             timedelta=datetime.timedelta(seconds=time.time() - start_time),
         )
-        assert final_state == "finished", f'Job finished in state {final_state} with logs:\n\n{_tail("".join(stdout))}'
+        assert (
+            final_state == "finished"
+        ), f'Job finished in state {final_state} with logs:\n\n{_tail("".join(stdout))}'
 
 
 def run_features(
@@ -148,7 +152,7 @@ def decompress_pkls(
     process_args = [
         current_app.config["DECOMPRESS_PKLS_PATH"],
         str(fold_id),
-        gs_out_folder
+        gs_out_folder,
     ]
 
     start_generic_script(invokation_id, process_args)
@@ -163,14 +167,17 @@ def run_annotate(
     process_args = [
         current_app.config["RUN_ANNOTATE_PATH"],
         str(fold_id),
-        gs_out_folder
+        gs_out_folder,
     ]
 
     start_generic_script(invokation_id, process_args)
 
 
 def send_email(fold_id, protein_name, recipient):
-    if not current_app.config['EMAIL_USERNAME'] or not current_app.config['EMAIL_PASSWORD']:
+    if (
+        not current_app.config["EMAIL_USERNAME"]
+        or not current_app.config["EMAIL_PASSWORD"]
+    ):
         raise KeyError("No email username / password provided: will not send email.")
 
     server = email_to.EmailServer(
@@ -201,8 +208,8 @@ def dock(dock_id, invokation_id, fold_gcloud_bucket):
     extra_args = []
     if dock.bounding_box_residue and dock.bounding_box_radius_angstrom:
         extra_args = [
-            f'--bounding_box_residue={dock.bounding_box_residue}',
-            f'--bounding_box_radius_angstrom={dock.bounding_box_radius_angstrom}'
+            f"--bounding_box_residue={dock.bounding_box_residue}",
+            f"--bounding_box_radius_angstrom={dock.bounding_box_radius_angstrom}",
         ]
 
     gs_out_folder = f"gs://{fold_gcloud_bucket}/out"
@@ -221,6 +228,8 @@ def dock(dock_id, invokation_id, fold_gcloud_bucket):
         fsm = FoldStorageUtil()
         fsm.setup(fold_gcloud_bucket)
 
-        energy = fsm.storage_manager.get_binary(dock.receptor_fold_id, f'dock/{dock.ligand_name}/energy.txt').decode()
+        energy = fsm.storage_manager.get_binary(
+            dock.receptor_fold_id, f"dock/{dock.ligand_name}/energy.txt"
+        ).decode()
 
         dock.update(pose_energy=energy)

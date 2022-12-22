@@ -13,7 +13,7 @@ import premailer
 
 
 class Message(object):
-    """ A simple email message made of Markdown strings
+    """A simple email message made of Markdown strings
 
     A Message is a simplified version of a MIMEMultipart email message.
     Instead of having to seperately construct HTML and text version of
@@ -28,6 +28,7 @@ class Message(object):
         server (EmailServer): An EmailServer instance allowing a message
             to be sent directly from it's `send` method.
     """
+
     def __init__(self, body=None, style=None, server=None):
         if body is None:
             self.body = []
@@ -39,36 +40,36 @@ class Message(object):
         self.server = server
 
     def add(self, line):
-        """ Adds a new Markdown formatted line to the current email body """
+        """Adds a new Markdown formatted line to the current email body"""
         self.body.append(line)
 
     @property
     def html(self):
-        """ Returns HTML formatted and styled version of body """
-        html = markdown.markdown('\n'.join(self.body))
+        """Returns HTML formatted and styled version of body"""
+        html = markdown.markdown("\n".join(self.body))
         if self.style:
-            return premailer.transform('<style>\n' + self.style +
-                                       '\n</style>\n' + html)
+            return premailer.transform("<style>\n" + self.style + "\n</style>\n" + html)
         return html
 
     def __str__(self):
-        return '\n'.join(self.body)
+        return "\n".join(self.body)
 
     def __repr__(self):
-        return '<Message: {0} and {1} more lines>'.format(
-            self.body[0], (len(self.body) - 1))
+        return "<Message: {0} and {1} more lines>".format(
+            self.body[0], (len(self.body) - 1)
+        )
 
     def mime(self):
-        """ Returns a MIMEMultipart message """
-        msg = MIMEMultipart('alternative')
+        """Returns a MIMEMultipart message"""
+        msg = MIMEMultipart("alternative")
 
-        msg.attach(MIMEText(str(self), 'plain'))
-        msg.attach(MIMEText(self.html, 'html'))
+        msg.attach(MIMEText(str(self), "plain"))
+        msg.attach(MIMEText(self.html, "html"))
 
         return msg
 
     def send(self, send_to, subject):
-        """ Sends the formatted message to given recripient
+        """Sends the formatted message to given recripient
 
         args:
             send_to (:obj:`str`, iterable of :obj:`str`): Email addresses to
@@ -80,7 +81,7 @@ class Message(object):
 
 
 class EmailServer(object):
-    """ Connection to a specific email server
+    """Connection to a specific email server
 
     args:
         url (str): URL for the SMTP server
@@ -88,6 +89,7 @@ class EmailServer(object):
         email_address (str): Email address to log into server and send from
         password (str): Password for email address on SMTP server
     """
+
     def __init__(self, url, port, email, password):
         self.url = url
         self.port = port
@@ -105,7 +107,7 @@ class EmailServer(object):
         self.server.quit()
 
     def quick_email(self, send_to, subject, body, style=None):
-        """ Compose and send an email in a single call
+        """Compose and send an email in a single call
 
         args:
             send_to (str):
@@ -119,7 +121,7 @@ class EmailServer(object):
         self.send_message(message, send_to, subject)
 
     def send_message(self, message, send_to, subject):
-        """ Send a precomposed Message
+        """Send a precomposed Message
 
         args:
             message (Message): Completed message to send
@@ -128,17 +130,17 @@ class EmailServer(object):
         """
         message = message.mime()
 
-        message['From'] = self.email_address
-        message['To'] = send_to
+        message["From"] = self.email_address
+        message["To"] = send_to
 
-        message['Subject'] = subject
+        message["Subject"] = subject
 
         self._login()
         self.server.sendmail(self.email_address, send_to, message.as_string())
         self._logout()
 
     def message(self, body=None, style=None):
-        """ Returns a Message object
+        """Returns a Message object
 
         args:
             body (str, bytes, iterable of strings): The body of the email.

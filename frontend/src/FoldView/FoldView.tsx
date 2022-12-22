@@ -1,7 +1,6 @@
 import React, { Component, RefObject } from "react";
 import "./FoldView.scss";
 import UIkit from "uikit";
-// import { Stage, Component as NglComponent, StructureRepresentationDescriptor, StructureComponent } from 'react-ngl';
 import {
   Annotations,
   deleteDock,
@@ -21,10 +20,7 @@ import {
   updateFold,
 } from "../services/backend.service";
 import jquery from "jquery";
-import {
-  getColorsForAnnotations,
-  VariousColorSchemes,
-} from "../helpers/plots";
+import { getColorsForAnnotations, VariousColorSchemes } from "../helpers/plots";
 import { AiOutlineFolder, AiOutlineFolderOpen } from "react-icons/ai";
 import {
   Stage,
@@ -179,7 +175,7 @@ class InternalFoldView extends Component<FoldProps, FoldState> {
       stage: null,
       stageRef: React.createRef(),
 
-      colorScheme: "bFactor",
+      colorScheme: "pLDDT",
 
       antismashAnnotations: null,
       antismashColors: null,
@@ -387,7 +383,7 @@ class InternalFoldView extends Component<FoldProps, FoldState> {
       if (state === "failed") {
         badgeColor = "#f0506e";
       } else if (state === "finished") {
-        badgeColor = "#E5E5E5";  // green: "#32d296";
+        badgeColor = "#777"; // Too light grey: "#E5E5E5";  // green: "#32d296";
       } else if (state === "deferred") {
         badgeColor = "#999999";
       } else {
@@ -412,21 +408,23 @@ class InternalFoldView extends Component<FoldProps, FoldState> {
       }
 
       var newColorScheme: string;
-      if (this.state.colorScheme === "bFactor") {
+      if (this.state.colorScheme === "pLDDT") {
         newColorScheme = "chainname";
       } else if (this.state.colorScheme === "chainname") {
         newColorScheme = "antismash";
       } else if (this.state.colorScheme === "antismash") {
         newColorScheme = "pfam";
       } else {
-        newColorScheme = "bFactor";
+        newColorScheme = "pLDDT";
       }
 
       // By coincidence, the "color mode" (aka colorscheme) uses the same
       // names as the nglViewer. Note that we are allowed to change this.
       var nglViewerColorScheme: string;
-      if (newColorScheme === "bFactor" || newColorScheme === "chainname") {
-        nglViewerColorScheme = newColorScheme;
+      if (newColorScheme === "pLDDT") {
+        nglViewerColorScheme = "bFactor";
+      } else if (newColorScheme === "chainname") {
+        nglViewerColorScheme = "chainname";
       } else if (newColorScheme === "antismash") {
         nglViewerColorScheme =
           this.state.antismashColors?.nglColorscheme || "chainname";

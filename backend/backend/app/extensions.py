@@ -7,7 +7,7 @@ from flask_compress import Compress
 from sqlalchemy.pool import NullPool
 
 admin = Admin()
-db = SQLAlchemy(engine_options={'poolclass': NullPool})
+db = SQLAlchemy(engine_options={"poolclass": NullPool})
 migrate = Migrate()
 rq = RQ()
 compress = Compress()

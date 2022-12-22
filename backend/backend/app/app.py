@@ -4,7 +4,10 @@ import os
 from flask import Flask, jsonify
 from flask.helpers import make_response
 from flask_admin.contrib.sqla import ModelView
-from flask_jwt_extended.view_decorators import fresh_jwt_required, verify_fresh_jwt_in_request
+from flask_jwt_extended.view_decorators import (
+    fresh_jwt_required,
+    verify_fresh_jwt_in_request,
+)
 from flask_restplus import Api
 from flask_restplus import Resource
 from flask_cors import CORS
@@ -26,61 +29,65 @@ app = Flask(__name__)
 
 
 def createRestplusApi():
-  api = Api(doc="/doc/", validate=True)
+    api = Api(doc="/doc/", validate=True)
 
-  # Handle authentication errors.
-  @api.errorhandler(JWTExtendedException)
-  @api.errorhandler(ExpiredSignatureError)
-  def handle_expired_signature(error):
-    return {"message": "Login failed: %s" % str(error)}, 401
+    # Handle authentication errors.
+    @api.errorhandler(JWTExtendedException)
+    @api.errorhandler(ExpiredSignatureError)
+    def handle_expired_signature(error):
+        return {"message": "Login failed: %s" % str(error)}, 401
 
-
-  return api
+    return api
 
 
 def register_extensions(app):
     """Registers Flask extensions."""
+
     class VerifiedModelView(ModelView):
-      def is_accessible(self):
-        verify_fresh_jwt_in_request()
-        return True
+        def is_accessible(self):
+            verify_fresh_jwt_in_request()
+            return True
+
     class UserModelView(VerifiedModelView):
-      column_list = ['email', 'created_at', 'num_folds']
-      column_sortable_list = ['email', 'created_at']
-      can_export = True
-      page_size = 50
+        column_list = ["email", "created_at", "num_folds"]
+        column_sortable_list = ["email", "created_at"]
+        can_export = True
+        page_size = 50
 
     class FoldModelView(VerifiedModelView):
-      can_export = True
-      page_size = 50
-      column_display_pk = True
-      column_default_sort = 'id'
-      can_set_page_size = True
-      can_export = True
-      column_editable_list = [
-        'name',
-        'user',
-        'tagstring',
-        'create_date',
-      ]
-      column_searchable_list = ['id', 'name', 'sequence', 'tagstring']
-      column_exclude_list = [
-        'features_log',
-        'models_log',
-      ]
-      column_default_sort = ('id', True)
-      def _sequence_formatter(view, context, model, name):
-        return Markup(f"<div style='overflow-x: auto; width: 100px'>{model.sequence}</div>")
-      # def _features_log_formatter(view, context, model, name):
-      #   return Markup(f"<div style='overflow-y: auto'>{model.features_log}</div>")
-      # def _models_log_formatter(view, context, model, name):
-      #   return Markup(f"<div style='overflow-y: auto'>{model.models_log}</div>")
-      column_formatters = {
-          'sequence': _sequence_formatter,
-          # 'features_log': _features_log_formatter,
-          # 'models_log': _models_log_formatter,
-      }
+        can_export = True
+        page_size = 50
+        column_display_pk = True
+        column_default_sort = "id"
+        can_set_page_size = True
+        can_export = True
+        column_editable_list = [
+            "name",
+            "user",
+            "tagstring",
+            "create_date",
+        ]
+        column_searchable_list = ["id", "name", "sequence", "tagstring"]
+        column_exclude_list = [
+            "features_log",
+            "models_log",
+        ]
+        column_default_sort = ("id", True)
 
+        def _sequence_formatter(view, context, model, name):
+            return Markup(
+                f"<div style='overflow-x: auto; width: 100px'>{model.sequence}</div>"
+            )
+
+        # def _features_log_formatter(view, context, model, name):
+        #   return Markup(f"<div style='overflow-y: auto'>{model.features_log}</div>")
+        # def _models_log_formatter(view, context, model, name):
+        #   return Markup(f"<div style='overflow-y: auto'>{model.models_log}</div>")
+        column_formatters = {
+            "sequence": _sequence_formatter,
+            # 'features_log': _features_log_formatter,
+            # 'models_log': _models_log_formatter,
+        }
 
     admin.add_view(UserModelView(models.User, db.session))
     admin.add_view(FoldModelView(models.Fold, db.session))
@@ -118,13 +125,13 @@ def create_app(config_object="settings"):
     api = createRestplusApi()
     register_extensions(app)
 
-    @api.route('/healthz', strict_slashes=False)
+    @api.route("/healthz", strict_slashes=False)
     class HealthCheckResource(Resource):
-      def get(self):
-        return True
+        def get(self):
+            return True
 
     api.add_namespace(views_ns, "/api")
-    api.add_namespace(login_views_ns, '/api')
+    api.add_namespace(login_views_ns, "/api")
 
     api.init_app(app)
 
@@ -133,22 +140,22 @@ def create_app(config_object="settings"):
     @rq_dashboard.blueprint.before_request
     @fresh_jwt_required
     def before_request():
-      """Protect RQ pages."""
-      pass
-    app.register_blueprint(rq_dashboard.blueprint, url_prefix="/rq", )
+        """Protect RQ pages."""
+        pass
+
+    app.register_blueprint(
+        rq_dashboard.blueprint,
+        url_prefix="/rq",
+    )
 
     @app.errorhandler(werkzeug.exceptions.BadRequest)
     def handle_unexpected_error(error):
-      # Found here: https://newbedev.com/python-flask-json-error-message-format-code-example
-      response = {
-        'message': str(error.description)
-      }
-      return jsonify(response), 400
+        # Found here: https://newbedev.com/python-flask-json-error-message-format-code-example
+        response = {"message": str(error.description)}
+        return jsonify(response), 400
 
     # Add prometheus wsgi middleware to route /metrics requests
-    app.wsgi_app = DispatcherMiddleware(app.wsgi_app, {
-        '/metrics': make_wsgi_app()
-    })
+    app.wsgi_app = DispatcherMiddleware(app.wsgi_app, {"/metrics": make_wsgi_app()})
 
     from app import metrics
 
@@ -156,4 +163,4 @@ def create_app(config_object="settings"):
 
 
 if __name__ == "__main__":
-  app.run(debug=True,host='0.0.0.0',port=int(os.environ.get('PORT', 8080)))
+    app.run(debug=True, host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
