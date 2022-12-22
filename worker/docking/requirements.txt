@@ -1,0 +1,5 @@
+biopython
+nglview
+pandas
+seaborn
+vina

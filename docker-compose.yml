@@ -1,0 +1,48 @@
+version: '3.6'
+
+services:
+  backend:
+    build: backend/
+    depends_on:
+      - db
+      - redis
+    env_file:
+      - dev_secrets.env
+    environment:
+      - FLASK_APP=main.py
+      - FLASK_ENV=development
+      - DEBUG=True
+      - SECRET_KEY=superrandomandveryhardtoguessstring
+      - OAUTH_REDIRECT_URI=http://localhost:8080/api/authorize
+      - BACKEND_URL=http://localhost:8080
+      - FRONTEND_URL=http://localhost:3000
+      - DATABASE_URL=postgresql+psycopg2://user:password@db:5432/postgres
+      - RQ_REDIS_URL=redis://redis:6379/0
+      - FOLDY_USER_EMAIL_DOMAIN=gmail.com
+    networks:
+      - default
+    ports:
+      - 127.0.0.1:8080:8080
+    volumes:
+      - ./backend/backend/app:/app/app
+      - ./backend/backend/integration_tests:/app/integration_tests
+      - ./backend/backend/migrations:/app/migrations
+    restart: always
+    entrypoint: python /app/main.py
+
+  db:
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: dbname
+    image: postgres:latest
+    networks:
+      - default
+    ports:
+      - 127.0.0.1:5432:5432
+    restart: always
+
+  redis:
+    image: "redis:alpine"
+    ports:
+      - 127.0.0.1:6379:6379

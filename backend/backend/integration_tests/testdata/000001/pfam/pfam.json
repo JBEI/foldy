@@ -1,0 +1,14 @@
+{
+    "004639": [
+        {
+            "start": 21,
+            "end": 288,
+            "type": "ABC_membrane"
+        },
+        {
+            "start": 352,
+            "end": 501,
+            "type": "ABC_tran"
+        }
+    ]
+}

@@ -1,0 +1,40 @@
+# Default values for Foldy.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+GoogleProjectId: ${GOOGLE_PROJECT_ID}
+ImageVersion: v1
+ServiceAccount: ${GOOGLE_SERVICE_ACCOUNT_ID}
+SecurityPolicy: ""
+
+# Domain for foldy, like "foldy.lbl.gov".
+FoldyDomain: ${FOLDY_DOMAIN}
+
+# Domain for Foldy's certificate, in most cases the same as FoldyDomain.
+FoldyCertificateDomain: ${FOLDY_CERTIFICATE_DOMAIN}
+
+# Email domain to allow access, eg "lbl.gov" will allow all users with "@lbl.gov" addresses to access.
+FoldyUserEmailDomain: ${FOLDY_USER_EMAIL_DOMAIN}
+
+# CSV list of extra user emails who should have access to Foldy.
+FoldyUsers:
+
+# Name of the cloud bucket for Foldy.
+FoldyGcloudBucket: ${GOOGLE_BUCKET_NAME}
+
+# Google Cloud Static IP Address
+StaticIpName: ${GOOGLE_CLOUD_STATIC_IP_NAME}
+
+# ID of the GKE cluster.
+GkeClusterId: ${GKE_CLUSTER_ID}
+
+# Google cloud artifact repository name
+ArtifactRepo: ${GOOGLE_ARTIFACT_REPO}
+
+Secrets:
+  SECRET_KEY:
+  GOOGLE_CLIENT_ID:
+  GOOGLE_CLIENT_SECRET:
+  EMAIL_USERNAME:
+  EMAIL_PASSWORD:
+  DATABASE_URL: "postgresql://postgres:${GOOGLE_SQL_DB_PASSWORD}@]${GOOGLE_SQL_DB_PRIVATE_IP}/postgres"

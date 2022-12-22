@@ -1,0 +1,109 @@
+html,
+body {
+  margin: 0;
+  padding: 0;
+  font-family: "Roboto", sans-serif;
+  font-weight: 100;
+}
+
+.channel {
+  position: absolute;
+  z-index: 1;
+  top: 50px;
+  right: 70px;
+  font: 5rem Inconsolata, monospace;
+  font-weight: 600;
+  color: greenyellow;
+  filter: blur(1.6px);
+  /* text-shadow: 0 0 5px #ffffff; */
+  /* -webkit-text-stroke: 1px white; */
+}
+
+.fabLink {
+  color: inherit; /* blue colors for links too */
+  text-decoration: inherit; /* no underline */
+}
+
+.uk-notification-message,
+.uk-search-input,
+.uk-button,
+.uk-button-badge {
+  border-radius: 20px;
+}
+
+.uk-tooltip {
+  max-width: 5000px;
+}
+
+.uk-badge-bigger {
+  height: 30px;
+  font-size: 16px;
+  // padding: 0 15px;
+}
+
+.ReactTags__remove {
+  border: none;
+  cursor: pointer;
+  background: none;
+  color: white;
+}
+
+.ReactTags__tags {
+  position: relative;
+}
+.ReactTags__tagInput {
+  width: 300px;
+  border-radius: 2px;
+  display: inline-block;
+}
+.ReactTags__tagInput input.ReactTags__tagInputField,
+.ReactTags__tagInput input.ReactTags__tagInputField:focus {
+  height: 31px;
+  margin: 0;
+  font-size: 12px;
+  border: 1px solid #eee;
+  min-width: 150px;
+}
+
+.custom-tags {
+  margin: 2px;
+}
+
+.sbbox {
+  width: 200px;
+  margin: 50px auto;
+  background: #28a5f5;
+  padding: 20px;
+  text-align: center;
+  font-weight: 900;
+  color: #fff;
+  font-family: arial;
+  position: relative;
+  border-radius: 5px;
+}
+.sbtriangle:before {
+  content: "";
+  width: 0px;
+  height: 0px;
+  position: absolute;
+  border-left: 3px solid transparent;
+  border-right: 13px solid #28a5f5;
+  border-top: 10px solid #28a5f5;
+  border-bottom: 44px solid transparent;
+  right: 32px;
+  bottom: -46px;
+  transform: rotate(-30deg);
+}
+.sbtriangleabove:before {
+  content: "";
+  width: 0px;
+  height: 0px;
+  position: absolute;
+  border-left: 3px solid transparent;
+  border-right: 22px solid #28a5f5;
+  border-top: 10px solid #28a5f5;
+  border-bottom: 63px solid transparent;
+  right: 71px;
+  bottom: -58px;
+  transform: rotate(20deg);
+}

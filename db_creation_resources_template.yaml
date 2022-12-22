@@ -1,0 +1,50 @@
+# Creating a volume of alphafold databases.
+#
+# https://cloud.google.com/kubernetes-engine/docs/how-to/persistent-volumes/preexisting-pd
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: foldydbs-rw
+spec:
+  storageClassName: "standard-rwo"
+  accessModes:
+    - ReadWriteOnce
+  # The following can be uncommented to start with an existing persistent volume.
+  # dataSource:
+  #   name: foldydbs-pvclaim
+  #   kind: PersistentVolumeClaim
+  resources:
+    requests:
+      storage: 3000Gi
+
+---
+kind: Pod
+apiVersion: v1
+metadata:
+  name: create-dbs
+spec:
+  serviceAccountName: foldy-ksa
+  nodeSelector:
+    iam.gke.io/gke-metadata-server-enabled: "true"
+  volumes:
+    - name: foldydbs-rw-vol
+      persistentVolumeClaim:
+        claimName: foldydbs-rw
+
+  # Keep retrying until all DBs are downloaded, then be done.
+  restartPolicy: OnFailure
+
+  containers:
+    - name: pod-demo
+      image: us-central1-docker.pkg.dev/${GOOGLE_PROJECT_ID}/${GOOGLE_ARTIFACT_REPO}/worker:${VERSION}
+      command: ["bash", "/worker/download_databases.sh"] # ['sleep', 'infinity'] #
+      resources:
+        limits:
+          cpu: 5000m
+          memory: 50Gi
+        requests:
+          cpu: 5000m
+          memory: 50Gi
+      volumeMounts:
+        - mountPath: "/foldydbs"
+          name: foldydbs-rw-vol
