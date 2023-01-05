@@ -163,11 +163,18 @@ def run_annotate(
     invokation_id: int,
     fold_gcloud_bucket: str,
 ):
+    fold = Fold.get_by_id(fold_id)
+    if not fold:
+        raise KeyError(f"Fold ID {fold_id} not found!")
+    # Antismash can only run if the DNA sequence is longer than 1000 NAs.
+    run_antismash = 3 * len(fold.sequence) > 1000
+
     gs_out_folder = f"gs://{fold_gcloud_bucket}/out"
     process_args = [
         current_app.config["RUN_ANNOTATE_PATH"],
         str(fold_id),
         gs_out_folder,
+        "True" if run_antismash else "False"
     ]
 
     start_generic_script(invokation_id, process_args)

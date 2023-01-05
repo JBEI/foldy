@@ -4,9 +4,14 @@ set -Eeuo pipefail
 
 set -o xtrace
 
+if [ "$#" -ne 3 ]; then
+    die "Illegal number of parameters"
+fi
+
 ID=$1
 PADDED_ID=`printf %06d $ID`
 GS_OUT_FOLDER=$2
+RUN_ANTISMASH=$3
 
 OUT_DIR=/aftmp
 
@@ -28,16 +33,19 @@ mkdir $OUT_DIR/$PADDED_ID/pfam
 
 ##############################################################
 # Run annotation tools.
-PATH="/opt/conda/envs/antismash/bin:$PATH" && \
-    /opt/conda/envs/antismash/bin/antismash \
-    --databases /foldydbs/antismash \
-    --genefinding-tool=prodigal \
-    --output-dir=$OUT_DIR/$PADDED_ID/antismash \
-    $OUT_DIR/$PADDED_ID/${PADDED_ID}_dna.fasta
-/opt/conda/envs/antismash/bin/python \
-    /worker/parse_antismash.py \
-    $OUT_DIR/$PADDED_ID/antismash \
-    $OUT_DIR/$PADDED_ID/antismash/parsed/simple.json
+if [[ "$RUN_ANTISMASH" == "True" ]]
+then
+    PATH="/opt/conda/envs/antismash/bin:$PATH" && \
+        /opt/conda/envs/antismash/bin/antismash \
+        --databases /foldydbs/antismash \
+        --genefinding-tool=prodigal \
+        --output-dir=$OUT_DIR/$PADDED_ID/antismash \
+        $OUT_DIR/$PADDED_ID/${PADDED_ID}_dna.fasta
+    /opt/conda/envs/antismash/bin/python \
+        /worker/parse_antismash.py \
+        $OUT_DIR/$PADDED_ID/antismash \
+        $OUT_DIR/$PADDED_ID/antismash/parsed/simple.json
+fi
 
 /opt/conda/envs/antismash/bin/hmmscan \
     --noali \

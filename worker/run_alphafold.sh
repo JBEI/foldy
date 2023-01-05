@@ -49,11 +49,11 @@ GS_OUT_FOLDER=$4
 RUN_AMBER_RELAX=$5
 
 
-echo "Starting feature generation with parameters:"
+echo "Starting feature generation with parameters:";
 echo "  Fold ID: $ID";
 echo "  Padded Fold ID: $PADDED_ID";
 echo "  Stage: $STAGE";
-echo "  Model preset: $MODEL_PRESET"
+echo "  Model preset: $MODEL_PRESET";
 echo "  Google Storage Out Path: $GS_OUT_FOLDER";
 echo "  Run amber relax: $RUN_AMBER_RELAX";
 
@@ -114,7 +114,7 @@ time /opt/conda/bin/python /app/alphafold/run_alphafold.py \
     --db_preset="reduced_dbs" \
     --model_preset=$MODEL_PRESET \
     --small_bfd_database_path=$DATA_DIR/small_bfd/bfd-first_non_consensus_sequences.fasta \
-    --mgnify_database_path=$DATA_DIR/mgnify/mgy_clusters.fa \
+    --mgnify_database_path=$DATA_DIR/mgnify/mgy_clusters_2018_12.fa \
     --template_mmcif_dir=$DATA_DIR/pdb_mmcif/mmcif_files \
     --obsolete_pdbs_path=$DATA_DIR/pdb_mmcif/obsolete.dat \
     --uniref90_database_path=$DATA_DIR/uniref90/uniref90.fasta \
