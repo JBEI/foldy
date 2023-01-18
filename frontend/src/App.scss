@@ -80,6 +80,7 @@ body {
   font-family: arial;
   position: relative;
   border-radius: 5px;
+  z-index: 2;
 }
 .sbtriangle:before {
   content: "";

@@ -35,6 +35,7 @@ import DockTab from "./DockTab";
 import FileBrowser from "react-keyed-file-browser";
 import { FaDownload } from "react-icons/fa";
 import ParsePdb, { ParsedPdb } from "parse-pdb";
+import { Foldy } from "./../Util";
 const NGL = require("./../../node_modules/ngl/dist/ngl");
 const fileDownload = require("js-file-download");
 
@@ -150,6 +151,7 @@ interface FoldState {
   // Docking stuff.
   displayedDocks: { [ligandName: string]: DisplayedDock };
 
+  pdbFailedToLoad: boolean;
   paeIsOnScreen: boolean;
   contactIsOnScreen: boolean;
   showSplitScreen: boolean;
@@ -185,6 +187,7 @@ class InternalFoldView extends Component<FoldProps, FoldState> {
 
       displayedDocks: {},
 
+      pdbFailedToLoad: false,
       paeIsOnScreen: false,
       contactIsOnScreen: false,
       showSplitScreen: window.innerWidth >= WINDOW_WIDTH_FOR_SPLIT_SCREEN,
@@ -333,9 +336,9 @@ class InternalFoldView extends Component<FoldProps, FoldState> {
             var stringBlob = new Blob([pdb.pdb_string], { type: "text/plain" });
 
             // Load this here, since apparently it's not accessible within the below code...
-            const colorScheme = this.state.colorScheme;
+            const nglColorScheme = this.getNglColorSchemeName(this.state.colorScheme);
             stage.loadFile(stringBlob, { ext: "pdb" }).then(function (o: any) {
-              o.addRepresentation("cartoon", { colorScheme: colorScheme });
+              o.addRepresentation("cartoon", { colorScheme: nglColorScheme });
               var duration = 1000; // optional duration for animation, defaults to zero
               o.autoView(duration);
             });
@@ -348,7 +351,10 @@ class InternalFoldView extends Component<FoldProps, FoldState> {
             this.setState({ stage: stage });
           },
           (e) => {
-            this.props.setErrorText(e.toString());
+            // TODO(jbr): In this case, have Foldy pop up saying the structure isn't available.
+            // console.log('in the right place');
+            // this.props.setErrorText(e.toString());
+            this.setState({ pdbFailedToLoad: true });
           }
         );
       },
@@ -368,6 +374,20 @@ class InternalFoldView extends Component<FoldProps, FoldState> {
     if (this.interval) {
       clearInterval(this.interval);
     }
+  }
+
+  getNglColorSchemeName = (colorScheme: string): string  => {
+    if (colorScheme === "pLDDT") {
+      return "bFactor";
+    } else if (colorScheme === "chainname") {
+      return "chainname";
+    } else if (colorScheme === "antismash") {
+      return this.state.antismashColors?.nglColorscheme || "chainname";
+    } else if (colorScheme === "pfam") {
+      return this.state.pfamColors?.nglColorscheme || "chainname";
+    }
+    console.error('Got invalid color scheme...');
+    return "unknown";
   }
 
   render() {
@@ -418,20 +438,7 @@ class InternalFoldView extends Component<FoldProps, FoldState> {
         newColorScheme = "pLDDT";
       }
 
-      // By coincidence, the "color mode" (aka colorscheme) uses the same
-      // names as the nglViewer. Note that we are allowed to change this.
-      var nglViewerColorScheme: string;
-      if (newColorScheme === "pLDDT") {
-        nglViewerColorScheme = "bFactor";
-      } else if (newColorScheme === "chainname") {
-        nglViewerColorScheme = "chainname";
-      } else if (newColorScheme === "antismash") {
-        nglViewerColorScheme =
-          this.state.antismashColors?.nglColorscheme || "chainname";
-      } else if (newColorScheme === "pfam") {
-        nglViewerColorScheme =
-          this.state.pfamColors?.nglColorscheme || "chainname";
-      }
+      var nglViewerColorScheme = this.getNglColorSchemeName(newColorScheme);
 
       this.state.stage.removeAllComponents();
       if (this.state.pdb) {
@@ -485,7 +492,14 @@ class InternalFoldView extends Component<FoldProps, FoldState> {
       <div key="structure">
         {this.state.pdb ? null : (
           <div className="uk-text-center">
-            <div uk-spinner="ratio: 4"></div>
+            {
+              this.state.pdbFailedToLoad ?
+              <Foldy 
+                text={"Looks like your structure isn't ready."}
+                moveTextAbove={false}
+              /> :
+              <div uk-spinner="ratio: 4"></div>
+            }
           </div>
         )}
 
@@ -612,21 +626,6 @@ class InternalFoldView extends Component<FoldProps, FoldState> {
               }
             }
           }
-
-          // // get a shape component by adding a shape object to the stage
-          // // shape.addSphere( [ 0, 0, 0 ], [ 1, 0, 0 ], 1.5 );
-          // // shape.addBox( [ 0, 0, 0 ], [ 1, 0, 0 ], 1.0, [1, 0, 0], [0, 1, 0], );
-          // // shape.addMesh(
-          // //   [ 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 1, 0, 1, 0, 0, 0, 1 ],
-          // //   [ 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0 ]
-          // // )
-          // // shape.ad
-          // var shapeComponent = this.state.stage.addComponentFromObject( shape );
-          // if (shapeComponent) {
-          //   // @ts-ignore
-          //   shapeComponent.addRepresentation( "buffer" );
-          //   boxComponents.push(shapeComponent);
-          // }
 
           this.state.stage // @ts-ignore
             .loadFile(sdf, { ext: "sdf", asTrajectory: true }) // @ts-ignore
@@ -857,6 +856,7 @@ class InternalFoldView extends Component<FoldProps, FoldState> {
                     foldTags={this.state.foldData?.tags}
                     foldOwner={this.state.foldData?.owner}
                     foldModelPreset={this.state.foldData?.af2_model_preset}
+                    foldDisableRelaxation={this.state.foldData?.disable_relaxation}
                     sequence={this.state.foldData.sequence}
                     colorScheme={this.state.colorScheme}
                     antismashColors={this.state.antismashColors}

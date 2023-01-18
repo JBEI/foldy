@@ -136,18 +136,21 @@ function RoutedApp() {
         />
       </div>
 
-      <Foldy
-        decodedToken={fullDecodedToken}
-        isExpired={isExpired}
-        moveAbove={false}
-      />
+      {
+        (fullDecodedToken && !isExpired) ?
+        null :
+        <Foldy
+          text={`Welcome to ${process.env.REACT_APP_INSTITUTION} Foldy!`}
+          moveTextAbove={false}
+        />
+      }
     </nav>
   );
 
   const mobile_navbar = (
     <nav
       className="uk-navbar"
-      style={{ background: "linear-gradient(to left, #28a5f5, #1e87f0)" }}
+      style={{ background: "linear-gradient(to left, #28a5f5, #1e87f0)", zIndex: 100 }}
     >
       <div className="uk-navbar-left">
         <a
@@ -168,11 +171,14 @@ function RoutedApp() {
         ></button>
       </div>
 
-      <Foldy
-        decodedToken={fullDecodedToken}
-        isExpired={isExpired}
-        moveAbove={true}
-      />
+      {
+        (fullDecodedToken && !isExpired) ?
+        null :
+        <Foldy
+          text={`Welcome to ${process.env.REACT_APP_INSTITUTION} Foldy!`}
+          moveTextAbove={true}
+        />
+      }
     </nav>
   );
 

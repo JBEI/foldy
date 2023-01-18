@@ -18,7 +18,7 @@ services:
       - FRONTEND_URL=http://localhost:3000
       - DATABASE_URL=postgresql+psycopg2://user:password@db:5432/postgres
       - RQ_REDIS_URL=redis://redis:6379/0
-      - FOLDY_USER_EMAIL_DOMAIN=gmail.com
+      - FOLDY_USER_EMAIL_DOMAIN=lbl.gov
     networks:
       - default
     ports:

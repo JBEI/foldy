@@ -477,7 +477,6 @@ class FoldStorageUtil:
         start_fold_job,
         email_on_completion,
         skip_duplicate_entries,
-        disable_relaxation,
     ):
         """Adds a list of new folds to the DB and optionally starts the jobs.
 
@@ -536,7 +535,7 @@ class FoldStorageUtil:
                     tagstring=tagstring,
                     sequence=fold_data["sequence"],
                     af2_model_preset=af2_model_preset,
-                    disable_relaxation=disable_relaxation,
+                    disable_relaxation=fold_data["disable_relaxation"],
                 )
                 new_fold_models.append(new_fold_model)
 

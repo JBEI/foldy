@@ -168,7 +168,6 @@ class FoldsResource(Resource):
         start_fold_job = request.get_json()["start_fold_job"]
         email_on_completion = request.get_json().get("email_on_completion", False)
         skip_duplicate_entries = request.get_json().get("skip_duplicate_entries", False)
-        disable_relaxation = request.get_json().get("disable_relaxation", False)
 
         return manager.make_new_folds(
             get_jwt_identity(),
@@ -176,7 +175,6 @@ class FoldsResource(Resource):
             start_fold_job,
             email_on_completion,
             skip_duplicate_entries,
-            disable_relaxation,
         )
 
 

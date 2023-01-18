@@ -1,3 +1,4 @@
+import { relative } from "path";
 import React, { useState } from "react";
 import { AiOutlineCloseCircle, AiOutlinePlus } from "react-icons/ai";
 import { Link } from "react-router-dom";
@@ -366,43 +367,39 @@ export function NewDockPrompt(props: newDockTextboxInterface) {
 }
 
 interface FoldyProps {
-  decodedToken: DecodedJwt | null;
-  isExpired: boolean;
-  moveAbove: boolean;
+  text: string;
+  moveTextAbove: boolean;
 }
 
 export function Foldy(props: FoldyProps) {
-  if (props.decodedToken && !props.isExpired) {
-    return null;
-  } else {
-    return (
-      <div>
-        <div
-          style={{
-            position: "fixed",
-            bottom: props.moveAbove ? "262px" : "210px",
-            right: props.moveAbove ? "34px" : "180px",
-          }}
-          className={
-            props.moveAbove ? "sbbox sbtriangleabove" : "sbbox sbtriangle"
-          }
-        >
-          Welcome to {process.env.REACT_APP_INSTITUTION} Foldy!
-        </div>
-        <img
-          style={{
-            width: "250px",
-            position: "fixed",
-            bottom: "10px",
-            right: "10px",
-            zIndex: -10,
-          }}
-          src={`${process.env.PUBLIC_URL}/pksito.gif`}
-          alt=""
-        />
+
+  return (
+    <div>
+      <div
+        style={{
+          position: "fixed",
+          bottom: props.moveTextAbove ? "262px" : "210px",
+          right: props.moveTextAbove ? "34px" : "180px",
+        }}
+        className={
+          props.moveTextAbove ? "sbbox sbtriangleabove" : "sbbox sbtriangle"
+        }
+      >
+        {props.text}
       </div>
-    );
-  }
+      <img
+        style={{
+          width: "250px",
+          position: "fixed",
+          bottom: "10px",
+          right: "10px",
+          zIndex: 1,
+        }}
+        src={`${process.env.PUBLIC_URL}/pksito.gif`}
+        alt=""
+      />
+    </div>
+  );
 }
 
 export interface EditableTagListProps {

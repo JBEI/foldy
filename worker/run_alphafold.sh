@@ -128,8 +128,6 @@ time /opt/conda/bin/python /app/alphafold/run_alphafold.py \
     --tmp_dir="/tmp" \
     --clear_gpu=$CLEAR_GPU \
     --use_gpu_relax=True
-    # --run_relax=False
-    # --stop_after_msas=False \
 
 ##############################################################
 # Rsync.

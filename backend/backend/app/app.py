@@ -66,6 +66,8 @@ def register_extensions(app):
             "user",
             "tagstring",
             "create_date",
+            "af2_model_preset",
+            "disable_relaxation",
         ]
         column_searchable_list = ["id", "name", "sequence", "tagstring"]
         column_exclude_list = [

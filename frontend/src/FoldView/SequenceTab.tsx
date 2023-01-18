@@ -13,6 +13,7 @@ interface SequenceTabProps {
   foldTags: string[];
   foldOwner: string;
   foldModelPreset: string | null;
+  foldDisableRelaxation: boolean | null;
   sequence: string;
   colorScheme: string;
   antismashColors: VariousColorSchemes | null;
@@ -120,6 +121,20 @@ const SequenceTab = React.memo(
               />
             </div>
           </div>
+          <div className="uk-margin">
+            <label className="uk-form-label" htmlFor="form-horizontal-text">
+              Disable Relaxation
+            </label>
+            <div className="uk-form-controls">
+              <input
+                className="uk-input uk-form-width-large"
+                id="form-horizontal-text"
+                type="text"
+                value={`${props.foldDisableRelaxation}`}
+                disabled
+              />
+            </div>
+          </div>
         </form>
       </div>
     );
@@ -129,6 +144,7 @@ const SequenceTab = React.memo(
       prevProps.foldName === nextProps.foldName &&
       prevProps.foldTags.length === nextProps.foldTags.length &&
       prevProps.foldTags.every((ee, ii) => nextProps.foldTags[ii] === ee) &&
+      prevProps.foldDisableRelaxation === nextProps.foldDisableRelaxation &&
       prevProps.foldOwner === nextProps.foldOwner &&
       prevProps.foldModelPreset === nextProps.foldModelPreset &&
       prevProps.sequence === nextProps.sequence &&
