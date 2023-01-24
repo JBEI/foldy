@@ -1,10 +1,15 @@
-import { authHeader } from "../helpers/authHeader";
+import { authHeader, jsonBodyAuthHeader } from "../helpers/authHeader";
 import { getJobStatus } from "../Util";
 import { authenticationService } from "./authentication.service";
 
 function handleFileResponse(response: Response) {
   if (!response.ok) {
     return Promise.reject(response.statusText);
+  }
+  if (response.status !== 200) {
+    console.log("Here is the failed response:");
+    console.log(response);
+    return Promise.reject(`Request failed with error code ${response.status}`);
   }
   return response;
 }
@@ -178,11 +183,9 @@ export function postFolds(
   emailOnCompletion: boolean,
   skipDuplicateEntries: boolean
 ): Promise<any> {
-  var headers = authHeader();
-  headers.set("Content-Type", "application/json");
   const requestOptions = {
     method: "POST",
-    headers: headers,
+    headers: jsonBodyAuthHeader(),
     body: JSON.stringify({
       folds_data: newFolds,
       start_fold_job: startFoldJob,
@@ -207,11 +210,9 @@ export function updateFold(
   foldId: number,
   fieldsToUpdate: Partial<Fold>
 ): Promise<boolean> {
-  var headers = authHeader();
-  headers.set("Content-Type", "application/json");
   const requestOptions = {
     method: "POST",
-    headers: headers,
+    headers: jsonBodyAuthHeader(),
     body: JSON.stringify(fieldsToUpdate),
   };
   return fetch(
@@ -256,6 +257,27 @@ export function getDockSdf(
   const requestOptions = { method: "POST", headers: authHeader() };
 
   var url = `${process.env.REACT_APP_BACKEND_URL}/api/dock_sdf/${fold_id}/${ligand_name}`;
+  return fetch(url, requestOptions)
+    .then(handleFileResponse)
+    .then((response) => {
+      return response.blob();
+    });
+}
+
+export function getFoldPdbZip(
+  fold_ids: number[],
+  dirname: string
+): Promise<Blob> {
+  const requestOptions = {
+    method: "POST",
+    headers: jsonBodyAuthHeader(),
+    body: JSON.stringify({
+      fold_ids: fold_ids,
+      dirname: dirname,
+    }),
+  };
+
+  var url = `${process.env.REACT_APP_BACKEND_URL}/api/fold_pdb_zip`;
   return fetch(url, requestOptions)
     .then(handleFileResponse)
     .then((response) => {
@@ -308,18 +330,17 @@ export function getFile(fold_id: number, filePath: string): Promise<Blob> {
   const requestOptions = { method: "POST", headers: authHeader() };
 
   var url = `${process.env.REACT_APP_BACKEND_URL}/api/file/download/${fold_id}/${filePath}`;
-  return fetch(url, requestOptions).then((response) => {
-    return response.blob();
-  });
+  return fetch(url, requestOptions)
+    .then(handleFileResponse)
+    .then((response) => {
+      return response.blob();
+    });
 }
 
 export function postDock(newDock: DockInput): Promise<boolean> {
-  var headers = authHeader();
-  headers.set("Content-Type", "application/json");
-
   const requestOptions = {
     method: "POST",
-    headers: headers,
+    headers: jsonBodyAuthHeader(),
     body: JSON.stringify(newDock),
   };
   return fetch(
@@ -329,12 +350,9 @@ export function postDock(newDock: DockInput): Promise<boolean> {
 }
 
 export function deleteDock(dockId: number): Promise<boolean> {
-  var headers = authHeader();
-  headers.set("Content-Type", "application/json");
-
   const requestOptions = {
     method: "DELETE",
-    headers: headers,
+    headers: jsonBodyAuthHeader(),
   };
   return fetch(
     `${process.env.REACT_APP_BACKEND_URL}/api/dock/${dockId}`,
@@ -357,11 +375,9 @@ export function createDbs(): Promise<any> {
 }
 
 export function upgradeDbs(): Promise<any> {
-  var headers = authHeader();
-  headers.set("Content-Type", "application/json");
   const requestOptions = {
     method: "POST",
-    headers: headers,
+    headers: jsonBodyAuthHeader(),
     body: JSON.stringify({}),
   };
   var url = `${process.env.REACT_APP_BACKEND_URL}/api/upgradedbs`;
@@ -369,11 +385,9 @@ export function upgradeDbs(): Promise<any> {
 }
 
 export function stampDbs(revision: string): Promise<any> {
-  var headers = authHeader();
-  headers.set("Content-Type", "application/json");
   const requestOptions = {
     method: "POST",
-    headers: headers,
+    headers: jsonBodyAuthHeader(),
     body: JSON.stringify({ revision: revision }),
   };
   var url = `${process.env.REACT_APP_BACKEND_URL}/api/stampdbs`;
@@ -385,11 +399,9 @@ export function queueJob(
   stage: string,
   emailOnCompletion: boolean
 ): Promise<any> {
-  var headers = authHeader();
-  headers.set("Content-Type", "application/json");
   const requestOptions = {
     method: "POST",
-    headers: headers,
+    headers: jsonBodyAuthHeader(),
     body: JSON.stringify({
       fold_id: foldId,
       stage: stage,
@@ -403,11 +415,9 @@ export function queueJob(
 }
 
 export function queueTestJob(queue: string): Promise<any> {
-  var headers = authHeader();
-  headers.set("Content-Type", "application/json");
   const requestOptions = {
     method: "POST",
-    headers: headers,
+    headers: jsonBodyAuthHeader(),
     body: JSON.stringify({ queue: queue }),
   };
   var url = `${process.env.REACT_APP_BACKEND_URL}/api/queuetestjob`;
@@ -415,11 +425,9 @@ export function queueTestJob(queue: string): Promise<any> {
 }
 
 export function removeFailedJobs(queue: string): Promise<any> {
-  var headers = authHeader();
-  headers.set("Content-Type", "application/json");
   const requestOptions = {
     method: "POST",
-    headers: headers,
+    headers: jsonBodyAuthHeader(),
     body: JSON.stringify({ queue: queue }),
   };
   return fetch(
@@ -429,11 +437,9 @@ export function removeFailedJobs(queue: string): Promise<any> {
 }
 
 export function killWorker(workerToKill: string): Promise<any> {
-  var headers = authHeader();
-  headers.set("Content-Type", "application/json");
   const requestOptions = {
     method: "POST",
-    headers: headers,
+    headers: jsonBodyAuthHeader(),
     body: JSON.stringify({ worker_id: workerToKill }),
   };
   return fetch(
@@ -443,11 +449,9 @@ export function killWorker(workerToKill: string): Promise<any> {
 }
 
 export function sendTestEmail(): Promise<any> {
-  var headers = authHeader();
-  headers.set("Content-Type", "application/json");
   const requestOptions = {
     method: "POST",
-    headers: headers,
+    headers: jsonBodyAuthHeader(),
     body: JSON.stringify({}),
   };
   return fetch(
@@ -460,11 +464,9 @@ export function addInvokationToAllJobs(
   jobType: string,
   jobState: string
 ): Promise<any> {
-  var headers = authHeader();
-  headers.set("Content-Type", "application/json");
   const requestOptions = {
     method: "POST",
-    headers: headers,
+    headers: jsonBodyAuthHeader(),
     body: JSON.stringify({}),
   };
   return fetch(
@@ -474,11 +476,9 @@ export function addInvokationToAllJobs(
 }
 
 export function runUnrunStages(stageToRun: string): Promise<any> {
-  var headers = authHeader();
-  headers.set("Content-Type", "application/json");
   const requestOptions = {
     method: "POST",
-    headers: headers,
+    headers: jsonBodyAuthHeader(),
     body: JSON.stringify({}),
   };
   return fetch(
@@ -488,11 +488,9 @@ export function runUnrunStages(stageToRun: string): Promise<any> {
 }
 
 export function setAllUnsetModelPresets(): Promise<boolean> {
-  var headers = authHeader();
-  headers.set("Content-Type", "application/json");
   const requestOptions = {
     method: "POST",
-    headers: headers,
+    headers: jsonBodyAuthHeader(),
     body: JSON.stringify({}),
   };
   return fetch(
@@ -502,11 +500,9 @@ export function setAllUnsetModelPresets(): Promise<boolean> {
 }
 
 export function killFoldsInRange(foldRange: string): Promise<any> {
-  var headers = authHeader();
-  headers.set("Content-Type", "application/json");
   const requestOptions = {
     method: "POST",
-    headers: headers,
+    headers: jsonBodyAuthHeader(),
     body: JSON.stringify({}),
   };
   return fetch(
@@ -516,11 +512,9 @@ export function killFoldsInRange(foldRange: string): Promise<any> {
 }
 
 export function bulkAddTag(foldRange: string, newTag: string): Promise<any> {
-  var headers = authHeader();
-  headers.set("Content-Type", "application/json");
   const requestOptions = {
     method: "POST",
-    headers: headers,
+    headers: jsonBodyAuthHeader(),
     body: JSON.stringify({}),
   };
   return fetch(

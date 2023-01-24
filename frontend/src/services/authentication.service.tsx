@@ -45,12 +45,20 @@ export function redirectToLogin() {
   );
 }
 
+export function redirectToLogout() {
+  const frontend_url = encodeURIComponent(window.location.href);
+  window.open(
+    `${process.env.REACT_APP_BACKEND_URL}/api/logout`,
+    "_self"
+  );
+}
+
 function logout() {
   // remove user from local storage to log user out
   localStorage.removeItem("currentJwtString");
   currentJwtStringSubject.next(null);
 
-  window.open("/", "_self");
+  redirectToLogout();
 }
 
 export function LoginButton(props: {

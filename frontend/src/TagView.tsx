@@ -1,9 +1,15 @@
 import React, { useEffect, useState } from "react";
 import UIkit from "uikit";
-import { Fold, getFolds, queueJob } from "./services/backend.service";
+import {
+  Fold,
+  getFoldPdbZip,
+  getFolds,
+  queueJob,
+} from "./services/backend.service";
 import { getJobStatus, makeFoldTable, NewDockPrompt } from "./Util";
 import { CSVLink } from "react-csv";
 import { useParams } from "react-router-dom";
+import fileDownload from "js-file-download";
 
 function TagView(props: { setErrorText: (a: string) => void }) {
   let { tagStringParam } = useParams();
@@ -109,6 +115,26 @@ function TagView(props: { setErrorText: (a: string) => void }) {
     });
   };
 
+  const downloadFoldPdbZip = () => {
+    if (!folds) {
+      return;
+    }
+    if (folds.some((fold) => fold.id === null)) {
+      console.error("Some fold has a null ID...");
+      return;
+    }
+    const fold_ids = folds.map((fold) => fold.id || 0);
+    const dirname = `${tagString}_pdbs`;
+    getFoldPdbZip(fold_ids, dirname).then(
+      (fold_pdb_blob) => {
+        fileDownload(fold_pdb_blob, `${dirname}.zip`);
+      },
+      (e) => {
+        props.setErrorText(e);
+      }
+    );
+  };
+
   return (
     <div className="uk-margin-small-left uk-margin-small-right">
       <h2 className="uk-heading-line uk-margin-left uk-margin-right uk-text-center">
@@ -144,6 +170,18 @@ function TagView(props: { setErrorText: (a: string) => void }) {
             >
               Download as CSV
             </CSVLink>
+          </div>
+        </fieldset>
+
+        <fieldset className="uk-fieldset">
+          <div className="uk-margin">
+            <button
+              type="button"
+              className="uk-button uk-button-primary uk-form-small"
+              onClick={() => downloadFoldPdbZip()}
+            >
+              Downlaod Fold PDBs in Zip File
+            </button>
           </div>
         </fieldset>
 

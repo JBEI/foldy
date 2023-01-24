@@ -5,25 +5,16 @@ import logging
 import json
 import time
 from re import fullmatch
+import tempfile
+import zipfile
 
 from dnachisel import biotools
-from flask import current_app, request, send_file
-from flask_jwt_extended.utils import get_jwt_identity
-from flask_migrate import stamp, upgrade
-from flask_restplus import Namespace
-from flask_jwt_extended import fresh_jwt_required
-from flask_restplus import Resource
-from flask_restplus import fields
-from flask_restplus import reqparse
-from flask_restplus.inputs import email
+from flask import current_app
 from google.cloud.storage.client import Client
 import numpy as np
 from redis import Redis
-from rq.command import send_shutdown_command
 from rq.job import Retry
-from rq.registry import FailedJobRegistry
 from sqlalchemy.sql.elements import or_
-from sqlalchemy import delete, func
 from sqlalchemy.orm import joinedload
 from werkzeug.exceptions import BadRequest
 from pathlib import Path
@@ -579,6 +570,23 @@ class FoldStorageUtil:
         return self.storage_manager.get_binary(
             fold_id, f"ranked_{ranked_model_number}.pdb"
         ).decode()
+
+    def get_fold_pdb_zip(self, fold_ids, dirname):
+        """Returns an open file handle to a temporary file with PDBs zipped up."""
+        tmp = tempfile.TemporaryFile()
+
+        with zipfile.ZipFile(tmp, "w") as archive:
+            for fold_id in fold_ids:
+                fold = Fold.get_by_id(fold_id)
+                if not fold:
+                    raise BadRequest(f"Could not find fold {fold_id}")
+
+                fold_pdb_binary = self.storage_manager.get_binary(
+                    fold_id, "ranked_0.pdb"
+                )
+                archive.writestr(f"{dirname}/{fold.name}.pdb", fold_pdb_binary)
+        tmp.seek(0)
+        return tmp
 
     def get_fold_pkl(self, fold_id, ranked_model_number):
         """Returns a byte string."""

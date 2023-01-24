@@ -12,3 +12,9 @@ export function authHeader(): Headers {
     return headers;
   }
 }
+
+export function jsonBodyAuthHeader(): Headers {
+  var headers = authHeader();
+  headers.set("Content-Type", "application/json");
+  return headers;
+}

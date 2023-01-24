@@ -2,12 +2,12 @@ from re import DEBUG
 import urllib
 
 from authlib.integrations.flask_client import OAuth
-from flask import redirect, current_app, request
+from flask import redirect, current_app, request, jsonify
 from flask_restplus import Namespace
 from flask import current_app
 from flask_restplus import Resource
 from flask_jwt_extended import create_access_token
-from flask_jwt_extended import set_access_cookies
+from flask_jwt_extended import set_access_cookies, unset_jwt_cookies
 
 from app.models import User
 from app.extensions import db
@@ -97,6 +97,14 @@ class AuthorizeResource(Resource):
 
         response = redirect(location=rd_url)
         set_access_cookies(response, access_token)
+        return response
+
+
+@ns.route("/logout")
+class LogoutResource(Resource):
+    def get(self):
+        response = redirect(location=current_app.config["FRONTEND_URL"])
+        unset_jwt_cookies(response)
         return response
 
 

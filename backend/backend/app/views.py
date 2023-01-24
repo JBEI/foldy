@@ -226,6 +226,33 @@ class FoldResource(Resource):
         return {"pdb_string": manager.get_fold_pdb(fold_id, model_number)}
 
 
+fold_pdb_zip_fields = ns.model(
+    "FoldPdbZip",
+    {
+        "fold_ids": fields.List(fields.Integer(required=True)),
+        "dirname": fields.String(),
+    },
+)
+
+
+# @compress.compressed()
+@ns.route("/fold_pdb_zip")
+class FoldPdbZipResource(Resource):
+    @ns.expect(fold_pdb_zip_fields)
+    def post(self):
+        manager = FoldStorageUtil()
+        manager.setup()
+
+        return send_file(
+            manager.get_fold_pdb_zip(
+                request.get_json()["fold_ids"], request.get_json()["dirname"]
+            ),
+            mimetype="application/octet-stream",
+            attachment_filename="fold_pdbs.zip",
+            as_attachment=True,
+        )
+
+
 @ns.route("/fold_pkl/<int:fold_id>/<int:model_number>")
 class FoldPklResource(Resource):
     def post(self, fold_id, model_number):
