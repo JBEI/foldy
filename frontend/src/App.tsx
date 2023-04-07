@@ -120,6 +120,9 @@ function RoutedApp() {
         >
           {process.env.REACT_APP_INSTITUTION} Foldy
         </a>
+        <a href="/" className="uk-navbar-item" style={{ color: "#fff" }}>
+          Dashboard
+        </a>
         <a href="/about" className="uk-navbar-item" style={{ color: "#fff" }}>
           About
         </a>
@@ -136,21 +139,22 @@ function RoutedApp() {
         />
       </div>
 
-      {
-        (fullDecodedToken && !isExpired) ?
-        null :
+      {fullDecodedToken && !isExpired ? null : (
         <Foldy
           text={`Welcome to ${process.env.REACT_APP_INSTITUTION} Foldy!`}
           moveTextAbove={false}
         />
-      }
+      )}
     </nav>
   );
 
   const mobile_navbar = (
     <nav
       className="uk-navbar"
-      style={{ background: "linear-gradient(to left, #28a5f5, #1e87f0)", zIndex: 100 }}
+      style={{
+        background: "linear-gradient(to left, #28a5f5, #1e87f0)",
+        zIndex: 100,
+      }}
     >
       <div className="uk-navbar-left">
         <a
@@ -171,14 +175,12 @@ function RoutedApp() {
         ></button>
       </div>
 
-      {
-        (fullDecodedToken && !isExpired) ?
-        null :
+      {fullDecodedToken && !isExpired ? null : (
         <Foldy
           text={`Welcome to ${process.env.REACT_APP_INSTITUTION} Foldy!`}
           moveTextAbove={true}
         />
-      }
+      )}
     </nav>
   );
 
@@ -227,7 +229,7 @@ function RoutedApp() {
 
           <ul className="uk-nav uk-nav-primary uk-nav-center uk-margin-auto-vertical">
             <li className="uk-active">
-              <a href="/">Home</a>
+              <a href="/">Dashboard</a>
             </li>
             <li className="uk-parent">
               <a href="/about">About</a>

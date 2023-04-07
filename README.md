@@ -60,6 +60,7 @@ Local development is supported with [docker compose](https://docs.docker.com/com
      - Then paste the ID and secret in the `GOOGLE_CLIENT_{ID,SECRET}` fields in `secrets.env`
 1. Start the backend in a new terminal window.
    - From the root of the foldy repo, call `docker-compose up`
+1. Start the frontend in a new terminal window, call `npm start`
 1. Create the DBs in the local postgres instance
    - From the root of the foldy repo: `docker-compose exec backend flask db upgrade`
 
@@ -304,7 +305,6 @@ Foldy utilizes many separate libraries and packages including:
 - [NGL Viewer](https://nglviewer.org)
 - [HMMER Suite](http://eddylab.org/software/hmmer)
 - [Flask](https://flask.palletsprojects.com/en/2.2.x/)
-- [DNA Chisel](https://github.com/Edinburgh-Genome-Foundry/DnaChisel)
 - [Plotly](https://github.com/plotly/plotly.js)
 
 We thank all their contributors and maintainers!

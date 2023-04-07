@@ -8,7 +8,6 @@ from re import fullmatch
 import tempfile
 import zipfile
 
-from dnachisel import biotools
 from flask import current_app
 from google.cloud.storage.client import Client
 import numpy as np
@@ -337,7 +336,6 @@ class FoldStorageUtil:
 
     def setup(self, fold_gcloud_bucket=None):
         """Raises BadRequest if setup fails."""
-        # TODO: use a local storage manager for development.
         if current_app.config["ENV"] == "development":
             self.storage_manager = LocalStorageManager()
             self.storage_manager.setup("/app/integration_tests/testdata")

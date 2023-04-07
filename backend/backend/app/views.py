@@ -3,7 +3,6 @@ import io
 import json
 import sys
 
-from dnachisel import biotools
 from flask import current_app, request, send_file, Response, make_response, jsonify
 from flask_jwt_extended import get_raw_jwt
 from flask_jwt_extended.utils import get_jwt_identity

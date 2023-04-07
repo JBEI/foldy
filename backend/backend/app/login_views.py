@@ -4,7 +4,7 @@ import urllib
 from authlib.integrations.flask_client import OAuth
 from flask import redirect, current_app, request, jsonify
 from flask_restplus import Namespace
-from flask import current_app
+from flask import current_app, url_for
 from flask_restplus import Resource
 from flask_jwt_extended import create_access_token
 from flask_jwt_extended import set_access_cookies, unset_jwt_cookies
@@ -31,18 +31,27 @@ class LoginResource(Resource):
             state = request.args["frontend_url"]
         else:
             state = current_app.config["FRONTEND_URL"]  # + '/channel/4'
+
         redirect_uri = current_app.config[
             "OAUTH_REDIRECT_URI"
         ]  # url_for('login_views_authorize_resource', _external=True)
-        return oauth.google.authorize_redirect(redirect_uri, state=state)
+
+        if current_app.config["DISABLE_OAUTH_AUTHENTICATION"]:
+            assert (
+                current_app.config["ENV"] == "development"
+            ), "It would be a grave mistake to disable OAuth authentication in production."
+            return redirect(url_for('login_views_authorize_resource', state=state, _external=True))
+        else:
+            assert current_app.config['FOLDY_USER_EMAIL_DOMAIN']
+            assert current_app.config["GOOGLE_CLIENT_ID"]
+            assert current_app.config["GOOGLE_CLIENT_SECRET"]
+            return oauth.google.authorize_redirect(redirect_uri, state=state)
 
 
 def make_error_redirect(message):
     frontend_parsed = urllib.parse.urlparse(current_app.config["FRONTEND_URL"])
     frontend_queries = dict(urllib.parse.parse_qsl(frontend_parsed.query))
-    frontend_queries[
-        "error_message"
-    ] = f'Authorization unsuccessful. Only users with @{current_app.config["FOLDY_USER_EMAIL_DOMAIN"]} addresses can access this resource.'
+    frontend_queries["error_message"] = message
     frontend_parsed = frontend_parsed._replace(
         query=urllib.parse.urlencode(frontend_queries)
     )
@@ -57,18 +66,26 @@ class AuthorizeResource(Resource):
         if "state" in request.args:
             frontend_url = request.args["state"]
 
-        _ = oauth.google.authorize_access_token()
-        name = oauth.google.userinfo()["name"]
-        email = oauth.google.userinfo()["email"]
+        # If in development, we don't need to do any authentication.
+        if current_app.config["DISABLE_OAUTH_AUTHENTICATION"]:
+            assert (
+                current_app.config["ENV"] == "development"
+            ), "It would be a grave mistake to disable OAuth authentication in production."
+            name = "Testy Mcgoo"
+            email = "tester@test.edu"
+        else:
+            _ = oauth.google.authorize_access_token()
+            name = oauth.google.userinfo()["name"]
+            email = oauth.google.userinfo()["email"]
 
-        # Make sure they're authorized.
-        if (
-            not email.endswith("@" + current_app.config["FOLDY_USER_EMAIL_DOMAIN"])
-            and email not in current_app.config["FOLDY_USERS"]
-        ):
-            return make_error_redirect(
-                f'Authorization unsuccessful. Only users with @{current_app.config["FOLDY_USER_EMAIL_DOMAIN"]} addresses can access this resource.'
-            )
+            # Make sure they're authorized.
+            if (
+                not email.endswith("@" + current_app.config["FOLDY_USER_EMAIL_DOMAIN"])
+                and email not in current_app.config["FOLDY_USERS"]
+            ):
+                return make_error_redirect(
+                    f'Authorization unsuccessful. Only users with @{current_app.config["FOLDY_USER_EMAIL_DOMAIN"]} addresses can access this resource.'
+                )
 
         # Check if it's a new user. If it is, add them to the db.
         user_was_registered = (
