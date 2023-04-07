@@ -413,7 +413,14 @@ export function EditableTagList(props: EditableTagListProps) {
     UIkit.modal.prompt("New tag:", "").then(
       (newTag: string | null) => {
         if (newTag) {
-          props.addTag(newTag);
+          const allowedCharsRegex = /^[a-zA-Z0-9_-]+$/;
+          if (allowedCharsRegex.test(newTag)) {
+            props.addTag(newTag);
+          } else {
+            UIkit.notification(
+              `Invalid tag: ${newTag} contains a character which is not a letter, number, hyphen, or underscore.`
+            );
+          }
         }
       },
       () => {

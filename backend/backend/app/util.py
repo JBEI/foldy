@@ -4,6 +4,7 @@ import io
 import logging
 import json
 import time
+import re
 from re import fullmatch
 import tempfile
 import zipfile
@@ -487,9 +488,9 @@ class FoldStorageUtil:
                 if "tags" in fold_data:
                     tags = fold_data["tags"]
                     for tag in tags:
-                        if not tag.isalnum():
+                        if not re.match(r"^[a-zA-Z0-9_-]+$", tag):
                             raise BadRequest(
-                                f"Bad group name, {tag} is not alphanumeric."
+                                f"Invalid tag: {tag} contains a character which is not a letter, number, hyphen, or underscore."
                             )
 
                 tagstring = ",".join([t.strip() for t in fold_data.get("tags", [])])
