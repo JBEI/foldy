@@ -1,9 +1,5 @@
 #!/bin/bash
 
-mkdir -p /foldydbs/antismash
-rm -rf /foldydbs/antismash/*
-/opt/conda/envs/antismash/bin/download-antismash-databases --database-dir /foldydbs/antismash
-
 mkdir -p /foldydbs/pfam
 rm -rf /foldydbs/pfam/*
 cd /foldydbs/pfam

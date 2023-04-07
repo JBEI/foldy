@@ -1,10 +1,6 @@
 import React from "react";
-import {
-  EditableTagList,
-} from "../Util";
-import {
-  VariousColorSchemes,
-} from "../helpers/plots";
+import { EditableTagList } from "../Util";
+import { VariousColorSchemes } from "../helpers/plots";
 const ReactSequenceViewer = require("react-sequence-viewer");
 
 interface SequenceTabProps {
@@ -16,7 +12,6 @@ interface SequenceTabProps {
   foldDisableRelaxation: boolean | null;
   sequence: string;
   colorScheme: string;
-  antismashColors: VariousColorSchemes | null;
   pfamColors: VariousColorSchemes | null;
 
   addTag: (tagToAdd: string) => void;
@@ -27,11 +22,7 @@ interface SequenceTabProps {
 const SequenceTab = React.memo(
   (props: SequenceTabProps) => {
     const getSequenceViewerCoverage = (chainIdx: number) => {
-      if (props.colorScheme === "antismash") {
-        return props.antismashColors?.sVCoverage
-          ? props.antismashColors.sVCoverage[chainIdx]
-          : [];
-      } else if (props.colorScheme === "pfam") {
+      if (props.colorScheme === "pfam") {
         return props.pfamColors?.sVCoverage
           ? props.pfamColors.sVCoverage[chainIdx]
           : [];
@@ -41,11 +32,7 @@ const SequenceTab = React.memo(
     };
 
     const getSequenceViewerLegend = (chainIdx: number) => {
-      if (props.colorScheme === "antismash") {
-        return props.antismashColors?.sVLegend
-          ? props.antismashColors.sVLegend[chainIdx]
-          : [];
-      } else if (props.colorScheme === "pfam") {
+      if (props.colorScheme === "pfam") {
         return props.pfamColors?.sVLegend
           ? props.pfamColors.sVLegend[chainIdx]
           : [];
@@ -149,7 +136,6 @@ const SequenceTab = React.memo(
       prevProps.foldModelPreset === nextProps.foldModelPreset &&
       prevProps.sequence === nextProps.sequence &&
       prevProps.colorScheme === nextProps.colorScheme &&
-      prevProps.antismashColors === nextProps.antismashColors &&
       prevProps.pfamColors === nextProps.pfamColors
     );
   }

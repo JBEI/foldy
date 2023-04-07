@@ -46,11 +46,7 @@ export function redirectToLogin() {
 }
 
 export function redirectToLogout() {
-  const frontend_url = encodeURIComponent(window.location.href);
-  window.open(
-    `${process.env.REACT_APP_BACKEND_URL}/api/logout`,
-    "_self"
-  );
+  window.open(`${process.env.REACT_APP_BACKEND_URL}/api/logout`, "_self");
 }
 
 function logout() {

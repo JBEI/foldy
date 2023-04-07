@@ -33,18 +33,15 @@ RUN tar zxvf ADFRsuite_x86_64Linux_1.0.tar.gz && \
 # Install decompress pkls requirements.
 RUN /opt/conda/envs/worker/bin/pip install --no-input install scipy
 
-# Install antismash requirements.
-WORKDIR /antismash
+# Install annotation requirements.
+WORKDIR /annotations
 RUN /opt/conda/bin/conda config --add channels defaults && \
   /opt/conda/bin/conda config --add channels bioconda && \
   /opt/conda/bin/conda config --add channels conda-forge
-RUN /opt/conda/bin/conda create -y -n antismash python=3.9 conda java-jdk
+RUN /opt/conda/bin/conda create -y -n annotations python=3.9 conda java-jdk
 # TODO: maybe switch to muscle version 3.8.31, which we have elsewhere,
 # but did not install properly here.
-RUN /opt/conda/envs/antismash/bin/conda install -y hmmer2 hmmer diamond fasttree prodigal blast muscle=3.8.1551 glimmerhmm && \
-  wget https://dl.secondarymetabolites.org/releases/6.1.0/antismash-6.1.0.tar.gz && \
-  tar -xzf antismash-6.1.0.tar.gz && \
-  /opt/conda/envs/antismash/bin/pip install ./antismash-6.1.0
+RUN /opt/conda/envs/annotations/bin/conda install -y hmmer2 hmmer diamond fasttree prodigal blast muscle=3.8.1551 glimmerhmm
 
 # Copy in code.
 COPY backend/ /backend/

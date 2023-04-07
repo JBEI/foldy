@@ -25,7 +25,7 @@ export const getResidueHeatmap = (
   colorscale: string,
   minOrMax: string,
   zmin: number | undefined,
-  zmax: number | undefined,
+  zmax: number | undefined
 ) => {
   const isMonomer = !sequence.includes(";");
 
@@ -72,7 +72,8 @@ export const getResidueHeatmap = (
   if (totalSequenceLength !== residueMatrix.length) {
     return (
       <div className="uk-alert-danger">
-        Somehow, the sequence length ({totalSequenceLength}) doesn't match the residue matrix size ({residueMatrix.length}).
+        Somehow, the sequence length ({totalSequenceLength}) doesn't match the
+        residue matrix size ({residueMatrix.length}).
       </div>
     );
   }
@@ -337,7 +338,7 @@ export const getColorsForAnnotations = (
 
   const nglColorscheme = NGL.ColormakerRegistry.addSelectionScheme(
     nglViewerColors,
-    "antismash_colors"
+    "pfam_colors"
   );
 
   return new VariousColorSchemes(

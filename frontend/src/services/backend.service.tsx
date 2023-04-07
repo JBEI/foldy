@@ -305,13 +305,6 @@ export function getFoldContactProb(
   return fetch(url, requestOptions).then(handleResponse);
 }
 
-export function getFoldAntismash(fold_id: number): Promise<Annotations> {
-  const requestOptions = { method: "GET", headers: authHeader() };
-
-  var url = `${process.env.REACT_APP_BACKEND_URL}/api/antismash/${fold_id}`;
-  return fetch(url, requestOptions).then(handleResponse);
-}
-
 export function getFoldPfam(fold_id: number): Promise<Annotations> {
   const requestOptions = { method: "GET", headers: authHeader() };
 

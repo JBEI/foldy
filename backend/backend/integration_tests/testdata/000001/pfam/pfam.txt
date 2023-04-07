@@ -7,6 +7,6 @@ ABC_tran             PF00005.30   137 004639               -            586   2.
 # Program:         hmmscan
 # Version:         3.3.2 (Nov 2020)
 # Pipeline mode:   SCAN
-# Current dir:     /antismash
+# Current dir:     /pfam
 # Date:            Wed Sep 21 22:09:54 2022
 # [ok]

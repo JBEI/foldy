@@ -42,7 +42,7 @@ const About = () => (
     page](https://github.com/JBEI/foldy).
     <h2>Citation</h2>
     Please cite the Foldy paper, as well as any tools used within (such as
-    Alphafold, Autodock Vina, PFam, antiSMASH), when publishing.
+    Alphafold, Autodock Vina, PFam), when publishing.
   </div>
 );
 

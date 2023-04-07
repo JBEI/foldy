@@ -11,7 +11,6 @@ import {
   getFile,
   getFileList,
   getFold,
-  getFoldAntismash,
   getFoldPdb,
   getFoldPfam,
   getInvokation,
@@ -142,9 +141,6 @@ interface FoldState {
   // Defines our current color "mode".
   colorScheme: string;
 
-  antismashAnnotations: Annotations | null;
-  antismashColors: VariousColorSchemes | null;
-
   pfamAnnotations: Annotations | null;
   pfamColors: VariousColorSchemes | null;
 
@@ -178,9 +174,6 @@ class InternalFoldView extends Component<FoldProps, FoldState> {
       stageRef: React.createRef(),
 
       colorScheme: "pLDDT",
-
-      antismashAnnotations: null,
-      antismashColors: null,
 
       pfamAnnotations: null,
       pfamColors: null,
@@ -277,24 +270,6 @@ class InternalFoldView extends Component<FoldProps, FoldState> {
           );
         }
 
-        getFoldAntismash(this.props.foldId).then(
-          (antismash) => {
-            if (!this.state.foldData) {
-              return;
-            }
-            this.setState({
-              antismashAnnotations: antismash,
-              antismashColors: getColorsForAnnotations(
-                this.state.foldData.sequence,
-                antismash
-              ),
-            });
-          },
-          (e) => {
-            console.log(e.toString());
-          }
-        );
-
         getFoldPfam(this.props.foldId).then(
           (pfam) => {
             if (!this.state.foldData) {
@@ -336,7 +311,9 @@ class InternalFoldView extends Component<FoldProps, FoldState> {
             var stringBlob = new Blob([pdb.pdb_string], { type: "text/plain" });
 
             // Load this here, since apparently it's not accessible within the below code...
-            const nglColorScheme = this.getNglColorSchemeName(this.state.colorScheme);
+            const nglColorScheme = this.getNglColorSchemeName(
+              this.state.colorScheme
+            );
             stage.loadFile(stringBlob, { ext: "pdb" }).then(function (o: any) {
               o.addRepresentation("cartoon", { colorScheme: nglColorScheme });
               var duration = 1000; // optional duration for animation, defaults to zero
@@ -376,19 +353,17 @@ class InternalFoldView extends Component<FoldProps, FoldState> {
     }
   }
 
-  getNglColorSchemeName = (colorScheme: string): string  => {
+  getNglColorSchemeName = (colorScheme: string): string => {
     if (colorScheme === "pLDDT") {
       return "bFactor";
     } else if (colorScheme === "chainname") {
       return "chainname";
-    } else if (colorScheme === "antismash") {
-      return this.state.antismashColors?.nglColorscheme || "chainname";
     } else if (colorScheme === "pfam") {
       return this.state.pfamColors?.nglColorscheme || "chainname";
     }
-    console.error('Got invalid color scheme...');
+    console.error("Got invalid color scheme...");
     return "unknown";
-  }
+  };
 
   render() {
     const renderBadge = (
@@ -431,8 +406,6 @@ class InternalFoldView extends Component<FoldProps, FoldState> {
       if (this.state.colorScheme === "pLDDT") {
         newColorScheme = "chainname";
       } else if (this.state.colorScheme === "chainname") {
-        newColorScheme = "antismash";
-      } else if (this.state.colorScheme === "antismash") {
         newColorScheme = "pfam";
       } else {
         newColorScheme = "pLDDT";
@@ -492,14 +465,14 @@ class InternalFoldView extends Component<FoldProps, FoldState> {
       <div key="structure">
         {this.state.pdb ? null : (
           <div className="uk-text-center">
-            {
-              this.state.pdbFailedToLoad ?
-              <Foldy 
+            {this.state.pdbFailedToLoad ? (
+              <Foldy
                 text={"Looks like your structure isn't ready."}
                 moveTextAbove={false}
-              /> :
+              />
+            ) : (
               <div uk-spinner="ratio: 4"></div>
-            }
+            )}
           </div>
         )}
 
@@ -856,10 +829,11 @@ class InternalFoldView extends Component<FoldProps, FoldState> {
                     foldTags={this.state.foldData?.tags}
                     foldOwner={this.state.foldData?.owner}
                     foldModelPreset={this.state.foldData?.af2_model_preset}
-                    foldDisableRelaxation={this.state.foldData?.disable_relaxation}
+                    foldDisableRelaxation={
+                      this.state.foldData?.disable_relaxation
+                    }
                     sequence={this.state.foldData.sequence}
                     colorScheme={this.state.colorScheme}
-                    antismashColors={this.state.antismashColors}
                     pfamColors={this.state.pfamColors}
                     addTag={addTag}
                     deleteTag={deleteTag}

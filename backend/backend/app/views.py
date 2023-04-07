@@ -389,16 +389,6 @@ class ContactProbResource(Resource):
         return resp
 
 
-@ns.route("/antismash/<int:fold_id>")
-class AntismashResource(Resource):
-    def get(self, fold_id):
-        manager = FoldStorageUtil()
-        manager.setup()
-        antismash_annotations = manager.get_antismash(fold_id)
-
-        return antismash_annotations
-
-
 @ns.route("/pfam/<int:fold_id>")
 class PfamResource(Resource):
     def get(self, fold_id):

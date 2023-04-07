@@ -618,16 +618,6 @@ class FoldStorageUtil:
                 f"Failed to unpack file contact prob for {fold_id} model {model_number} threshold {dist_thresh}A ({e})."
             )
 
-    def get_antismash(self, fold_id):
-        bytes_str = self.storage_manager.get_binary(
-            fold_id, f"antismash/parsed/simple.json"
-        )
-        try:
-            return json.load(io.BytesIO(bytes_str))
-        except Exception as e:
-            print(e, flush=True)
-            raise BadRequest(f"Failed to unpack file antismash for {fold_id} ({e}).")
-
     def get_pfam(self, fold_id):
         bytes_str = self.storage_manager.get_binary(fold_id, f"pfam/pfam.json")
         try:
