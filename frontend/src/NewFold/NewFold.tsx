@@ -491,11 +491,6 @@ function NewFold(props: { setErrorText: (a: string) => void }) {
               >
                 Add Chain
               </button>
-              {/* <FaPlusCircle
-                size={30}
-                className="uk-margin-small-left"
-                onClick={() => addChain()}
-              /> */}
             </div>
           )}
           <div className="uk-margin-small">
@@ -516,6 +511,16 @@ function NewFold(props: { setErrorText: (a: string) => void }) {
                 are likely to fail during AMBER relaxation, a post-processing
                 step which better aligns residues. It can be disabled in
                 Advanced Settings.
+              </p>
+            </div>
+          ) : null}
+
+          {isBatchEntry ? (
+            <div className="uk-alert-warning" uk-alert={1}>
+              <a className="uk-alert-close" uk-close={1}></a>
+              <p>
+                Make sure to set the AlphaFold mode preset from the Advanced
+                Settings.
               </p>
             </div>
           ) : null}
