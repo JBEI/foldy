@@ -30,6 +30,8 @@ const VALID_AMINO_ACIDS = [
   "Y",
 ];
 
+const LARGE_SIZE_WARNING_THRESHOLD = 2000;
+
 class Chain {
   chainId: string | null;
   chainSequence: string | null;
@@ -62,6 +64,19 @@ function NewFold(props: { setErrorText: (a: string) => void }) {
     useState<boolean>(false);
 
   const navigate = useNavigate();
+
+  const numAminoAcidsInInput = (() => {
+    if (isBatchEntry) {
+      return null;
+    }
+    if (isAMonomer) {
+      return (textboxContents || "").length;
+    } else {
+      return chains
+        .map((c) => (c.chainSequence || "").length)
+        .reduce((a, b) => a + b);
+    }
+  })();
 
   const handleSingleSubmit = () => {
     if (!name) {
@@ -281,9 +296,11 @@ function NewFold(props: { setErrorText: (a: string) => void }) {
     setTextboxContents(newSequence);
   };
 
-  const removeChain = () => {
-    const newChains = [...chains];
-    newChains.pop();
+  const removeChain = (ii: number) => {
+    if (chains.length <= 1) {
+      return;
+    }
+    const newChains = chains.filter((c: Chain, index: number) => index !== ii);
     setChains(newChains);
   };
 
@@ -330,15 +347,31 @@ function NewFold(props: { setErrorText: (a: string) => void }) {
           <legend className="uk-legend">
             New {isBatchEntry ? "Folds" : "Fold"}
           </legend>
-
-          {/* <div className="uk-margin">
-          <label className="uk-form-label" htmlFor="owner">
-            Owner
-          </label>
-          <div className="uk-form-controls">
-            <input className  ="uk-input" type="text" id="name" value={} disabled/>
+          <div
+            className="uk-button-group uk-margin-small-top"
+            style={{ borderRadius: "5px" }}
+          >
+            <button
+              type="button"
+              className={
+                "uk-button uk-button-default uk-margin-small-right " +
+                (isAMonomer ? "uk-button-primary" : "uk-button-default")
+              }
+              onClick={() => setIsAMonomer(true)}
+            >
+              monomer
+            </button>
+            <button
+              type="button"
+              className={
+                "uk-button uk-button-default " +
+                (!isAMonomer ? "uk-button-primary" : "uk-button-default")
+              }
+              onClick={() => setIsAMonomer(false)}
+            >
+              multimer
+            </button>
           </div>
-        </div> */}
 
           {isBatchEntry ? null : (
             <div className="uk-margin-small">
@@ -355,31 +388,6 @@ function NewFold(props: { setErrorText: (a: string) => void }) {
                 style={{ borderRadius: "500px" }}
                 onChange={(e) => localSetName(e.target, e.target.value)}
               />
-              <div
-                className="uk-button-group uk-margin-small-top"
-                style={{ borderRadius: "5px" }}
-              >
-                <button
-                  type="button"
-                  className={
-                    "uk-button uk-button-default uk-margin-small-right " +
-                    (isAMonomer ? "uk-button-primary" : "uk-button-default")
-                  }
-                  onClick={() => setIsAMonomer(true)}
-                >
-                  monomer
-                </button>
-                <button
-                  type="button"
-                  className={
-                    "uk-button uk-button-default " +
-                    (!isAMonomer ? "uk-button-primary" : "uk-button-default")
-                  }
-                  onClick={() => setIsAMonomer(false)}
-                >
-                  multimer
-                </button>
-              </div>
             </div>
           )}
 
@@ -410,54 +418,84 @@ function NewFold(props: { setErrorText: (a: string) => void }) {
             <div>
               {chains.map((chain: Chain, ii: number) => {
                 return (
-                  <div className="uk-margin-small-bottom">
-                    <input
-                      className={
-                        "uk-input uk-width-1-3 uk-padding-right " +
-                        (getChainIdErrorMessage(chain.chainId, ii)
-                          ? "uk-form-danger"
-                          : null)
-                      }
-                      placeholder={`Chain ${ii + 1} name`}
-                      style={{
-                        fontFamily:
-                          'consolas,"Liberation Mono",courier,monospace',
-                        borderRadius: "100px",
-                      }}
-                      value={chain.chainId || ""}
-                      onChange={(e) => setChainId(e.target, ii, e.target.value)}
-                    ></input>
-                    <input
-                      className={
-                        "uk-input uk-width-2-3 " +
-                        (getChainSequenceErrorMessage(chain.chainSequence)
-                          ? "uk-form-danger"
-                          : null)
-                      }
-                      placeholder={`Chain ${ii + 1} sequence`}
-                      style={{
-                        fontFamily:
-                          'consolas,"Liberation Mono",courier,monospace',
-                        borderRadius: "100px",
-                      }}
-                      value={chain.chainSequence || ""}
-                      onChange={(e) =>
-                        setChainSequence(e.target, ii, e.target.value)
-                      }
-                    ></input>
+                  <div
+                    className="uk-margin-small-bottom uk-flex uk-flex-middle"
+                    key={`chain_${ii}`}
+                  >
+                    <div className="uk-flex-1" style={{ flex: "1 1 0" }}>
+                      <input
+                        className={
+                          "uk-input uk-padding-right " +
+                          (getChainIdErrorMessage(chain.chainId, ii)
+                            ? "uk-form-danger"
+                            : null)
+                        }
+                        placeholder={`Chain ${ii + 1} name`}
+                        style={{
+                          fontFamily:
+                            'consolas,"Liberation Mono",courier,monospace',
+                          borderRadius: "100px",
+                        }}
+                        value={chain.chainId || ""}
+                        onChange={(e) =>
+                          setChainId(e.target, ii, e.target.value)
+                        }
+                      ></input>
+                    </div>
+                    <div
+                      className="uk-flex-1"
+                      style={{ flex: "3 1 0", marginLeft: "10px" }}
+                    >
+                      <input
+                        className={
+                          "uk-input " +
+                          (getChainSequenceErrorMessage(chain.chainSequence)
+                            ? "uk-form-danger"
+                            : null)
+                        }
+                        placeholder={`Chain ${ii + 1} sequence`}
+                        style={{
+                          fontFamily:
+                            'consolas,"Liberation Mono",courier,monospace',
+                          borderRadius: "100px",
+                        }}
+                        value={chain.chainSequence || ""}
+                        onChange={(e) =>
+                          setChainSequence(e.target, ii, e.target.value)
+                        }
+                      ></input>
+                    </div>
+                    <div
+                      className="uk-flex-1"
+                      style={{ flex: "0 1 auto", marginLeft: "10px" }}
+                    >
+                      <button
+                        className="uk-button uk-button-danger"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          removeChain(ii);
+                        }}
+                      >
+                        X
+                      </button>
+                    </div>
                   </div>
                 );
               })}
-              <FaMinusCircle
-                size={30}
-                className="uk-margin-small-left"
-                onClick={() => (chains.length > 1 ? removeChain() : null)}
-              />
-              <FaPlusCircle
+              <button
+                className="uk-button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  addChain();
+                }}
+              >
+                Add Chain
+              </button>
+              {/* <FaPlusCircle
                 size={30}
                 className="uk-margin-small-left"
                 onClick={() => addChain()}
-              />
+              /> */}
             </div>
           )}
           <div className="uk-margin uk-margin-top">
@@ -474,17 +512,20 @@ function NewFold(props: { setErrorText: (a: string) => void }) {
               deleteTag={handleTagDelete}
               handleTagClick={(v) => null}
             />
-            {/* <ReactTags
-            autofocus={false}
-            delimiters={TAG_DELIMITERS}
-            handleDelete={handleTagDelete}
-            handleAddition={handleTagAddition}
-            handleDrag={() => {}}
-            tags={tags}
-            classNames={TAG_CLASS_NAMES}
-            placeholder={"Add new tag (press enter when done)"}
-          ></ReactTags> */}
           </div>
+
+          {numAminoAcidsInInput != null &&
+          numAminoAcidsInInput > LARGE_SIZE_WARNING_THRESHOLD ? (
+            <div className="uk-alert-warning" uk-alert={1}>
+              <a className="uk-alert-close" uk-close={1}></a>
+              <p>
+                Folds large than than {LARGE_SIZE_WARNING_THRESHOLD} amino acids
+                are likely to fail during AMBER relaxation, a post-processing
+                step which better aligns residues. It can be disabled in
+                Advanced Settings.
+              </p>
+            </div>
+          ) : null}
 
           {showAdvancedSettings ? (
             <div>
@@ -615,7 +656,7 @@ function NewFold(props: { setErrorText: (a: string) => void }) {
             onClick={handleSubmit}
             disabled={isActivelySubmitting}
           >
-            Submit
+            Submit {numAminoAcidsInInput} AA Fold
           </button>
         </form>
       </fieldset>

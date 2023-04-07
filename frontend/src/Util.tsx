@@ -58,7 +58,7 @@ export function makeFoldTable(folds: Fold[]) {
                   uk-tooltip={`title: ${fold.name}`}
                 >
                   <Link to={"/fold/" + fold.id}>
-                    <div style={{height: '100%', width: '100%'}}>
+                    <div style={{ height: "100%", width: "100%" }}>
                       {fold.name}
                     </div>
                   </Link>
@@ -372,7 +372,6 @@ interface FoldyProps {
 }
 
 export function Foldy(props: FoldyProps) {
-
   return (
     <div>
       <div
@@ -430,6 +429,7 @@ export function EditableTagList(props: EditableTagListProps) {
           <span
             key={tag}
             className="uk-badge uk-badge-bigger uk-margin-small-right"
+            style={{ borderRadius: "100px" }}
           >
             <span
               style={{ padding: "0 3px 0 8px" }}
