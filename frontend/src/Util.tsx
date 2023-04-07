@@ -423,13 +423,18 @@ export function EditableTagList(props: EditableTagListProps) {
   };
 
   return (
-    <div className="uk-input" onInput={(e) => console.log(e)}>
+    <div
+      className="uk-input"
+      onInput={(e) => console.log(e)}
+      style={{ borderRadius: "100px" }}
+    >
+      <span className="uk-margin-small-right uk-text-light">Tags:</span>
       {props.tags.map((tag: string) => {
         return (
           <span
             key={tag}
             className="uk-badge uk-badge-bigger uk-margin-small-right"
-            style={{ borderRadius: "100px" }}
+            uk-tooltip="Tags help sort and manage collections or batches of folds. Tags must only contain letters."
           >
             <span
               style={{ padding: "0 3px 0 8px" }}

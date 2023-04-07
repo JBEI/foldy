@@ -374,7 +374,7 @@ function NewFold(props: { setErrorText: (a: string) => void }) {
           </div>
 
           {isBatchEntry ? null : (
-            <div className="uk-margin-small">
+            <div className="uk-margin-small-top">
               <input
                 className={
                   "uk-input " +
@@ -394,7 +394,7 @@ function NewFold(props: { setErrorText: (a: string) => void }) {
           {isAMonomer || isBatchEntry ? (
             <textarea
               className={
-                "uk-textarea " +
+                "uk-textarea uk-margin-small-top " +
                 (!isBatchEntry && getChainSequenceErrorMessage(textboxContents)
                   ? "uk-form-danger"
                   : null)
@@ -419,7 +419,7 @@ function NewFold(props: { setErrorText: (a: string) => void }) {
               {chains.map((chain: Chain, ii: number) => {
                 return (
                   <div
-                    className="uk-margin-small-bottom uk-flex uk-flex-middle"
+                    className="uk-margin-small-top uk-flex uk-flex-middle"
                     key={`chain_${ii}`}
                   >
                     <div className="uk-flex-1" style={{ flex: "1 1 0" }}>
@@ -483,7 +483,7 @@ function NewFold(props: { setErrorText: (a: string) => void }) {
                 );
               })}
               <button
-                className="uk-button"
+                className="uk-button uk-margin-small-top"
                 onClick={(e) => {
                   e.preventDefault();
                   addChain();
@@ -498,14 +498,7 @@ function NewFold(props: { setErrorText: (a: string) => void }) {
               /> */}
             </div>
           )}
-          <div className="uk-margin uk-margin-top">
-            <label
-              className="uk-form-label"
-              htmlFor="name"
-              uk-tooltip="Tags help sort and manage collections or batches of folds. Tags must only contain letters."
-            >
-              Tags
-            </label>
+          <div className="uk-margin-small">
             <EditableTagList
               tags={tags}
               addTag={handleTagAddition}
