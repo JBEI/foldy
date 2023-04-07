@@ -28,7 +28,6 @@ Local development is supported with [docker compose](https://docs.docker.com/com
 
 ### Initial setup
 
-1. Check that AlphaFold will be able to use a GPU by running:
 1. Install docker which includes docker-compose [[installation instructions]](https://docs.docker.com/engine/install/)
 1. Clone this repository:
 
@@ -37,7 +36,7 @@ Local development is supported with [docker compose](https://docs.docker.com/com
    cd foldy
    ```
 
-1. Install frontend dependencies and backend dependencies with [[conda]](https://docs.conda.io/en/latest/miniconda.html)
+1. For code completion and running the frontend, install frontend dependencies and backend dependencies with [[conda]](https://docs.conda.io/en/latest/miniconda.html)
 
    ```bash
    conda create -y -n foldy-environment
@@ -48,21 +47,12 @@ Local development is supported with [docker compose](https://docs.docker.com/com
    npm install
    ```
 
-1. Copy the secrets env file `cp secrets_template.env secrets.env`
-   - Note, the secrets.env file will hold the following credentials and should never be exposed publicly:
-     - `GOOGLE_CLIENT_ID`: OAuth Client ID used to enable Google authentication for Foldy users
-     - `GOOGLE_CLIENT_SECRET`: OAuth Client Secret used to enable Google authentication for Foldy users
-     - `EMAIL_USERNAME`: Email account username used for application notifications
-     - `EMAIL_PASSWORD`: Email account password used for application notifications
-   - To create OAuth Client ID for development, using the [Google cloud console](https://console.cloud.google.com/apis/credentials).
-     - Authorized javascript origins: `http://localhost:8080`
-     - Authorized redirect URIs: `http://localhost:8080/api/authorize`
-     - Then paste the ID and secret in the `GOOGLE_CLIENT_{ID,SECRET}` fields in `secrets.env`
 1. Start the backend in a new terminal window.
    - From the root of the foldy repo, call `docker-compose up`
-1. Start the frontend in a new terminal window, call `npm start`
+1. Start the frontend in a new terminal window
+   - From the `frontend/` directory, call `npm start`
 1. Create the DBs in the local postgres instance
-   - From the root of the foldy repo: `docker-compose exec backend flask db upgrade`
+   - From the root of the foldy repo, call `docker-compose exec backend flask db upgrade`
 
 ### For live development
 
