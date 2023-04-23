@@ -698,6 +698,18 @@ class InternalFoldView extends Component<FoldProps, FoldState> {
       this.setState({ isRocking: newIsRocking });
     };
 
+    const setPublic = (is_public: boolean) => {
+      updateFold(this.props.foldId, { public: is_public }).then(
+        () => {
+          this.refreshFoldDataFromBackend();
+          UIkit.notification("Updated public status.");
+        },
+        (e) => {
+          this.props.setErrorText(e);
+        }
+      );
+    };
+
     const addTag = (tagToAdd: string) => {
       const tags = this.state.foldData?.tags;
       if (!tags) {
@@ -828,6 +840,8 @@ class InternalFoldView extends Component<FoldProps, FoldState> {
                     foldName={this.state.foldData?.name}
                     foldTags={this.state.foldData?.tags}
                     foldOwner={this.state.foldData?.owner}
+                    foldCreateDate={this.state.foldData?.create_date}
+                    foldPublic={this.state.foldData?.public}
                     foldModelPreset={this.state.foldData?.af2_model_preset}
                     foldDisableRelaxation={
                       this.state.foldData?.disable_relaxation
@@ -835,6 +849,7 @@ class InternalFoldView extends Component<FoldProps, FoldState> {
                     sequence={this.state.foldData.sequence}
                     colorScheme={this.state.colorScheme}
                     pfamColors={this.state.pfamColors}
+                    setPublic={setPublic}
                     addTag={addTag}
                     deleteTag={deleteTag}
                     handleTagClick={handleTagClick}

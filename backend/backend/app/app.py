@@ -21,6 +21,7 @@ from werkzeug.middleware.dispatcher import DispatcherMiddleware
 from prometheus_client import make_wsgi_app
 
 from app import models
+from app.authorization import verify_fully_authorized
 from app.extensions import admin, db, migrate, rq, compress
 import rq_dashboard
 
@@ -46,6 +47,7 @@ def register_extensions(app):
     class VerifiedModelView(ModelView):
         def is_accessible(self):
             verify_fresh_jwt_in_request()
+            verify_fully_authorized()
             return True
 
     class UserModelView(VerifiedModelView):

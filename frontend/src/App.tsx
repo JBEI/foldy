@@ -1,4 +1,4 @@
-import React, { useState, lazy, Suspense } from "react";
+import React, { useState, lazy, Suspense, useEffect } from "react";
 import "./App.scss";
 import "react-tiny-fab/dist/styles.css";
 import {
@@ -26,6 +26,8 @@ import SudoPage from "./SudoPage/SudoPage";
 import About from "./About/About";
 import TagView from "./TagView";
 import { Foldy } from "./Util";
+import { GoogleLogin, GoogleOAuthProvider } from "@react-oauth/google";
+import GoogleLoginButton from "./GoogleLogin";
 
 const AvatarFoldView = lazy(() => import("./FoldView/FoldView"));
 
@@ -83,14 +85,51 @@ function RoutedApp() {
     authenticationService.currentJwtStringValue
   );
   const { decodedToken, isExpired } = useJwt(token);
-  // const location = useLocation();
-  // const navigate = useNavigate()
   let [searchParams, setSearchParams] = useSearchParams();
 
   var fullDecodedToken: DecodedJwt | null = null;
   if (isFullDecodedJwt(decodedToken)) {
     fullDecodedToken = decodedToken;
   }
+
+  // const jwtString = searchParams.get("access_token");
+  // if (jwtString) {
+  //   // Remove access_token from the URL.
+  //   console.log(`Deleting access_token ${searchParams}`);
+  //   const newSearchParams = new URLSearchParams(searchParams);
+  //   newSearchParams.delete("access_token");
+  //   console.log(`Deleted access_token ${newSearchParams}`);
+
+  //   setSearchParams(newSearchParams);
+
+  //   localStorage.setItem("currentJwtString", jwtString);
+  //   currentJwtStringSubject.next(jwtString);
+  //   setToken(jwtString);
+  // } else if (fullDecodedToken && isExpired) {
+  //   // redirectToLogin();
+  //   // return <div>Redirecting to refresh token...</div>;
+  //   UIkit.notification("Login expired.");
+  // }
+  useEffect(() => {
+    const jwtString = searchParams.get("access_token");
+    if (jwtString) {
+      // Remove access_token from the URL.
+      console.log(`Deleting access_token ${searchParams}`);
+      const newSearchParams = new URLSearchParams(searchParams);
+      newSearchParams.delete("access_token");
+      console.log(`Deleted access_token ${newSearchParams}`);
+
+      setSearchParams(newSearchParams);
+
+      localStorage.setItem("currentJwtString", jwtString);
+      currentJwtStringSubject.next(jwtString);
+      setToken(jwtString);
+    } else if (fullDecodedToken && isExpired) {
+      // redirectToLogin();
+      // return <div>Redirecting to refresh token...</div>;
+      UIkit.notification("Login expired.");
+    }
+  }, [searchParams, fullDecodedToken, isExpired]);
 
   const setErrorText = (error_text: string | null): void => {
     UIkit.notification(error_text || "Danger!", { status: "danger" });
@@ -137,6 +176,14 @@ function RoutedApp() {
           setToken={setToken}
           isExpired={isExpired}
         />
+        {/* <GoogleLogin
+          onSuccess={(credentialResponse) => {
+            console.log(credentialResponse);
+          }}
+          onError={() => {
+            console.log("Login Failed");
+          }}
+        /> */}
       </div>
 
       {fullDecodedToken && !isExpired ? null : (
@@ -183,25 +230,6 @@ function RoutedApp() {
       )}
     </nav>
   );
-
-  // let params = new URLSearchParams(location.search);
-
-  const jwtString = searchParams.get("access_token");
-  if (jwtString) {
-    // Remove access_token from the URL.
-    searchParams.delete("access_token");
-
-    setSearchParams({
-      search: searchParams.toString(),
-    });
-
-    localStorage.setItem("currentJwtString", jwtString);
-    currentJwtStringSubject.next(jwtString);
-    setToken(jwtString);
-  } else if (fullDecodedToken && isExpired) {
-    redirectToLogin();
-    return <div>Redirecting to refresh token...</div>;
-  }
 
   return (
     <div>
@@ -284,10 +312,23 @@ function RoutedApp() {
 }
 
 function App() {
+  if (!process.env.REACT_APP_INSTITUTION) {
+    console.error("REACT_APP_INSTITUTION is unset.");
+  }
+  if (!process.env.REACT_APP_BACKEND_URL) {
+    console.error("REACT_APP_BACKEND_URL is unset.");
+  }
+  if (!process.env.REACT_APP_GOOGLE_CLIENT_ID) {
+    console.error("REACT_APP_GOOGLE_CLIENT_ID is unset.");
+  }
   return (
-    <BrowserRouter>
-      <RoutedApp />
-    </BrowserRouter>
+    <GoogleOAuthProvider
+      clientId={process.env.REACT_APP_GOOGLE_CLIENT_ID || ""}
+    >
+      <BrowserRouter>
+        <RoutedApp />
+      </BrowserRouter>
+    </GoogleOAuthProvider>
   );
 }
 

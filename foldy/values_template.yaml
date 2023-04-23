@@ -22,14 +22,17 @@ FoldyUsers:
 # Name of the cloud bucket for Foldy.
 FoldyGcloudBucket: ${GOOGLE_BUCKET_NAME}
 
-# Google Cloud Static IP Address
+# Google Cloud Static IP Address.
 StaticIpName: ${GOOGLE_CLOUD_STATIC_IP_NAME}
 
 # ID of the GKE cluster.
 GkeClusterId: ${GKE_CLUSTER_ID}
 
-# Google cloud artifact repository name
+# Google cloud artifact repository name.
 ArtifactRepo: ${GOOGLE_ARTIFACT_REPO}
+
+# Name of the institution, displayed in the page.
+Institution: ${INSTITUTION}
 
 Secrets:
   SECRET_KEY:

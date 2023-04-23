@@ -124,7 +124,6 @@ These variables will be used throughout this procedure. Once completed, execute 
 
    ```bash
    cp foldy/values_template.yaml foldy/values.yaml
-   cp frontend/.env_template.production frontend/.env.production
    cp db_creation_resources_template.yaml db_creation_resources.yaml
    ```
 
@@ -205,11 +204,7 @@ These variables will be used throughout this procedure. Once completed, execute 
      gcloud auth configure-docker us-central1-docker.pkg.dev
      ```
 
-   - **Create node pools** by running:
-
-     ```bash
-     bash scripts/create_nodepools.sh ${GKE_CLUSTER_NAME} ${GOOGLE_SERVICE_ACCOUNT_ID}@${GOOGLE_PROJECT_ID}.iam.gserviceaccount.com
-     ```
+   - **Create node pools** by running: `bash scripts/create_nodepools.sh`
 
 1. Fill out template files
 
@@ -233,7 +228,7 @@ These variables will be used throughout this procedure. Once completed, execute 
 1. Build and push docker images to your google artifact registry with
 
    ```bash
-   bash build_and_deploy_containers.sh ${GOOGLE_PROJECT_ID} v1
+   bash build_and_deploy_containers.sh
    ```
 
 1. Make sure that the `ImageVersion` is properly set in `foldy/values.yaml`, then deploy the kubernetes services using

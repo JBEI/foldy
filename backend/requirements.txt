@@ -22,6 +22,7 @@ croniter==1.0.15
 cryptography==2.9.2
 cssselect==1.1.0
 cssutils==2.3.0
+dnachisel==3.2.8
 docker==5.0.3
 docopt==0.6.2
 email-to==0.1.0

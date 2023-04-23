@@ -22,11 +22,12 @@ function handleResponse(response: Response) {
   return response.text().then((text) => {
     const data = text && JSON.parse(text);
     if (!response.ok) {
-      if ([401, 403].indexOf(response.status) !== -1) {
-        // auto logout if 401 Unauthorized or 403 Forbidden response returned from api
-        authenticationService.logout();
-        // location.reload(true);
-      }
+      // In the world of public folds, we don't want to redirect on unauthorized.
+      // if ([401, 403].indexOf(response.status) !== -1) {
+      //   // auto logout if 401 Unauthorized or 403 Forbidden response returned from api
+      //   authenticationService.logout();
+      //   // location.reload(true);
+      // }
 
       const error = (data && data.message) || response.statusText;
       console.log(error);
@@ -79,6 +80,8 @@ export interface Invokation {
 export interface Fold extends FoldInput {
   id: number | null;
   owner: string;
+  create_date: string; // ISO formatted datetime string.
+  public: boolean | null;
   state: string | null;
   jobs: Invokation[] | null;
   docks: Dock[] | null;

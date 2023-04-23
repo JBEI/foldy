@@ -1,10 +1,7 @@
-import datetime
 import io
-import json
-import sys
 
-from flask import current_app, request, send_file, Response, make_response, jsonify
-from flask_jwt_extended import get_raw_jwt
+from flask import current_app, request, send_file, make_response, abort
+from flask_jwt_extended import verify_jwt_in_request
 from flask_jwt_extended.utils import get_jwt_identity
 from flask_migrate import stamp, upgrade
 from flask_restplus import Namespace
@@ -12,8 +9,6 @@ from flask_jwt_extended import fresh_jwt_required
 from flask_restplus import Resource
 from flask_restplus import fields
 from flask_restplus import reqparse
-from flask_restplus.inputs import email
-from google.cloud.storage.client import Client
 import numpy as np
 from redis import Redis
 from rq.command import send_shutdown_command
@@ -28,6 +23,7 @@ from app import jobs
 from app.models import Dock, Fold, Invokation, User
 from app.extensions import compress, db, rq
 from app.util import start_stage, FoldStorageUtil, get_job_type_replacement
+from app.authorization import has_full_authorization, verify_fully_authorized
 
 ns = Namespace("most_views", decorators=[fresh_jwt_required])
 
@@ -92,6 +88,7 @@ fold_fields = ns.model(
         "owner": fields.String(attribute="user.email", required=False),
         "tags": fields.List(fields.String()),
         "create_date": fields.DateTime(readonly=True, required=False),
+        "public": fields.Boolean(required=False),
         "sequence": fields.String(),
         "af2_model_preset": fields.String(required=False),
         "disable_relaxation": fields.String(required=False),
@@ -150,14 +147,17 @@ class FoldsResource(Resource):
         page = args.get("page", None)
         per_page = args.get("per_page", None)
 
+        only_public = not has_full_authorization(get_jwt_identity())
+
         manager = FoldStorageUtil()
         manager.setup()
 
-        folds = manager.get_folds_with_state(filter, tag, page, per_page)
+        folds = manager.get_folds_with_state(filter, tag, only_public, page, per_page)
         return folds
 
     # TODO(jbr): Figure out what is causing this call to fail and add validation.
     @ns.expect(new_folds_fields, validate=False)
+    @verify_fully_authorized
     def post(self):
         """Returns True if queueing is successful."""
         manager = FoldStorageUtil()
@@ -181,11 +181,14 @@ class FoldsResource(Resource):
 class FoldResource(Resource):
     @ns.marshal_with(fold_fields)
     def get(self, fold_id):
+        only_public = not has_full_authorization(get_jwt_identity())
+
         manager = FoldStorageUtil()
         manager.setup()
-        return manager.get_fold_with_state(fold_id)
+        return manager.get_fold_with_state(fold_id, only_public)
 
     @ns.expect(fold_fields, validate=False)
+    @verify_fully_authorized
     def post(self, fold_id):
         try:
             fields_to_update = request.get_json()
@@ -402,6 +405,7 @@ class PfamResource(Resource):
 class DockResource(Resource):
     # TODO(jbr): Figure out what is causing this call to fail and add validation.
     # @ns.expect(dock_fields)
+    @verify_fully_authorized
     def post(self):
         req = request.get_json()
 
@@ -460,6 +464,7 @@ queue_test_job_fields = ns.model(
 @ns.route("/queuetestjob")
 class QueueTestJobResource(Resource):
     @ns.expect(queue_test_job_fields)
+    @verify_fully_authorized
     def post(self):
         q = rq.get_queue(request.get_json()["queue"])
         q.enqueue(
@@ -475,6 +480,7 @@ class QueueTestJobResource(Resource):
 @ns.route("/sendtestemail")
 class SendTestEmailResource(Resource):
     @ns.expect(queue_test_job_fields)
+    @verify_fully_authorized
     def post(self):
         q = rq.get_queue("emailparrot")
         q.enqueue(
@@ -490,6 +496,7 @@ class SendTestEmailResource(Resource):
 
 @ns.route("/addInvokationToAllJobs/<string:job_type>/<string:job_state>")
 class SendTestEmailResource(Resource):
+    @verify_fully_authorized
     def post(self, job_type, job_state):
         for (fold_id,) in db.session.query(Fold.id).all():
             fold = Fold.get_by_id(fold_id)
@@ -503,6 +510,7 @@ class SendTestEmailResource(Resource):
 
 @ns.route("/runUnrunStages/<string:stage_name>")
 class RunUnrunStagesResource(Resource):
+    @verify_fully_authorized
     def post(self, stage_name):
         for (fold_id,) in db.session.query(Fold.id).all():
             if stage_name == "write_fastas":
@@ -536,6 +544,7 @@ queue_job_fields = ns.model(
 @ns.route("/queuejob")
 class QueueJobResource(Resource):
     @ns.expect()
+    @verify_fully_authorized
     def post(self):
         start_stage(
             request.get_json()["fold_id"],
@@ -546,12 +555,14 @@ class QueueJobResource(Resource):
 
 @ns.route("/createdbs")
 class CreateDbsResource(Resource):
+    @verify_fully_authorized
     def post(self):
         db.create_all()
 
 
 @ns.route("/upgradedbs")
 class UpgradeDbsResource(Resource):
+    @verify_fully_authorized
     def post(self):
         upgrade()
 
@@ -567,6 +578,7 @@ stamp_dbs_fields = ns.model(
 @ns.route("/stampdbs")
 class StampDbsResource(Resource):
     @ns.expect(stamp_dbs_fields)
+    @verify_fully_authorized
     def post(self):
         stamp(revision=request.get_json()["revision"])
 
@@ -577,6 +589,7 @@ remove_failed_jobs_fields = ns.model("RemoveFailedJobs", {"queue": fields.String
 @ns.route("/remove_failed_jobs")
 class RemoveFailedJobsResource(Resource):
     @ns.expect(remove_failed_jobs_fields)
+    @verify_fully_authorized
     def post(self):
         q = rq.get_queue(request.get_json()["queue"])
         registry = FailedJobRegistry(queue=q)
@@ -593,6 +606,7 @@ kill_worker_fields = ns.model("KillWorkerFields", {"worker_id": fields.String()}
 @ns.route("/kill_worker")
 class KillWorkerResource(Resource):
     @ns.expect(kill_worker_fields)
+    @verify_fully_authorized
     def post(self):
         worker_id = request.get_json()["worker_id"]
         send_shutdown_command(rq.connection, worker_id)
@@ -600,6 +614,7 @@ class KillWorkerResource(Resource):
 
 @ns.route("/set_all_unset_model_presets")
 class SetAllUnsetModelPresets(Resource):
+    @verify_fully_authorized
     def post(self):
         for (fold_id,) in db.session.query(Fold.id).all():
             fold = Fold.get_by_id(fold_id)
@@ -614,6 +629,7 @@ class SetAllUnsetModelPresets(Resource):
 
 @ns.route("/killFolds/<string:folds_range>")
 class SetAllUnsetModelPresets(Resource):
+    @verify_fully_authorized
     def post(self, folds_range):
         range = folds_range.split("-")
         if len(range) != 2:
@@ -647,6 +663,7 @@ class SetAllUnsetModelPresets(Resource):
 
 @ns.route("/bulkAddTag/<string:folds_range>/<string:new_tag>")
 class BulkAddTagResource(Resource):
+    @verify_fully_authorized
     def post(self, folds_range, new_tag):
         range = folds_range.split("-")
         if len(range) != 2:

@@ -62,8 +62,6 @@ export function LoginButton(props: {
   decodedToken: DecodedJwt | null;
   isExpired: boolean;
 }) {
-  // const [token, setToken] = useState(authenticationService.currentJwtStringValue);
-
   useEffect(() => {
     authenticationService.currentJwtString.subscribe(props.setToken);
   }, [props.setToken]);
@@ -76,7 +74,8 @@ export function LoginButton(props: {
         </span>
         <button
           className="uk-button uk-button-default uk-margin-left"
-          onClick={() => {
+          onClick={(e) => {
+            e.preventDefault();
             authenticationService.logout();
           }}
         >
@@ -91,7 +90,8 @@ export function LoginButton(props: {
       <div>
         <button
           className="uk-button uk-button-default"
-          onClick={() => {
+          onClick={(e) => {
+            e.preventDefault();
             redirectToLogin();
           }}
         >

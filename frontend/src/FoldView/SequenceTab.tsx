@@ -8,12 +8,15 @@ interface SequenceTabProps {
   foldName: string;
   foldTags: string[];
   foldOwner: string;
+  foldCreateDate: string;
+  foldPublic: boolean | null;
   foldModelPreset: string | null;
   foldDisableRelaxation: boolean | null;
   sequence: string;
   colorScheme: string;
   pfamColors: VariousColorSchemes | null;
 
+  setPublic: (is_public: boolean) => void;
   addTag: (tagToAdd: string) => void;
   deleteTag: (tagToDelete: string) => void;
   handleTagClick: (tagToOpen: string) => void;
@@ -83,6 +86,39 @@ const SequenceTab = React.memo(
           </div>
           <div className="uk-margin">
             <label className="uk-form-label" htmlFor="form-horizontal-text">
+              Created
+            </label>
+            <div className="uk-form-controls">
+              <input
+                className="uk-input uk-form-width-large"
+                id="form-horizontal-text"
+                type="text"
+                value={props.foldCreateDate}
+                disabled
+              />
+            </div>
+          </div>
+          <div className="uk-margin">
+            <label className="uk-form-label" htmlFor="form-horizontal-text">
+              Public
+            </label>
+            <div
+              className="uk-form-controls"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <input
+                className="uk-input uk-form-width-large uk-checkbox"
+                type="checkbox"
+                checked={props.foldPublic || false}
+                onChange={(e) => {
+                  e.stopPropagation();
+                  props.setPublic(!props.foldPublic);
+                }}
+              />
+            </div>
+          </div>
+          <div className="uk-margin">
+            <label className="uk-form-label" htmlFor="form-horizontal-text">
               Tags
             </label>
             <div className="uk-form-controls">
@@ -133,6 +169,8 @@ const SequenceTab = React.memo(
       prevProps.foldTags.every((ee, ii) => nextProps.foldTags[ii] === ee) &&
       prevProps.foldDisableRelaxation === nextProps.foldDisableRelaxation &&
       prevProps.foldOwner === nextProps.foldOwner &&
+      prevProps.foldCreateDate === nextProps.foldCreateDate &&
+      prevProps.foldPublic === nextProps.foldPublic &&
       prevProps.foldModelPreset === nextProps.foldModelPreset &&
       prevProps.sequence === nextProps.sequence &&
       prevProps.colorScheme === nextProps.colorScheme &&

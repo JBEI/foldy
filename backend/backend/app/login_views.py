@@ -5,6 +5,7 @@ from authlib.integrations.flask_client import OAuth
 from flask import redirect, current_app, request, jsonify
 from flask_restplus import Namespace
 from flask import current_app, url_for
+from flask_restplus import fields
 from flask_restplus import Resource
 from flask_jwt_extended import create_access_token
 from flask_jwt_extended import set_access_cookies, unset_jwt_cookies
@@ -40,9 +41,11 @@ class LoginResource(Resource):
             assert (
                 current_app.config["ENV"] == "development"
             ), "It would be a grave mistake to disable OAuth authentication in production."
-            return redirect(url_for('login_views_authorize_resource', state=state, _external=True))
+            return redirect(
+                url_for("login_views_authorize_resource", state=state, _external=True)
+            )
         else:
-            assert current_app.config['FOLDY_USER_EMAIL_DOMAIN']
+            assert current_app.config["FOLDY_USER_EMAIL_DOMAIN"]
             assert current_app.config["GOOGLE_CLIENT_ID"]
             assert current_app.config["GOOGLE_CLIENT_SECRET"]
             return oauth.google.authorize_redirect(redirect_uri, state=state)
@@ -123,9 +126,3 @@ class LogoutResource(Resource):
         response = redirect(location=current_app.config["FRONTEND_URL"])
         unset_jwt_cookies(response)
         return response
-
-
-# @ns.route('/setupdbsBECAREFUL')
-# class SetupDbsResource(Resource):
-#   def get(self):
-#     db.create_all()

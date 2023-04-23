@@ -9,7 +9,9 @@ from re import fullmatch
 import tempfile
 import zipfile
 
+from dnachisel import biotools
 from flask import current_app
+from flask import abort
 from google.cloud.storage.client import Client
 import numpy as np
 from redis import Redis
@@ -346,16 +348,22 @@ class FoldStorageUtil:
             self.storage_manager = GcloudStorageManager()
             self.storage_manager.setup(fold_gcloud_bucket)
 
-    def get_fold_with_state(self, fold_id):
+    def get_fold_with_state(self, fold_id, only_public):
         fold = Fold.get_by_id(fold_id)
+
         if not fold:
             raise BadRequest(f"Fold {fold_id} not found.")
+        
+        if only_public and not fold.public:
+            abort(403, description="You do not have access to this resource.")
+        
         return fold
 
     def get_folds_with_state(
         self,
         filter: str or None,
         tag: str or None,
+        only_public: bool,
         page: int or None,
         per_page: int or None,
     ):
@@ -387,6 +395,9 @@ class FoldStorageUtil:
                         Fold.tagstring.op("~")(get_tag_regex(term)),
                     )
                 )
+
+        if only_public:
+            query = query.filter(Fold.public)
 
         query = query.order_by(Fold.id.desc())
 

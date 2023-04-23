@@ -505,7 +505,6 @@ function NewFold(props: { setErrorText: (a: string) => void }) {
           {numAminoAcidsInInput != null &&
           numAminoAcidsInInput > LARGE_SIZE_WARNING_THRESHOLD ? (
             <div className="uk-alert-warning" uk-alert={1}>
-              <a className="uk-alert-close" uk-close={1}></a>
               <p>
                 Folds large than than {LARGE_SIZE_WARNING_THRESHOLD} amino acids
                 are likely to fail during AMBER relaxation, a post-processing
@@ -517,7 +516,6 @@ function NewFold(props: { setErrorText: (a: string) => void }) {
 
           {isBatchEntry ? (
             <div className="uk-alert-warning" uk-alert={1}>
-              <a className="uk-alert-close" uk-close={1}></a>
               <p>
                 Make sure to set the AlphaFold mode preset from the Advanced
                 Settings.

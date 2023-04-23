@@ -9,7 +9,16 @@ RUN npm install
 
 COPY ./ /app/
 
-RUN npm run-script build
+ARG BACKEND_URL
+ARG INSTITUTION
+
+# Make sure these two required build args are provided.
+RUN test -n "$BACKEND_URL"
+RUN test -n "$INSTITUTION"
+
+RUN REACT_APP_INSTITUTION=$INSTITUTION \
+    REACT_APP_BACKEND_URL=$BACKEND_URL \
+    npm run-script build
 
 FROM nginx:1.19.1
 

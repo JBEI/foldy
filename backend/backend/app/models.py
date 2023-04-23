@@ -66,6 +66,7 @@ class Fold(PkModel):
     user = relationship("User", backref="folds")
     tagstring = Column(db.String(80), nullable=True)
     create_date = Column("create_date", db.DateTime, default=func.now())
+    public = Column(db.Boolean, nullable=True)
 
     jobs = relationship(
         "Invokation",

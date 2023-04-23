@@ -1,9 +1,9 @@
 import { relative } from "path";
 import React, { useState } from "react";
 import { AiOutlineCloseCircle, AiOutlinePlus } from "react-icons/ai";
+import { FaCheckCircle } from "react-icons/fa";
 import { Link } from "react-router-dom";
 import UIkit from "uikit";
-import { DecodedJwt } from "./services/authentication.service";
 import {
   describeFoldState,
   DockInput,
@@ -37,15 +37,18 @@ export function makeFoldTable(folds: Fold[]) {
   return (
     <div className="uk-overflow-auto">
       <table
-        className="uk-table uk-table-hover"
+        className="uk-table uk-table-hover uk-table-small"
         style={{ tableLayout: "fixed" }}
       >
         <thead>
           <tr>
-            <th className="uk-table-small">Name</th>
-            <th className="uk-table-large">Length</th>
-            <th className="uk-table-small">State</th>
-            <th className="uk-table-small">Owner</th>
+            <th className="uk-width-medium">Name</th>
+            <th className="uk-width-small">Length</th>
+            <th className="uk-width-small">State</th>
+            <th className="uk-width-small">Owner</th>
+            <th className="uk-width-small">Date Created</th>
+            <th className="uk-width-small">Public</th>
+            <th className="uk-width-small">Docked Ligands</th>
             <th className="uk-table-small">Tags</th>
           </tr>
         </thead>
@@ -54,7 +57,7 @@ export function makeFoldTable(folds: Fold[]) {
             return (
               <tr key={fold.name}>
                 <td
-                  style={{ overflowX: "hidden" }}
+                  className="uk-text-truncate"
                   uk-tooltip={`title: ${fold.name}`}
                 >
                   <Link to={"/fold/" + fold.id}>
@@ -68,7 +71,25 @@ export function makeFoldTable(folds: Fold[]) {
                   {/* {foldIsFinished(fold) ? null : <div uk-spinner="ratio: 0.5"></div>}&nbsp;  */}
                   {describeFoldState(fold)}
                 </td>
-                <td>{fold.owner}</td>
+                <td className="uk-text-truncate">{fold.owner}</td>
+                <td className="uk-text-truncate">
+                  {new Date(fold.create_date).toLocaleString("en-US", {
+                    timeStyle: "short",
+                    dateStyle: "short",
+                  })}
+                </td>
+                <td className="uk-text-truncate">
+                  {fold.public ? <FaCheckCircle /> : null}
+                </td>
+                <td
+                  className="uk-text-truncate"
+                  uk-tooltip={`title: ${(fold.docks || [])
+                    .map((d) => d.ligand_name)
+                    .slice(0, 5)
+                    .join(", ")}`}
+                >
+                  {(fold.docks || []).length}
+                </td>
                 <td>{[...fold.tags].map(getTagBadge)}</td>
               </tr>
             );
@@ -372,6 +393,10 @@ interface FoldyProps {
 }
 
 export function Foldy(props: FoldyProps) {
+  const [hidden, setHidden] = useState<boolean>(false);
+  if (hidden) {
+    return null;
+  }
   return (
     <div>
       <div
@@ -385,6 +410,16 @@ export function Foldy(props: FoldyProps) {
         }
       >
         {props.text}
+        <div
+          style={{
+            position: "absolute",
+            top: "0px",
+            right: "8px",
+          }}
+          onClick={() => setHidden(!hidden)}
+        >
+          X
+        </div>
       </div>
       <img
         style={{

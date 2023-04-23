@@ -17,6 +17,7 @@ services:
       - DATABASE_URL=postgresql+psycopg2://user:password@db:5432/postgres
       - RQ_REDIS_URL=redis://redis:6379/0
       - DISABLE_OAUTH_AUTHENTICATION=True
+      - FOLDY_USERS=tester@test.edu
     networks:
       - default
     ports:
