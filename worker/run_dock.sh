@@ -2,9 +2,9 @@
 set -Eeuo pipefail
 set -o xtrace
 
-if [ "$#" -lt 4 ]; then
+if [ "$#" -lt 5 ]; then
   echo "Too few arguments. Expected format:"
-  echo "run_dock.sh fold_id gs_out_folder ligand_name ligand_smiles [optional other arguments passed to dock.py]"
+  echo "run_dock.sh fold_id gs_out_folder ligand_name ligand_smiles dock_tool [optional other arguments passed to dock.py]"
   exit 1
 fi
 
@@ -13,6 +13,7 @@ PADDED_ID=`printf %06d $ID`
 GS_OUT_FOLDER=$2
 LIGAND_NAME="${3}"
 LIGAND_SMILES="${4}"
+DOCK_TOOL="${5}"
 
 OUT_DIR=/aftmp
 
@@ -29,13 +30,28 @@ mkdir -p $OUT_DIR/$PADDED_ID/dock/${LIGAND_NAME}
 
 ##############################################################
 # Make dock batch files.
-/opt/conda/envs/dock/bin/python \
-    /worker/docking/dock.py \
-    --adfrsuite_path /adfrsuite \
-    "${@: 5}" \
-    $OUT_DIR/$PADDED_ID/ranked_0.pdb \
-    $LIGAND_SMILES \
-    $OUT_DIR/$PADDED_ID/dock/${LIGAND_NAME}
+if [[ "$DOCK_TOOL" == "vina" ]]
+then
+  /opt/conda/envs/dock/bin/python \
+      /worker/docking/dock.py \
+      --adfrsuite_path /adfrsuite \
+      "${@: 5}" \
+      $OUT_DIR/$PADDED_ID/ranked_0.pdb \
+      $LIGAND_SMILES \
+      $OUT_DIR/$PADDED_ID/dock/${LIGAND_NAME}
+else
+  cd /worker/diffdock/DiffDock
+  /opt/conda/envs/diffdock/bin/python \
+      -m inference \
+      --protein_path $OUT_DIR/$PADDED_ID/ranked_0.pdb \
+      --ligand "$LIGAND_SMILES" \
+      --out_dir $OUT_DIR/$PADDED_ID/dock/${LIGAND_NAME} \
+      --inference_steps 20 \
+      --samples_per_complex 40 \
+      --batch_size 10 \
+      --actual_steps 18 \
+      --no_final_step_noise 
+fi
 
 ##############################################################
 # Rsync.

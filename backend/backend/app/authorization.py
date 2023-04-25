@@ -1,3 +1,5 @@
+"""Utilities around authorization."""
+
 from functools import wraps
 
 from flask import current_app
@@ -13,11 +15,11 @@ def has_full_authorization(current_user):
         "FOLDY_USER_EMAIL_DOMAIN", None
     ) and current_user.endswith("@" + current_app.config["FOLDY_USER_EMAIL_DOMAIN"]):
         return True
-    # if (
-    #     current_app.config.get("FOLDY_USERS", None)
-    #     and current_user in current_app.config["FOLDY_USERS"]
-    # ):
-    #     return True
+    if (
+        current_app.config.get("FOLDY_USERS", None)
+        and current_user in current_app.config["FOLDY_USERS"]
+    ):
+        return True
     return False
 
 

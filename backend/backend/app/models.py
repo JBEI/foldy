@@ -102,6 +102,7 @@ class Dock(PkModel):
 
     ligand_name = Column(db.String, nullable=False)
     ligand_smiles = Column(db.String, nullable=False)
+    tool = Column(db.String, nullable=True)  # Either vina or diffdock.
 
     receptor_fold_id = Column(
         db.Integer, db.ForeignKey("roles.id", ondelete="CASCADE", onupdate="CASCADE")

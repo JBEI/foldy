@@ -1,6 +1,6 @@
 import React from "react";
-import { EditableTagList } from "../Util";
-import { VariousColorSchemes } from "../helpers/plots";
+import { EditableTagList } from "./../util/editableTagList";
+import { VariousColorSchemes } from "../util/plots";
 const ReactSequenceViewer = require("react-sequence-viewer");
 
 interface SequenceTabProps {

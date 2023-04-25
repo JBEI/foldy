@@ -11,13 +11,9 @@ import {
   FaTrash,
 } from "react-icons/fa";
 import ReactShowMoreText from "react-show-more-text";
+import { NewDockPrompt } from "./../util/newDockPrompt";
 import UIkit from "uikit";
-import {
-  Dock,
-  getDockSdf,
-  Invokation,
-} from "../services/backend.service";
-import { NewDockPrompt } from "../Util";
+import { Dock, getDockSdf, Invokation } from "../services/backend.service";
 
 interface DockTabProps {
   foldId: number;
@@ -84,6 +80,7 @@ const DockTab = React.memo((props: DockTabProps) => {
             <th>Name</th>
             <th>SMILES</th>
             <th uk-tooltip={"[kJ/mol]"}>Energy</th>
+            <th uk-tooltip={"Docking Tool"}>Tool</th>
             <th uk-tooltip={"Bounding Box"}>Box</th>
             <th>Actions</th>
           </tr>
@@ -106,6 +103,7 @@ const DockTab = React.memo((props: DockTabProps) => {
                       </ReactShowMoreText>
                     </td>
                     <td>{dock.pose_energy}</td>
+                    <td>{dock.tool}</td>
                     <td>
                       {dock.bounding_box_residue &&
                       dock.bounding_box_radius_angstrom ? (

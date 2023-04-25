@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { getResidueHeatmap } from "../helpers/plots";
+import { getResidueHeatmap } from "../util/plots";
 import {
   FoldContactProb,
   getFoldContactProb,
@@ -54,7 +54,7 @@ const ContactTab = React.memo(
         "Viridis",
         "max",
         0,
-        1,
+        1
       );
     };
 

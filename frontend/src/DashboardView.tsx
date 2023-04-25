@@ -1,16 +1,11 @@
-import React, {
-  FormEvent,
-  useCallback,
-  useEffect,
-  useState,
-} from "react";
+import React, { FormEvent, useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   authenticationService,
   DecodedJwt,
 } from "./services/authentication.service";
 import { Fold, getFolds } from "./services/backend.service";
-import { makeFoldTable } from "./Util";
+import { makeFoldTable } from "./util/foldTable";
 import qs from "query-string";
 var debounce = require("lodash/debounce");
 
@@ -52,7 +47,7 @@ function getQueryStringValue(
   return value.map((e) => e || "");
 }
 
-function AuthenticatedFoldsView(props: {
+function AuthenticatedDashboardView(props: {
   setErrorText: (a: string) => void;
   decodedToken: DecodedJwt;
 }) {
@@ -109,9 +104,10 @@ function AuthenticatedFoldsView(props: {
     }
   }, [filter, props, debouncedGetFolds]);
 
-  const updateSearchTerm = (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    console.log(e);
+  const updateSearchTerm = (e: FormEvent<HTMLFormElement> | null) => {
+    if (e) {
+      e.preventDefault();
+    }
     setPage(1);
     setQueryStringValue("filter", filterFormValue);
     setFilter([filterFormValue]);
@@ -120,6 +116,13 @@ function AuthenticatedFoldsView(props: {
   const updateSearchBarText = (newFilterFormValue: string) => {
     setFilterFormValue(newFilterFormValue);
     setSearchIsStale(true);
+  };
+
+  const searchForNewTerm = (newTerm: string) => {
+    setPage(1);
+    setFilterFormValue(newTerm);
+    setQueryStringValue("filter", newTerm);
+    setFilter([newTerm]);
   };
 
   return (
@@ -143,7 +146,7 @@ function AuthenticatedFoldsView(props: {
                 className="uk-search-input"
                 type="search"
                 placeholder="Search"
-                defaultValue={filterFormValue}
+                value={filterFormValue}
                 onChange={(e) => updateSearchBarText(e.target.value)}
               />
             </form>
@@ -163,6 +166,18 @@ function AuthenticatedFoldsView(props: {
               style={{ opacity: searchIsStale ? "60%" : "100%" }}
             >
               {makeFoldTable(folds)}
+              {folds.length === 0 ? (
+                <div className="uk-flex uk-flex-center uk-flex-middle uk-margin-top">
+                  <div
+                    className="uk-button uk-button-default"
+                    onClick={() => {
+                      searchForNewTerm("");
+                    }}
+                  >
+                    No folds found. View all folds?
+                  </div>
+                </div>
+              ) : null}
               <ul className="uk-pagination">
                 {pageNum > 1 ? (
                   <li>
@@ -206,7 +221,7 @@ function AuthenticatedFoldsView(props: {
   );
 }
 
-function FoldsView(props: {
+function DashboardView(props: {
   setErrorText: (a: string) => void;
   decodedToken: DecodedJwt | null;
 }) {
@@ -214,11 +229,11 @@ function FoldsView(props: {
     return null; // <div uk-spinner="ratio: 4"></div>;
   }
   return (
-    <AuthenticatedFoldsView
+    <AuthenticatedDashboardView
       setErrorText={props.setErrorText}
       decodedToken={props.decodedToken}
     />
   );
 }
 
-export default FoldsView;
+export default DashboardView;

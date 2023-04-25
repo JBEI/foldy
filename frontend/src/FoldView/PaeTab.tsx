@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { getResidueHeatmap } from "../helpers/plots";
+import { getResidueHeatmap } from "../util/plots";
 import { FoldPae, getFoldPae } from "../services/backend.service";
 
 interface PaeTabProps {
@@ -43,7 +43,14 @@ const PaeTab = React.memo(
           </div>
         );
       }
-      return getResidueHeatmap(props.foldSequence, pae.pae, "Jet", "min", 0, undefined);
+      return getResidueHeatmap(
+        props.foldSequence,
+        pae.pae,
+        "Jet",
+        "min",
+        0,
+        undefined
+      );
     };
 
     return (

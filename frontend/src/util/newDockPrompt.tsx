@@ -1,113 +1,14 @@
-import { relative } from "path";
 import React, { useState } from "react";
-import { AiOutlineCloseCircle, AiOutlinePlus } from "react-icons/ai";
-import { FaCheckCircle } from "react-icons/fa";
-import { Link } from "react-router-dom";
 import UIkit from "uikit";
-import {
-  describeFoldState,
-  DockInput,
-  Fold,
-  postDock,
-} from "./services/backend.service";
+import { DockInput, postDock } from "../services/backend.service";
 
-const KeyCodes = {
-  comma: 188,
-  enter: 13,
-};
-export const TAG_DELIMITERS = [KeyCodes.comma, KeyCodes.enter];
-
-export const TAG_CLASS_NAMES = {
-  tag: "uk-badge custom-tags",
-  tagInputField: "uk-input uk-form uk-width-1-2",
-};
-
-function getTagBadge(tag: string) {
-  const badgeStyle = { background: "#999999" };
-  return (
-    <Link to={`/tag/${tag}`} key={tag}>
-      <span className="uk-badge" style={badgeStyle}>
-        {tag}
-      </span>
-    </Link>
-  );
-}
-
-export function makeFoldTable(folds: Fold[]) {
-  return (
-    <div className="uk-overflow-auto">
-      <table
-        className="uk-table uk-table-hover uk-table-small"
-        style={{ tableLayout: "fixed" }}
-      >
-        <thead>
-          <tr>
-            <th className="uk-width-medium">Name</th>
-            <th className="uk-width-small">Length</th>
-            <th className="uk-width-small">State</th>
-            <th className="uk-width-small">Owner</th>
-            <th className="uk-width-small">Date Created</th>
-            <th className="uk-width-small">Public</th>
-            <th className="uk-width-small">Docked Ligands</th>
-            <th className="uk-table-small">Tags</th>
-          </tr>
-        </thead>
-        <tbody>
-          {[...folds].map((fold) => {
-            return (
-              <tr key={fold.name}>
-                <td
-                  className="uk-text-truncate"
-                  uk-tooltip={`title: ${fold.name}`}
-                >
-                  <Link to={"/fold/" + fold.id}>
-                    <div style={{ height: "100%", width: "100%" }}>
-                      {fold.name}
-                    </div>
-                  </Link>
-                </td>
-                <td>{fold.sequence.length}</td>
-                <td>
-                  {/* {foldIsFinished(fold) ? null : <div uk-spinner="ratio: 0.5"></div>}&nbsp;  */}
-                  {describeFoldState(fold)}
-                </td>
-                <td className="uk-text-truncate">{fold.owner}</td>
-                <td className="uk-text-truncate">
-                  {new Date(fold.create_date).toLocaleString("en-US", {
-                    timeStyle: "short",
-                    dateStyle: "short",
-                  })}
-                </td>
-                <td className="uk-text-truncate">
-                  {fold.public ? <FaCheckCircle /> : null}
-                </td>
-                <td
-                  className="uk-text-truncate"
-                  uk-tooltip={`title: ${(fold.docks || [])
-                    .map((d) => d.ligand_name)
-                    .slice(0, 5)
-                    .join(", ")}`}
-                >
-                  {(fold.docks || []).length}
-                </td>
-                <td>{[...fold.tags].map(getTagBadge)}</td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-export const getJobStatus = (fold: Fold, job_type: string): string | null => {
-  if (!fold.jobs) {
+const getLigandNameErrorMessage = (ligandName: string | null) => {
+  if (!ligandName) {
     return null;
   }
-  for (const job of fold.jobs) {
-    if (job.type === job_type) {
-      return job.state;
-    }
+  const foldNameIsValid = ligandName.match(/^[0-9a-zA-Z]+$/);
+  if (!foldNameIsValid) {
+    return "Must be alphanumeric.";
   }
   return null;
 };
@@ -129,17 +30,6 @@ const validateAndSetInput = (
   setFn(input);
 };
 
-const getLigandNameErrorMessage = (ligandName: string | null) => {
-  if (!ligandName) {
-    return null;
-  }
-  const foldNameIsValid = ligandName.match(/^[0-9a-zA-Z]+$/);
-  if (!foldNameIsValid) {
-    return "Must be alphanumeric.";
-  }
-  return null;
-};
-
 const getBBResidueErrorMessage = (bboxResidue: string | null) => {
   if (!bboxResidue) {
     return null;
@@ -157,6 +47,7 @@ interface newDockTextboxInterface {
 }
 
 export function NewDockPrompt(props: newDockTextboxInterface) {
+  const [toolName, setToolName] = useState<string>("");
   const [ligandName, setLigandName] = useState<string | null>(null);
   const [ligandSmiles, setLigandSmiles] = useState<string | null>(null);
   const [boundingBoxResidue, setBoundingBoxResidue] = useState<string | null>(
@@ -199,11 +90,17 @@ export function NewDockPrompt(props: newDockTextboxInterface) {
         return;
       }
 
+      if (toolName === "") {
+        errors.push("Must select a docking tool.");
+        return;
+      }
+
       props.foldIds.forEach((foldId) => {
         newDocks.push({
           fold_id: foldId,
           ligand_name: name,
           ligand_smiles: smiles,
+          tool: toolName,
           bounding_box_residue: bounding_box_residue,
           bounding_box_radius_angstrom: bounding_box_radius_angstrom,
         });
@@ -244,12 +141,18 @@ export function NewDockPrompt(props: newDockTextboxInterface) {
       return;
     }
 
+    if (toolName === "") {
+      props.setErrorText("Must select a docking tool.");
+      return;
+    }
+
     const newDocks: DockInput[] = [];
     props.foldIds.forEach((foldId) => {
       newDocks.push({
         fold_id: foldId,
         ligand_name: ligandName,
         ligand_smiles: ligandSmiles,
+        tool: toolName,
         bounding_box_residue: boundingBoxResidue,
         bounding_box_radius_angstrom: boundingBoxRadiusAngstrom
           ? parseFloat(boundingBoxRadiusAngstrom)
@@ -281,6 +184,22 @@ export function NewDockPrompt(props: newDockTextboxInterface) {
 
   return (
     <div>
+      <div className="uk-margin-small">
+        <div className="uk-form-controls">
+          <select
+            className="uk-select"
+            id="form-horizontal-select"
+            style={{ borderRadius: "20px" }}
+            onChange={(e) => setToolName(e.target.value)}
+            value={toolName}
+          >
+            <option value={""}>Select a docking program...</option>
+            <option value={"vina"}>Docking with Autodock Vina</option>
+            <option value={"diffdock"}>Docking with Diffdock</option>
+          </select>
+        </div>
+      </div>
+
       {showTextbox ? (
         <textarea
           className="uk-textarea"
@@ -341,7 +260,7 @@ export function NewDockPrompt(props: newDockTextboxInterface) {
               type="text"
               placeholder="[Bounding Box Residue Center]"
               id="name"
-              uk-tooltip="Residue ID, like W73, around which to set bounding box."
+              uk-tooltip="Residue ID, like W73, around which to set bounding box.  Ignored by Diffdock."
               value={boundingBoxResidue || ""}
               style={{ borderRadius: "500px" }}
               onChange={(e) =>
@@ -352,6 +271,7 @@ export function NewDockPrompt(props: newDockTextboxInterface) {
                   e.target.value
                 )
               }
+              disabled={toolName === "diffdock"}
             />
           </div>
           <div className="uk-width-1-2">
@@ -361,10 +281,11 @@ export function NewDockPrompt(props: newDockTextboxInterface) {
               min="0"
               placeholder="[Bounding Box Radius (Angstroms)]"
               id="name"
-              uk-tooltip="Radius of bounding box in Angstroms."
+              uk-tooltip="Radius of bounding box in Angstroms. Ignored by Diffdock."
               value={boundingBoxRadiusAngstrom || ""}
               style={{ borderRadius: "500px" }}
               onChange={(e) => setBoundingBoxRadiusAngstrom(e.target.value)}
+              disabled={toolName === "diffdock"}
             />
           </div>
         </form>
@@ -383,121 +304,6 @@ export function NewDockPrompt(props: newDockTextboxInterface) {
       >
         Dock
       </button>
-    </div>
-  );
-}
-
-interface FoldyProps {
-  text: string;
-  moveTextAbove: boolean;
-}
-
-export function Foldy(props: FoldyProps) {
-  const [hidden, setHidden] = useState<boolean>(false);
-  if (hidden) {
-    return null;
-  }
-  return (
-    <div>
-      <div
-        style={{
-          position: "fixed",
-          bottom: props.moveTextAbove ? "262px" : "210px",
-          right: props.moveTextAbove ? "34px" : "180px",
-        }}
-        className={
-          props.moveTextAbove ? "sbbox sbtriangleabove" : "sbbox sbtriangle"
-        }
-      >
-        {props.text}
-        <div
-          style={{
-            position: "absolute",
-            top: "0px",
-            right: "8px",
-          }}
-          onClick={() => setHidden(!hidden)}
-        >
-          X
-        </div>
-      </div>
-      <img
-        style={{
-          width: "250px",
-          position: "fixed",
-          bottom: "10px",
-          right: "10px",
-          zIndex: 1,
-        }}
-        src={`${process.env.PUBLIC_URL}/pksito.gif`}
-        alt=""
-      />
-    </div>
-  );
-}
-
-export interface EditableTagListProps {
-  tags: string[];
-  addTag: (tag: string) => void;
-  deleteTag: (tag: string) => void;
-  handleTagClick: (tag: string) => void;
-}
-
-export function EditableTagList(props: EditableTagListProps) {
-  const addNewTag = () => {
-    UIkit.modal.prompt("New tag:", "").then(
-      (newTag: string | null) => {
-        if (newTag) {
-          const allowedCharsRegex = /^[a-zA-Z0-9_-]+$/;
-          if (allowedCharsRegex.test(newTag)) {
-            props.addTag(newTag);
-          } else {
-            UIkit.notification(
-              `Invalid tag: ${newTag} contains a character which is not a letter, number, hyphen, or underscore.`
-            );
-          }
-        }
-      },
-      () => {
-        console.log("No new tag.");
-      }
-    );
-  };
-
-  return (
-    <div
-      className="uk-input"
-      onInput={(e) => console.log(e)}
-      style={{ borderRadius: "100px" }}
-    >
-      <span className="uk-margin-small-right uk-text-light">Tags:</span>
-      {props.tags.map((tag: string) => {
-        return (
-          <span
-            key={tag}
-            className="uk-badge uk-badge-bigger uk-margin-small-right"
-            uk-tooltip="Tags help sort and manage collections or batches of folds. Tags must only contain letters."
-          >
-            <span
-              style={{ padding: "0 3px 0 8px" }}
-              onClick={() => props.handleTagClick(tag)}
-            >
-              {tag}
-            </span>
-            <AiOutlineCloseCircle
-              style={{ cursor: "pointer" }}
-              onClick={() => props.deleteTag(tag)}
-            />
-          </span>
-        );
-      })}
-      <span
-        className="uk-badge uk-badge-bigger uk-margin-small-right"
-        style={{ background: "#999999", cursor: "pointer" }}
-        onClick={() => addNewTag()}
-      >
-        <AiOutlinePlus />
-      </span>
     </div>
   );
 }

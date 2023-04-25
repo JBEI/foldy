@@ -205,7 +205,7 @@ def send_email(fold_id, protein_name, recipient):
     )
 
 
-def dock(dock_id, invokation_id, fold_gcloud_bucket):
+def run_dock(dock_id, invokation_id, fold_gcloud_bucket):
     """Execute the docking run described by the provided Dock instance."""
     dock = Dock.get_by_id(dock_id)
 
@@ -223,6 +223,7 @@ def dock(dock_id, invokation_id, fold_gcloud_bucket):
         gs_out_folder,
         dock.ligand_name,
         dock.ligand_smiles,
+        dock.tool or 'vina',
         *extra_args,
     ]
 

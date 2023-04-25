@@ -1,9 +1,8 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { EditableTagList } from "./../util/editableTagList";
 import UIkit from "uikit";
 import { FoldInput, postFolds } from "../services/backend.service";
-import { EditableTagList } from "../Util";
-import { FaMinusCircle, FaPlusCircle } from "react-icons/fa";
 
 const VALID_AMINO_ACIDS = [
   "A",

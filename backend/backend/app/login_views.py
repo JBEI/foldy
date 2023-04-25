@@ -75,20 +75,20 @@ class AuthorizeResource(Resource):
                 current_app.config["ENV"] == "development"
             ), "It would be a grave mistake to disable OAuth authentication in production."
             name = "Testy Mcgoo"
-            email = "tester@test.edu"
+            email = "tester2@test.edu"
         else:
             _ = oauth.google.authorize_access_token()
             name = oauth.google.userinfo()["name"]
             email = oauth.google.userinfo()["email"]
 
-            # Make sure they're authorized.
-            if (
-                not email.endswith("@" + current_app.config["FOLDY_USER_EMAIL_DOMAIN"])
-                and email not in current_app.config["FOLDY_USERS"]
-            ):
-                return make_error_redirect(
-                    f'Authorization unsuccessful. Only users with @{current_app.config["FOLDY_USER_EMAIL_DOMAIN"]} addresses can access this resource.'
-                )
+            # # Make sure they're authorized.
+            # if (
+            #     not email.endswith("@" + current_app.config["FOLDY_USER_EMAIL_DOMAIN"])
+            #     and email not in current_app.config["FOLDY_USERS"]
+            # ):
+            #     return make_error_redirect(
+            #         f'Authorization unsuccessful. Only users with @{current_app.config["FOLDY_USER_EMAIL_DOMAIN"]} addresses can access this resource.'
+            #     )
 
         # Check if it's a new user. If it is, add them to the db.
         user_was_registered = (

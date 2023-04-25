@@ -1,6 +1,4 @@
-import { authHeader, jsonBodyAuthHeader } from "../helpers/authHeader";
-import { getJobStatus } from "../Util";
-import { authenticationService } from "./authentication.service";
+import { authHeader, jsonBodyAuthHeader } from "../util/authHeader";
 
 function handleFileResponse(response: Response) {
   if (!response.ok) {
@@ -50,6 +48,7 @@ export interface DockInput {
   fold_id: number;
   ligand_name: string;
   ligand_smiles: string;
+  tool: string | null;
   bounding_box_residue: string | null;
   bounding_box_radius_angstrom: number | null;
 }
@@ -110,6 +109,18 @@ export interface FileInfo {
   size: number;
   modified: number;
 }
+
+export const getJobStatus = (fold: Fold, job_type: string): string | null => {
+  if (!fold.jobs) {
+    return null;
+  }
+  for (const job of fold.jobs) {
+    if (job.type === job_type) {
+      return job.state;
+    }
+  }
+  return null;
+};
 
 export const describeFoldState = (fold: Fold) => {
   const featuresState = getJobStatus(fold, "features");

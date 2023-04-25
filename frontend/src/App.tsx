@@ -11,7 +11,7 @@ import {
 } from "react-router-dom";
 import { useJwt } from "react-jwt";
 
-import FoldsView from "./FoldsView";
+import DashboardView from "./DashboardView";
 import {
   authenticationService,
   currentJwtStringSubject,
@@ -25,9 +25,9 @@ import UIkit from "uikit";
 import SudoPage from "./SudoPage/SudoPage";
 import About from "./About/About";
 import TagView from "./TagView";
-import { Foldy } from "./Util";
 import { GoogleLogin, GoogleOAuthProvider } from "@react-oauth/google";
 import GoogleLoginButton from "./GoogleLogin";
+import { FoldyMascot } from "./util/foldyMascot";
 
 const AvatarFoldView = lazy(() => import("./FoldView/FoldView"));
 
@@ -187,7 +187,7 @@ function RoutedApp() {
       </div>
 
       {fullDecodedToken && !isExpired ? null : (
-        <Foldy
+        <FoldyMascot
           text={`Welcome to ${process.env.REACT_APP_INSTITUTION} Foldy!`}
           moveTextAbove={false}
         />
@@ -223,7 +223,7 @@ function RoutedApp() {
       </div>
 
       {fullDecodedToken && !isExpired ? null : (
-        <Foldy
+        <FoldyMascot
           text={`Welcome to ${process.env.REACT_APP_INSTITUTION} Foldy!`}
           moveTextAbove={true}
         />
@@ -299,7 +299,7 @@ function RoutedApp() {
           <Route
             path="/"
             element={
-              <FoldsView
+              <DashboardView
                 setErrorText={setErrorText}
                 decodedToken={fullDecodedToken}
               />

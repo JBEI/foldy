@@ -19,7 +19,7 @@ import {
   updateFold,
 } from "../services/backend.service";
 import jquery from "jquery";
-import { getColorsForAnnotations, VariousColorSchemes } from "../helpers/plots";
+import { getColorsForAnnotations, VariousColorSchemes } from "../util/plots";
 import { AiOutlineFolder, AiOutlineFolderOpen } from "react-icons/ai";
 import {
   Stage,
@@ -34,7 +34,7 @@ import DockTab from "./DockTab";
 import FileBrowser from "react-keyed-file-browser";
 import { FaDownload } from "react-icons/fa";
 import ParsePdb, { ParsedPdb } from "parse-pdb";
-import { Foldy } from "./../Util";
+import { FoldyMascot } from "./../util/foldyMascot";
 const NGL = require("./../../node_modules/ngl/dist/ngl");
 const fileDownload = require("js-file-download");
 
@@ -466,7 +466,7 @@ class InternalFoldView extends Component<FoldProps, FoldState> {
         {this.state.pdb ? null : (
           <div className="uk-text-center">
             {this.state.pdbFailedToLoad ? (
-              <Foldy
+              <FoldyMascot
                 text={"Looks like your structure isn't ready."}
                 moveTextAbove={false}
               />

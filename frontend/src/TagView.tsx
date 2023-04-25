@@ -4,12 +4,14 @@ import {
   Fold,
   getFoldPdbZip,
   getFolds,
+  getJobStatus,
   queueJob,
 } from "./services/backend.service";
-import { getJobStatus, makeFoldTable, NewDockPrompt } from "./Util";
+import { makeFoldTable } from "./util/foldTable";
 import { CSVLink } from "react-csv";
 import { useParams } from "react-router-dom";
 import fileDownload from "js-file-download";
+import { NewDockPrompt } from "./util/newDockPrompt";
 
 function TagView(props: { setErrorText: (a: string) => void }) {
   let { tagStringParam } = useParams();
