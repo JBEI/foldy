@@ -7,6 +7,7 @@ from flask_jwt_extended import fresh_jwt_required
 from flask_restplus import Resource
 from flask_restplus import fields
 from flask_restplus import reqparse
+from sqlalchemy.sql.elements import and_
 from werkzeug.exceptions import BadRequest
 
 from app import jobs
@@ -266,14 +267,26 @@ class FoldPklResource(Resource):
 @ns.route("/dock_sdf/<int:fold_id>/<string:ligand_name>")
 class FoldPklResource(Resource):
     def post(self, fold_id, ligand_name):
-        manager = FoldStorageUtil()
-        manager.setup()
-        sdf_str = manager.get_dock_sdf(fold_id, ligand_name)
-        return send_file(
-            io.BytesIO(sdf_str),
-            mimetype="application/octet-stream",
-            attachment_filename=f"{ligand_name}.sdf",
-            as_attachment=True,
+        query = db.session.query(Dock).filter(
+            and_(
+                Dock.ligand_name == ligand_name,
+                Dock.receptor_fold_id == fold_id,
+            )
+        )
+        for dock in query:
+            if not dock:
+                pass
+            manager = FoldStorageUtil()
+            manager.setup()
+            sdf_str = manager.get_dock_sdf(fold_id, dock.tool, ligand_name)
+            return send_file(
+                io.BytesIO(sdf_str),
+                mimetype="application/octet-stream",
+                attachment_filename=f"{ligand_name}.sdf",
+                as_attachment=True,
+            )
+        raise BadRequest(
+            f"Dock for fold id {fold_id} ligand name {ligand_name} not found."
         )
 
 
@@ -450,82 +463,6 @@ class DockResource(Resource):
         dock = Dock.get_by_id(dock_id)
 
         dock.delete()
-
-        return True
-
-
-queue_test_job_fields = ns.model(
-    "QueueTestJobField",
-    {"queue": fields.String(), "command": fields.String(required=False)},
-)
-
-
-@ns.route("/queuetestjob")
-class QueueTestJobResource(Resource):
-    @ns.expect(queue_test_job_fields)
-    @verify_fully_authorized
-    def post(self):
-        q = rq.get_queue(request.get_json()["queue"])
-        q.enqueue(
-            jobs.add,
-            1,
-            3,
-            job_timeout="6h",
-            result_ttl=48 * 60 * 60,  # 2 days
-        )
-        return True
-
-
-@ns.route("/sendtestemail")
-class SendTestEmailResource(Resource):
-    @ns.expect(queue_test_job_fields)
-    @verify_fully_authorized
-    def post(self):
-        q = rq.get_queue("emailparrot")
-        q.enqueue(
-            jobs.send_email,
-            1,
-            "test_prot",
-            "jacoberts@gmail.com",
-            job_timeout="6h",
-            result_ttl=48 * 60 * 60,  # 2 days
-        )
-        return True
-
-
-@ns.route("/addInvokationToAllJobs/<string:job_type>/<string:job_state>")
-class SendTestEmailResource(Resource):
-    @verify_fully_authorized
-    def post(self, job_type, job_state):
-        for (fold_id,) in db.session.query(Fold.id).all():
-            fold = Fold.get_by_id(fold_id)
-            if any([j.type == job_type for j in fold.jobs]):
-                continue
-            new_invokation = Invokation(fold_id=fold.id, type=job_type, state=job_state)
-            new_invokation.save()
-
-        return True
-
-
-@ns.route("/runUnrunStages/<string:stage_name>")
-class RunUnrunStagesResource(Resource):
-    @verify_fully_authorized
-    def post(self, stage_name):
-        for (fold_id,) in db.session.query(Fold.id).all():
-            if stage_name == "write_fastas":
-                start_stage(fold_id, stage_name, False)
-                continue
-
-            fold = Fold.get_by_id(fold_id)
-
-            is_already_run = False
-            for j in fold.jobs:
-                if j.type == stage_name and j.state != "failed":
-                    is_already_run = True
-            if is_already_run:
-                continue
-
-            start_stage(fold_id, stage_name, False)
 
         return True
 

@@ -102,7 +102,19 @@ const DockTab = React.memo((props: DockTabProps) => {
                         {dock.ligand_smiles}
                       </ReactShowMoreText>
                     </td>
-                    <td>{dock.pose_energy}</td>
+                    <td>
+                      {dock.tool === "diffdock" ? (
+                        <span
+                          uk-tooltip={
+                            "DiffDock does not compute energy of docking."
+                          }
+                        >
+                          N/A
+                        </span>
+                      ) : (
+                        dock.pose_energy
+                      )}
+                    </td>
                     <td>{dock.tool}</td>
                     <td>
                       {dock.bounding_box_residue &&

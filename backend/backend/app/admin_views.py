@@ -11,9 +11,11 @@ from rq.registry import FailedJobRegistry
 from sqlalchemy.sql.elements import and_
 from werkzeug.exceptions import BadRequest
 
-from app.models import Fold
+from app import jobs
+from app.models import Fold, Invokation
 from app.extensions import db, rq
 from app.authorization import verify_fully_authorized
+from app.util import start_stage
 
 
 ns = Namespace("admin_views", decorators=[fresh_jwt_required, verify_fully_authorized])
@@ -153,5 +155,81 @@ class BulkAddTagResource(Resource):
                 new_tagstring = ",".join([tag for tag in tags if tag])
                 fold.update(tagstring=new_tagstring)
             # fold.update(tagstring=new_tag)
+
+        return True
+
+
+queue_test_job_fields = ns.model(
+    "QueueTestJobField",
+    {"queue": fields.String(), "command": fields.String(required=False)},
+)
+
+
+@ns.route("/queuetestjob")
+class QueueTestJobResource(Resource):
+    @ns.expect(queue_test_job_fields)
+    @verify_fully_authorized
+    def post(self):
+        q = rq.get_queue(request.get_json()["queue"])
+        q.enqueue(
+            jobs.add,
+            1,
+            3,
+            job_timeout="6h",
+            result_ttl=48 * 60 * 60,  # 2 days
+        )
+        return True
+
+
+@ns.route("/sendtestemail")
+class SendTestEmailResource(Resource):
+    @ns.expect(queue_test_job_fields)
+    @verify_fully_authorized
+    def post(self):
+        q = rq.get_queue("emailparrot")
+        q.enqueue(
+            jobs.send_email,
+            1,
+            "test_prot",
+            "jacoberts@gmail.com",
+            job_timeout="6h",
+            result_ttl=48 * 60 * 60,  # 2 days
+        )
+        return True
+
+
+@ns.route("/addInvokationToAllJobs/<string:job_type>/<string:job_state>")
+class SendTestEmailResource(Resource):
+    @verify_fully_authorized
+    def post(self, job_type, job_state):
+        for (fold_id,) in db.session.query(Fold.id).all():
+            fold = Fold.get_by_id(fold_id)
+            if any([j.type == job_type for j in fold.jobs]):
+                continue
+            new_invokation = Invokation(fold_id=fold.id, type=job_type, state=job_state)
+            new_invokation.save()
+
+        return True
+
+
+@ns.route("/runUnrunStages/<string:stage_name>")
+class RunUnrunStagesResource(Resource):
+    @verify_fully_authorized
+    def post(self, stage_name):
+        for (fold_id,) in db.session.query(Fold.id).all():
+            if stage_name == "write_fastas":
+                start_stage(fold_id, stage_name, False)
+                continue
+
+            fold = Fold.get_by_id(fold_id)
+
+            is_already_run = False
+            for j in fold.jobs:
+                if j.type == stage_name and j.state != "failed":
+                    is_already_run = True
+            if is_already_run:
+                continue
+
+            start_stage(fold_id, stage_name, False)
 
         return True

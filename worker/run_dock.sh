@@ -40,17 +40,23 @@ then
       $LIGAND_SMILES \
       $OUT_DIR/$PADDED_ID/dock/${LIGAND_NAME}
 else
+  # DiffDock creates and accesses data in the "cwd", which we
+  # prepopulated in /foldydbs/diffdockdbs.
   cd /worker/diffdock/DiffDock
-  /opt/conda/envs/diffdock/bin/python \
-      -m inference \
+  cp /foldydbs/diffdockdbs/.*.npy .
+  TORCH_HOME=/foldydbs/diffdockdbs/torch \
+      /opt/conda/envs/diffdock/bin/python \
+      /worker/diffdock/DiffDock/inference.py \
       --protein_path $OUT_DIR/$PADDED_ID/ranked_0.pdb \
       --ligand "$LIGAND_SMILES" \
-      --out_dir $OUT_DIR/$PADDED_ID/dock/${LIGAND_NAME} \
+      --complex_name ${LIGAND_NAME} \
+      --out_dir $OUT_DIR/$PADDED_ID/dock \
       --inference_steps 20 \
       --samples_per_complex 40 \
       --batch_size 10 \
       --actual_steps 18 \
       --no_final_step_noise 
+  cd -
 fi
 
 ##############################################################

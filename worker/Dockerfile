@@ -14,10 +14,12 @@ RUN apt-get -y update && apt-get -y install curl aria2 rsync && \
 
 RUN mkdir /backend && mkdir -p /worker/docking
 
+
 # Install backend requirements.
 COPY backend/requirements.txt /backend/
 RUN conda create -n worker python=3.7
 RUN /opt/conda/envs/worker/bin/pip install --no-cache-dir -r /backend/requirements.txt
+
 
 # Install autodockVINA requirements.
 WORKDIR /worker/docking
@@ -31,8 +33,10 @@ RUN tar zxvf ADFRsuite_x86_64Linux_1.0.tar.gz && \
   cd ADFRsuite_x86_64Linux_1.0 && \
   echo Y | ./install.sh -d /adfrsuite -c 0
 
+
 # Install decompress pkls requirements.
 RUN /opt/conda/envs/worker/bin/pip install --no-cache-dir --no-input install scipy
+
 
 # Install annotation requirements.
 WORKDIR /annotations
@@ -46,31 +50,26 @@ RUN /opt/conda/envs/annotations/bin/conda install -y \
   hmmer2 hmmer diamond fasttree prodigal blast muscle=3.8.1551 glimmerhmm && \
   /opt/conda/envs/annotations/bin/conda clean -afy
 
+
 # Install DiffDock requirements.
 WORKDIR /worker/diffdock
-RUN git clone https://github.com/gcorso/DiffDock.git
+RUN git clone https://github.com/gcorso/DiffDock.git && \
+  cd DiffDock && \
+  git checkout c1abe25 && \
+  cd -
 RUN /opt/conda/bin/conda create -y -n diffdock python=3.8 conda pip
-# RUN /opt/conda/envs/diffdock/bin/conda install -y \
-#   pytorch-cpu=1.13.1 -c pytorch -c nvidia && \
-#   /opt/conda/envs/diffdock/bin/conda clean -afy
 RUN /opt/conda/envs/diffdock/bin/conda install -y pytorch==1.13.0 cpuonly -c pytorch && \
   /opt/conda/envs/diffdock/bin/conda clean -afy
-# RUN /opt/conda/envs/diffdock/bin/pip install --no-cache-dir torch-scatter torch-sparse torch-cluster torch-spline-conv torch-geometric -f https://data.pyg.org/whl/torch-1.13.0+cu117.html
-# RUN /opt/conda/envs/diffdock/bin/python -m pip install --no-cache-dir \
-#   torch-scatter==2.0.9 torch-sparse==0.6.13 torch-cluster==1.6.0 torch-spline-conv==1.2.1 torch-geometric -f https://data.pyg.org/whl/torch-1.10.2+cu111.html
+
+# Install scipy, then install torch from a specific wheel, not from pip (no-index), then
+# install the rest of the dependencies.
 RUN /opt/conda/envs/diffdock/bin/python -m pip install --no-cache-dir scipy
 RUN /opt/conda/envs/diffdock/bin/python -m pip install --no-cache-dir --no-index \
   torch-scatter torch-sparse torch-cluster torch-spline-conv -f https://data.pyg.org/whl/torch-1.13.1+cpu.html
-
-# RUN /opt/conda/envs/diffdock/bin/python -m pip install --no-cache-dir --no-index \
-#   torch-scatter==2.1.1 torch-sparse==0.6.17 torch-cluster torch-spline-conv -f https://data.pyg.org/whl/torch-1.13.1+cpu.html
 RUN /opt/conda/envs/diffdock/bin/python -m pip install --no-cache-dir \
-  PyYAML scipy "networkx[default]" biopython rdkit-pypi e3nn spyrmsd pandas biopandas
-RUN /opt/conda/envs/diffdock/bin/python -m pip install  --no-cache-dir "fair-esm"
-RUN /opt/conda/envs/diffdock/bin/python -m pip install  --no-cache-dir torch_geometric
-# RUN /opt/conda/envs/diffdock/bin/python -m pip install  --no-cache-dir "fair-esm[esmfold]"
-# RUN /opt/conda/envs/diffdock/bin/python -m pip install  --no-cache-dir 'dllogger @ git+https://github.com/NVIDIA/dllogger.git'
-# RUN /opt/conda/envs/diffdock/bin/python -m pip install  --no-cache-dir 'openfold @ git+https://github.com/aqlaboratory/openfold.git@4b41059694619831a7db195b7e0988fc4ff3a307'
+  PyYAML scipy "networkx[default]" biopython rdkit-pypi e3nn spyrmsd pandas biopandas \
+  "fair-esm" \
+  torch_geometric
 
 
 # Copy in code.

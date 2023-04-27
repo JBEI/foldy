@@ -699,15 +699,23 @@ class InternalFoldView extends Component<FoldProps, FoldState> {
     };
 
     const setPublic = (is_public: boolean) => {
-      updateFold(this.props.foldId, { public: is_public }).then(
-        () => {
-          this.refreshFoldDataFromBackend();
-          UIkit.notification("Updated public status.");
-        },
-        (e) => {
-          this.props.setErrorText(e);
-        }
-      );
+      UIkit.modal
+        .confirm(
+          `Are you sure you want to make this fold and associated data ${
+            is_public ? "" : "in"
+          }visible to the public?`
+        )
+        .then(() => {
+          updateFold(this.props.foldId, { public: is_public }).then(
+            () => {
+              this.refreshFoldDataFromBackend();
+              UIkit.notification("Updated public status.");
+            },
+            (e) => {
+              this.props.setErrorText(e);
+            }
+          );
+        });
     };
 
     const addTag = (tagToAdd: string) => {

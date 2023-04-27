@@ -353,10 +353,10 @@ class FoldStorageUtil:
 
         if not fold:
             raise BadRequest(f"Fold {fold_id} not found.")
-        
+
         if only_public and not fold.public:
             abort(403, description="You do not have access to this resource.")
-        
+
         return fold
 
     def get_folds_with_state(
@@ -636,5 +636,13 @@ class FoldStorageUtil:
             print(e, flush=True)
             raise BadRequest(f"Failed to unpack file pfam for {fold_id} ({e}).")
 
-    def get_dock_sdf(self, fold_id, ligand_name):
-        return self.storage_manager.get_binary(fold_id, f"dock/{ligand_name}/poses.sdf")
+    def get_dock_sdf(self, fold_id, tool, ligand_name):
+        if not tool or tool == "vina":
+            return self.storage_manager.get_binary(
+                fold_id, f"dock/{ligand_name}/poses.sdf"
+            )
+        elif tool == "diffdock":
+            return self.storage_manager.get_binary(
+                fold_id, f"dock/{ligand_name}/rank1.sdf"
+            )
+        raise BadRequest(f"Unknown docking tool {tool}")

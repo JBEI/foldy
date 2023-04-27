@@ -14,6 +14,7 @@ from flask_cors import CORS
 from flask_jwt_extended.exceptions import JWTExtendedException
 from jwt.exceptions import ExpiredSignatureError
 from flask_jwt_extended import JWTManager
+from flask_jwt_extended.utils import get_jwt_identity
 from markupsafe import Markup
 import werkzeug
 from werkzeug.exceptions import BadRequest, HTTPException
@@ -21,7 +22,7 @@ from werkzeug.middleware.dispatcher import DispatcherMiddleware
 from prometheus_client import make_wsgi_app
 
 from app import models
-from app.authorization import verify_fully_authorized
+from app.authorization import has_full_authorization
 from app.extensions import admin, db, migrate, rq, compress
 import rq_dashboard
 
@@ -47,7 +48,8 @@ def register_extensions(app):
     class VerifiedModelView(ModelView):
         def is_accessible(self):
             verify_fresh_jwt_in_request()
-            verify_fully_authorized()
+            if not has_full_authorization(get_jwt_identity()):
+                return False
             return True
 
     class UserModelView(VerifiedModelView):

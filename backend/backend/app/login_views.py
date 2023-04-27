@@ -75,7 +75,7 @@ class AuthorizeResource(Resource):
                 current_app.config["ENV"] == "development"
             ), "It would be a grave mistake to disable OAuth authentication in production."
             name = "Testy Mcgoo"
-            email = "tester2@test.edu"
+            email = "tester@test.edu"
         else:
             _ = oauth.google.authorize_access_token()
             name = oauth.google.userinfo()["name"]
