@@ -40,7 +40,10 @@ class Chain {
   }
 }
 
-function NewFold(props: { setErrorText: (a: string) => void }) {
+function NewFold(props: {
+  userType: string | null;
+  setErrorText: (a: string) => void;
+}) {
   const [name, setName] = useState<string | null>(null);
   const [isAMonomer, setIsAMonomer] = useState<boolean>(true);
   const [textboxContents, setTextboxContents] = useState<string | null>(null);
@@ -649,7 +652,12 @@ function NewFold(props: { setErrorText: (a: string) => void }) {
             type="button"
             className="uk-button uk-button-primary"
             onClick={handleSubmit}
-            disabled={isActivelySubmitting}
+            disabled={isActivelySubmitting || props.userType === "viewer"}
+            uk-tooltip={
+              props.userType === "viewer"
+                ? `You do not have permissions to submit folds to the ${process.env.REACT_APP_INSTITUTION} Foldy instance.`
+                : null
+            }
           >
             Submit {numAminoAcidsInInput} AA Fold
           </button>

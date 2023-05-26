@@ -23,7 +23,7 @@ export function makeFoldTable(folds: Fold[]) {
       >
         <thead>
           <tr>
-            <th className="uk-table-medium">Name</th>
+            <th className="uk-width-medium">Name</th>
             <th className="uk-width-small">Length</th>
             <th className="uk-width-small">State</th>
             <th className="uk-width-small">Owner</th>
@@ -53,7 +53,7 @@ export function makeFoldTable(folds: Fold[]) {
                   </Link>
                 </td>
                 <td>{fold.sequence.length}</td>
-                <td>
+                <td className="uk-text-truncate">
                   {/* {foldIsFinished(fold) ? null : <div uk-spinner="ratio: 0.5"></div>}&nbsp;  */}
                   {describeFoldState(fold)}
                 </td>

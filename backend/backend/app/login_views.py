@@ -10,6 +10,7 @@ from flask_restplus import Resource
 from flask_jwt_extended import create_access_token
 from flask_jwt_extended import set_access_cookies, unset_jwt_cookies
 
+from app.authorization import has_full_authorization
 from app.models import User
 from app.extensions import db
 
@@ -101,8 +102,12 @@ class AuthorizeResource(Resource):
                     "Unfortunately, new user creation failed! Please contact the admins for help."
                 )
 
+        user_type = "editor" if has_full_authorization(email) else "viewer"
+
         access_token = create_access_token(
-            identity=email, fresh=True, user_claims={"name": name, "email": email}
+            identity=email,
+            fresh=True,
+            user_claims={"name": name, "email": email, "type": user_type},
         )
 
         frontend_parsed = urllib.parse.urlparse(frontend_url)

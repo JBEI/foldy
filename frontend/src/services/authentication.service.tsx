@@ -9,7 +9,19 @@ export interface DecodedJwt {
   user_claims: {
     email: string;
     name: string;
+    type: string | null;
   };
+}
+
+export function getDescriptionOfUserType(userType: string) {
+  if (userType === "editor") {
+    return `Your account has "editor" permissions to ${process.env.REACT_APP_INSTITUTION} Foldy which means you can view any structure or submit your own. Check out the instructions in the About page for details.`;
+  } else if (userType === "viewer") {
+    return `Your account has "viewer" permissions to ${process.env.REACT_APP_INSTITUTION} Foldy which means you can view any public folds and associated data, but cannot submit your own compute jobs. See the Foldy manuscript and codebase to set up a Foldy instance at your institution!`;
+  } else {
+    console.error(`Unknown user type ${userType}`);
+    return "";
+  }
 }
 
 export function isFullDecodedJwt(obj: any): obj is DecodedJwt {

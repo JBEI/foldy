@@ -94,10 +94,10 @@ const DockTab = React.memo((props: DockTabProps) => {
                     <td style={{ overflowWrap: "anywhere", width: "300px" }}>
                       <ReactShowMoreText
                         lines={1}
-                        more="more"
+                        more="..."
                         less="less"
                         expanded={false}
-                        truncatedEndingComponent={"... "}
+                        truncatedEndingComponent={" "}
                       >
                         {dock.ligand_smiles}
                       </ReactShowMoreText>

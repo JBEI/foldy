@@ -16,9 +16,9 @@ import {
   authenticationService,
   currentJwtStringSubject,
   DecodedJwt,
+  getDescriptionOfUserType,
   isFullDecodedJwt,
   LoginButton,
-  redirectToLogin,
 } from "./services/authentication.service";
 import NewFold from "./NewFold/NewFold";
 import UIkit from "uikit";
@@ -54,62 +54,36 @@ function CheckForErrorQueryString(props: {
   return <div></div>;
 }
 
-function NewUserWelcomePage() {
-  const location = useLocation();
-  const navigate = useNavigate();
-  let params = new URLSearchParams(location.search);
-
-  const isNewUser = params.get("new_user");
-  if (!isNewUser) {
-    return <div></div>;
-  }
-
-  params.delete("new_user");
-  navigate({
-    pathname: location.pathname,
-    search: params.toString(),
-  });
-
-  UIkit.modal
-    .alert(
-      '<p>Welcome new user! Check out the <a href="/about">About</a> page for information about the service and updates as we make improvements.</p>'
-    )
-    .then(() => {
-      navigate("/about");
-    });
-  return <div></div>;
-}
-
 function RoutedApp() {
   const [token, setToken] = useState<string>(
     authenticationService.currentJwtStringValue
   );
   const { decodedToken, isExpired } = useJwt(token);
   let [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
 
   var fullDecodedToken: DecodedJwt | null = null;
   if (isFullDecodedJwt(decodedToken)) {
     fullDecodedToken = decodedToken;
+
+    const isNewUser = searchParams.get("new_user");
+    if (isNewUser) {
+      const newSearchParams = new URLSearchParams(searchParams);
+      newSearchParams.delete("new_user");
+      setSearchParams(newSearchParams);
+
+      UIkit.modal
+        .alert(
+          `<p>Welcome new user!</p><p>${getDescriptionOfUserType(
+            fullDecodedToken.user_claims.type || ""
+          )}</p><p>Check out the <a href="/about">About</a> page for information about the service and updates as we make improvements.</p>`
+        )
+        .then(() => {
+          navigate("/about");
+        });
+    }
   }
 
-  // const jwtString = searchParams.get("access_token");
-  // if (jwtString) {
-  //   // Remove access_token from the URL.
-  //   console.log(`Deleting access_token ${searchParams}`);
-  //   const newSearchParams = new URLSearchParams(searchParams);
-  //   newSearchParams.delete("access_token");
-  //   console.log(`Deleted access_token ${newSearchParams}`);
-
-  //   setSearchParams(newSearchParams);
-
-  //   localStorage.setItem("currentJwtString", jwtString);
-  //   currentJwtStringSubject.next(jwtString);
-  //   setToken(jwtString);
-  // } else if (fullDecodedToken && isExpired) {
-  //   // redirectToLogin();
-  //   // return <div>Redirecting to refresh token...</div>;
-  //   UIkit.notification("Login expired.");
-  // }
   useEffect(() => {
     const jwtString = searchParams.get("access_token");
     if (jwtString) {
@@ -125,8 +99,6 @@ function RoutedApp() {
       currentJwtStringSubject.next(jwtString);
       setToken(jwtString);
     } else if (fullDecodedToken && isExpired) {
-      // redirectToLogin();
-      // return <div>Redirecting to refresh token...</div>;
       UIkit.notification("Login expired.");
     }
   }, [searchParams, fullDecodedToken, isExpired]);
@@ -143,6 +115,22 @@ function RoutedApp() {
     );
   };
 
+  const foldyTitle = (
+    <span>
+      {process.env.REACT_APP_INSTITUTION} Foldy
+      <sub>
+        <sub>
+          {fullDecodedToken?.user_claims.type === "viewer" ? "View Only" : null}
+          {fullDecodedToken?.user_claims.type === "editor"
+            ? "Edit Access"
+            : null}
+        </sub>
+      </sub>
+    </span>
+  );
+
+  const foldyWelcomeText = `Welcome to ${process.env.REACT_APP_INSTITUTION} Foldy! Login with an ${process.env.REACT_APP_INSTITUTION} account for edit access, or any other account to view public structures.`;
+
   // JBEI orange: CF4520
   // JBEI red: CF4420
   // const desktop_navbar = <nav className="uk-navbar" style={{background: 'linear-gradient(to left, #CF4420, #CF4520)'}}>
@@ -157,7 +145,7 @@ function RoutedApp() {
           className="uk-navbar-item uk-logo uk-margin-left"
           style={{ color: "#fff" }}
         >
-          {process.env.REACT_APP_INSTITUTION} Foldy
+          {foldyTitle}
         </a>
         <a href="/" className="uk-navbar-item" style={{ color: "#fff" }}>
           Dashboard
@@ -187,10 +175,7 @@ function RoutedApp() {
       </div>
 
       {fullDecodedToken && !isExpired ? null : (
-        <FoldyMascot
-          text={`Welcome to ${process.env.REACT_APP_INSTITUTION} Foldy!`}
-          moveTextAbove={false}
-        />
+        <FoldyMascot text={foldyWelcomeText} moveTextAbove={false} />
       )}
     </nav>
   );
@@ -209,7 +194,7 @@ function RoutedApp() {
           className="uk-navbar-item uk-logo uk-margin-small-left"
           style={{ color: "#fff" }}
         >
-          {process.env.REACT_APP_INSTITUTION} Foldy
+          {foldyTitle}
         </a>
       </div>
 
@@ -223,10 +208,7 @@ function RoutedApp() {
       </div>
 
       {fullDecodedToken && !isExpired ? null : (
-        <FoldyMascot
-          text={`Welcome to ${process.env.REACT_APP_INSTITUTION} Foldy!`}
-          moveTextAbove={true}
-        />
+        <FoldyMascot text={foldyWelcomeText} moveTextAbove={true} />
       )}
     </nav>
   );
@@ -240,7 +222,6 @@ function RoutedApp() {
       <CheckForErrorQueryString
         setErrorText={setErrorText}
       ></CheckForErrorQueryString>
-      <NewUserWelcomePage></NewUserWelcomePage>
       <div id="off-canvas-navbar" uk-offcanvas={1}>
         <div className="uk-offcanvas-bar uk-flex uk-flex-column">
           <button
@@ -289,13 +270,29 @@ function RoutedApp() {
           />
           <Route
             path="/newFold"
-            element={<NewFold setErrorText={setErrorText} />}
+            element={
+              <NewFold
+                setErrorText={setErrorText}
+                userType={
+                  fullDecodedToken ? fullDecodedToken.user_claims.type : null
+                }
+              />
+            }
           />
           <Route
             path="/sudopage"
             element={<SudoPage setErrorText={setErrorText} />}
           />
-          <Route path="/about" element={<About />} />
+          <Route
+            path="/about"
+            element={
+              <About
+                userType={
+                  fullDecodedToken ? fullDecodedToken.user_claims.type : null
+                }
+              />
+            }
+          />
           <Route
             path="/"
             element={

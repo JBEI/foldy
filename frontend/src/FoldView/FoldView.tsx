@@ -504,7 +504,7 @@ class InternalFoldView extends Component<FoldProps, FoldState> {
               onClick={changeColor}
               style={{ backgroundColor: "white" }}
             >
-              {this.state.colorScheme.split("|").pop()}
+              Color: {this.state.colorScheme.split("|").pop()}
             </button>
             <button
               className="uk-button uk-button-small uk-button-default"
