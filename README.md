@@ -83,6 +83,8 @@ Instead a few test cases have been precomputed that auto-complete once queued.
 
 ## Production Deployment
 
+If you are interested in setting up your own Foldy instance, we would love to hear about it and would be happy to help, just send an email to `jbr@lbl.gov`!
+
 Once you are satisfied with the application, you can deploy the application into production by
 following the procedure below.
 
