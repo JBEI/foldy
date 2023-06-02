@@ -260,7 +260,12 @@ function RoutedApp() {
             path="/fold/:foldId"
             element={
               <Suspense fallback={renderLoader()}>
-                <AvatarFoldView setErrorText={setErrorText} />
+                <AvatarFoldView
+                  setErrorText={setErrorText}
+                  userType={
+                    fullDecodedToken ? fullDecodedToken.user_claims.type : null
+                  }
+                />
               </Suspense>
             }
           />

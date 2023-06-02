@@ -1,6 +1,7 @@
 import React from "react";
 import { EditableTagList } from "./../util/editableTagList";
 import { VariousColorSchemes } from "../util/plots";
+import { AiFillEdit } from "react-icons/ai";
 const ReactSequenceViewer = require("react-sequence-viewer");
 
 interface SequenceTabProps {
@@ -17,9 +18,12 @@ interface SequenceTabProps {
   pfamColors: VariousColorSchemes | null;
 
   setPublic: (is_public: boolean) => void;
+  setFoldName: () => void;
   addTag: (tagToAdd: string) => void;
   deleteTag: (tagToDelete: string) => void;
   handleTagClick: (tagToOpen: string) => void;
+
+  userType: string | null;
 }
 
 const SequenceTab = React.memo(
@@ -70,6 +74,31 @@ const SequenceTab = React.memo(
           );
         })}
         <form className="uk-form-horizontal uk-margin-large">
+          <div className="uk-margin">
+            <label className="uk-form-label" htmlFor="form-horizontal-text">
+              Name
+            </label>
+            <div className="uk-form-controls">
+              <input
+                className="uk-input uk-width-3-4"
+                value={props.foldName}
+                disabled
+              ></input>
+              <span className="uk-width-1-4">
+                <button
+                  className="uk-button uk-button-default uk-width-auto uk-margin-small-left"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    props.setFoldName();
+                  }}
+                  disabled={props.userType === "viewer"}
+                >
+                  <AiFillEdit />
+                </button>
+              </span>
+            </div>
+          </div>
           <div className="uk-margin">
             <label className="uk-form-label" htmlFor="form-horizontal-text">
               Owner

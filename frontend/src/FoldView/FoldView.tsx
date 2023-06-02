@@ -118,6 +118,7 @@ const getCubeEdges = (
 interface FoldProps {
   foldId: number;
   setErrorText: (a: string) => void;
+  userType: string | null;
 }
 
 interface DisplayedDock {
@@ -718,6 +719,31 @@ class InternalFoldView extends Component<FoldProps, FoldState> {
         });
     };
 
+    const setFoldName = () => {
+      UIkit.modal
+        .prompt("New fold name:", "")
+        .then((newFoldName: string | null) => {
+          if (!newFoldName) {
+            return;
+          }
+          UIkit.modal
+            .confirm(
+              `Are you sure you want to rename this fold to ${newFoldName}?`
+            )
+            .then(() => {
+              updateFold(this.props.foldId, { name: newFoldName }).then(
+                () => {
+                  this.refreshFoldDataFromBackend();
+                  UIkit.notification("Updated fold name.");
+                },
+                (e) => {
+                  this.props.setErrorText(e);
+                }
+              );
+            });
+        });
+    };
+
     const addTag = (tagToAdd: string) => {
       const tags = this.state.foldData?.tags;
       if (!tags) {
@@ -858,9 +884,11 @@ class InternalFoldView extends Component<FoldProps, FoldState> {
                     colorScheme={this.state.colorScheme}
                     pfamColors={this.state.pfamColors}
                     setPublic={setPublic}
+                    setFoldName={setFoldName}
                     addTag={addTag}
                     deleteTag={deleteTag}
                     handleTagClick={handleTagClick}
+                    userType={this.props.userType}
                   ></SequenceTab>
                 ) : null}
               </li>
@@ -981,7 +1009,10 @@ class InternalFoldView extends Component<FoldProps, FoldState> {
   }
 }
 
-function FoldView(props: { setErrorText: (a: string | null) => void }) {
+function FoldView(props: {
+  setErrorText: (a: string | null) => void;
+  userType: string | null;
+}) {
   let { foldId } = useParams();
   if (!foldId) {
     return null;
@@ -990,6 +1021,7 @@ function FoldView(props: { setErrorText: (a: string | null) => void }) {
     <InternalFoldView
       setErrorText={props.setErrorText}
       foldId={parseInt(foldId)}
+      userType={props.userType}
     />
   );
 }
