@@ -230,7 +230,7 @@ function RoutedApp() {
             uk-close={1}
           ></button>
 
-          <h3>{process.env.REACT_APP_INSTITUTION} Foldy</h3>
+          <h3>{process.env.REACT_APP_INSTITUTION} Foldyss</h3>
           <p>
             {process.env.REACT_APP_INSTITUTION} Foldy is a web app for
             predicting and using protein structures based on AlphaFold.

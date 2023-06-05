@@ -1,6 +1,22 @@
 version: '3.6'
 
 services:
+  frontend:
+    build:
+      context: frontend/
+      target: build-stage
+      args:
+        - BACKEND_URL=http://localhost:8080
+        - INSTITUTION=Local
+        - HOST=0.0.0.0
+    networks:
+      - default
+    ports:
+      - 127.0.0.1:3000:3000
+    volumes:
+      - ./frontend/src:/app/src
+
+
   backend:
     build: backend/
     depends_on:

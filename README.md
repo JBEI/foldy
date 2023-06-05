@@ -43,9 +43,7 @@ Make sure you have the following tools installed on your machine:
    docker-compose up
    ```
 
-    This command will start the backend server and the required databases.
-
-3. After the backend is running, open another terminal window and navigate to the project directory.
+    This command will start the frontend & backend servers and the required databases. Note that it takes a few minutes for the images to build, and then a few more minutes for the frontend to start up (the logs will say "Starting the development server...", then it takes ~60 seconds to build the frontend, then it will say "No issues found.").
 
 4. Install the databases by running the following command:
 
@@ -53,41 +51,7 @@ Make sure you have the following tools installed on your machine:
    docker-compose exec backend flask db upgrade
    ```
 
-### Frontend
-
-1. Open another terminal window and navigate to the project directory.
-
-2. Create a Conda environment specifically for Foldy using the following commands:
-
-   ```bash
-   conda create -y -n foldy-environment
-   conda activate foldy-environment
-   ```
-   
-3. Install the required dependencies for the backend using pip:
-   ```bash
-   pip install -r backend/requirements.txt
-   ```
-
-4. Navigate to the frontend directory:
-
-   ```bash
-   cd frontend
-   ```
-
-5. Install the frontend dependencies using npm:
-
-   ```
-   npm install
-   ```
-
-6. In the terminal window where you navigated to the frontend directory, start the frontend:
-
-   ```bash
-   npm start
-   ```
-
-7. Access the Foldy website at http://localhost:3000 in your browser.
+5. Access the Foldy website at http://localhost:3000 in your browser.
 
 That's it! You have successfully deployed Foldy locally for development or testing purposes. Explore the website and make any necessary changes to the codebase.
 
