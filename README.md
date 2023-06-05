@@ -22,47 +22,75 @@
   - [Acknowledgements](#acknowledgements)
   - [Code License](#code-license)
 
-## Local Deployment
+## Developer Deployment / Local Deployment
 
-Local development is supported with [docker compose](https://docs.docker.com/compose/).
+To deploy Foldy locally for development or testing purposes, you can follow these steps:
 
-### Initial setup
+### Prerequisites
 
-1. Install docker which includes docker-compose [[installation instructions]](https://docs.docker.com/engine/install/)
-1. Clone this repository:
+Make sure you have the following tools installed on your machine:
+
+- Docker (for running the backend and databases)
+- Conda (for creating the environment and installing dependencies)
+
+### Backend and Databases
+
+1. Start by setting up the backend and databases using Docker Compose. Open a terminal window and navigate to the project directory.
+
+2. Run the following command to bring up the backend and databases:
 
    ```bash
-   git clone https://github.com/JBEI/foldy.git
-   cd foldy
+   docker-compose up
    ```
 
-1. For code completion and running the frontend, install frontend dependencies and backend dependencies with [[conda]](https://docs.conda.io/en/latest/miniconda.html)
+    This command will start the backend server and the required databases.
+
+3. After the backend is running, open another terminal window and navigate to the project directory.
+
+4. Install the databases by running the following command:
+
+   ```bash
+   docker-compose exec backend flask db upgrade
+   ```
+
+### Frontend
+
+1. Open another terminal window and navigate to the project directory.
+
+2. Create a Conda environment specifically for Foldy using the following commands:
 
    ```bash
    conda create -y -n foldy-environment
    conda activate foldy-environment
-   conda install -c conda-forge nodejs==16.17.1 python==3.7.13
+   ```
+   
+3. Install the required dependencies for the backend using pip:
+   ```bash
    pip install -r backend/requirements.txt
+   ```
+
+4. Navigate to the frontend directory:
+
+   ```bash
    cd frontend
+   ```
+
+5. Install the frontend dependencies using npm:
+
+   ```
    npm install
    ```
 
-1. Start the backend in a new terminal window.
-   - From the root of the foldy repo, call `docker-compose up`
-1. Start the frontend in a new terminal window
-   - From the `frontend/` directory, call `npm start`
-1. Create the DBs in the local postgres instance
-   - From the root of the foldy repo, call `docker-compose exec backend flask db upgrade`
+6. In the terminal window where you navigated to the frontend directory, start the frontend:
 
-### For live development
+   ```bash
+   npm start
+   ```
 
-Changes to both the frontend and backend will be live-reloaded.
+7. Access the Foldy website at http://localhost:3000 in your browser.
 
-1. Start the backend in a new terminal window.
-   - From the root of the foldy repo, call `docker-compose up`
-1. Start the frontend in a new terminal window
-   - From the `frontend` directory: `npm start`
-1. Visit `localhost:3000` in your browser.
+That's it! You have successfully deployed Foldy locally for development or testing purposes. Explore the website and make any necessary changes to the codebase.
+
 
 ### Upgrading Database in development
 
@@ -76,8 +104,8 @@ docker-compose exec backend flask db upgrade
 
 ### Development Tasks
 
-TODO: Protein structure prediction tasks in the development environment are not actually performed.
-Instead a few test cases have been precomputed that auto-complete once queued.
+> Protein structure prediction tasks in the development environment are not actually performed.
+> Instead a few test cases have been precomputed that auto-complete once queued.
 
 ---
 
