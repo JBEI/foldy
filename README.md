@@ -81,10 +81,10 @@ Once you are satisfied with the application, you can deploy the application into
 following the procedure below.
 
 
-<p align="center">
+<figure align="center">
   <img src="scripts/architecture.png"  />
-  <p><i>Foldy architecture. Kubernetes cluster resources are deployed and managed by Helm. Other resources are deployed and managed manually, instructions below.</i></p>
-</p>
+  <figcaption>Foldy architecture. Kubernetes cluster resources are deployed and managed by Helm. Other resources are deployed and managed manually, instructions below.</figcaption>
+</figure>
 
 ### Initial Setup
 
