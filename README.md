@@ -83,7 +83,7 @@ following the procedure below.
 
 <figure align="center">
   <img src="scripts/architecture.png"  />
-  <figcaption>Foldy architecture. Kubernetes cluster resources are deployed and managed by Helm. Other resources are deployed and managed manually, instructions below.</figcaption>
+  <p align="center"><i>Foldy architecture. Kubernetes cluster resources are deployed and managed by Helm. Other resources are deployed and managed manually, instructions below.</i></p>
 </figure>
 
 ### Initial Setup
