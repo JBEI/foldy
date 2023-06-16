@@ -140,7 +140,7 @@ These variables will be used throughout this procedure. Once completed, execute 
        - monitoring admin
        - storage admin
        - storage object admin
-     - Fill in service account details in `cluster_config.yaml`
+     - Fill in service account details in `foldy/values.yaml`
    - **Create Kubernetes project**
 
      ```bash
