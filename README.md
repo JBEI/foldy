@@ -80,6 +80,12 @@ If you are interested in setting up your own Foldy instance, we would love to he
 Once you are satisfied with the application, you can deploy the application into production by
 following the procedure below.
 
+
+<p align="center">
+  <img src="scripts/architecture.png"  />
+  <p><i>Foldy architecture. Kubernetes cluster resources are deployed and managed by Helm. Other resources are deployed and managed manually, instructions below.</i></p>
+</p>
+
 ### Initial Setup
 
 This site is built on Kubernetes (specifically [Google Kubernetes Engine, GKE](https://cloud.google.com/kubernetes-engine)).
