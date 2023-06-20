@@ -35,7 +35,7 @@ then
   /opt/conda/envs/dock/bin/python \
       /worker/docking/dock.py \
       --adfrsuite_path /adfrsuite \
-      "${@: 5}" \
+      "${@: 6}" \
       $OUT_DIR/$PADDED_ID/ranked_0.pdb \
       $LIGAND_SMILES \
       $OUT_DIR/$PADDED_ID/dock/${LIGAND_NAME}

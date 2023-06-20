@@ -8,12 +8,19 @@ import {
   FaDownload,
   FaEye,
   FaFrownOpen,
+  FaRedo,
   FaTrash,
 } from "react-icons/fa";
 import ReactShowMoreText from "react-show-more-text";
 import { NewDockPrompt } from "./../util/newDockPrompt";
 import UIkit from "uikit";
-import { Dock, getDockSdf, Invokation } from "../services/backend.service";
+import {
+  Dock,
+  getDockSdf,
+  Invokation,
+  postDock,
+} from "../services/backend.service";
+import { DockInput } from "../services/backend.service";
 
 interface DockTabProps {
   foldId: number;
@@ -64,6 +71,21 @@ const downloadLigandPose = (
 };
 
 const DockTab = React.memo((props: DockTabProps) => {
+  const rerunDock = (dock: Dock) => {
+    const dockCopy: DockInput = dock;
+
+    postDock(dockCopy).then(
+      () => {
+        UIkit.notification(
+          `Successfully started docking run for ${dock.ligand_name}`
+        );
+      },
+      (e) => {
+        props.setErrorText(`Docking ${dock.ligand_name} failed: ${e}`);
+      }
+    );
+  };
+
   return (
     <div>
       <h3>Small Molecule Docking</h3>
@@ -177,6 +199,12 @@ const DockTab = React.memo((props: DockTabProps) => {
                         onClick={() =>
                           props.deleteLigandPose(dock.id, dock.ligand_name)
                         }
+                      />
+                      <FaRedo
+                        uk-tooltip="Rerun this dock."
+                        onClick={() => {
+                          rerunDock(dock);
+                        }}
                       />
                     </td>
                   </tr>
