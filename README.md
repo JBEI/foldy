@@ -30,7 +30,7 @@ To deploy Foldy locally for development or testing purposes, you can follow thes
 
 Make sure you have the following tools installed on your machine:
 
-- Docker (for running the backend and databases)
+- Docker (for running the local deployment)
 - Conda (for creating the environment and installing dependencies)
 
 ### Backend and Databases

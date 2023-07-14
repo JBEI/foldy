@@ -45,6 +45,7 @@ services:
     restart: always
     entrypoint: python /app/main.py
 
+
   db:
     environment:
       POSTGRES_USER: user

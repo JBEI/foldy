@@ -78,4 +78,8 @@ COPY worker/*.sh /worker/
 COPY worker/*.py /worker/
 COPY worker/docking/* /worker/docking/
 
-ENTRYPOINT /opt/conda/envs/worker/bin/flask
+# Make sure to use the exec form of ENTRYPOINT, rather than the shell
+# form, so that SIGTERM gets propagated to rq.
+# https://medium.com/@tasdikrahman/handling-signals-for-applications-running-in-kubernetes-dc6537f9b542
+# https://docs.docker.com/engine/reference/builder/#entrypoint
+ENTRYPOINT ["/opt/conda/envs/worker/bin/flask"]

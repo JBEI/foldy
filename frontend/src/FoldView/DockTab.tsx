@@ -73,6 +73,7 @@ const downloadLigandPose = (
 const DockTab = React.memo((props: DockTabProps) => {
   const rerunDock = (dock: Dock) => {
     const dockCopy: DockInput = dock;
+    dockCopy.fold_id = props.foldId;
 
     postDock(dockCopy).then(
       () => {

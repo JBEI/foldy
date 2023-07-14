@@ -42,6 +42,21 @@ def start_generic_script(invokation_id, process_args):
 
         invokation.update(state="running", log="Ongoing...")
 
+        def handle_sigterm(signum, frame):
+            # This function will be called when SIGTERM is received.
+            # You can perform any cleanup or termination logic here.
+            # In this example, we simply exit the process.
+            invokation.update(
+                state=final_state,
+                log=_psql_tail("".join(stdout))
+                + "\n\n\nRECEIVED SIGTERM\nRECEIVED SIGTERM\nRECEIVED SIGTERM\nRECEIVED SIGTERM\nRECEIVED SIGTERM",
+                timedelta=datetime.timedelta(seconds=time.time() - start_time),
+            )
+            exit()
+
+        # Set up the signal handler for SIGTERM
+        signal.signal(signal.SIGTERM, handle_sigterm)
+
         process = subprocess.Popen(
             process_args,
             stdout=subprocess.PIPE,
@@ -223,7 +238,7 @@ def run_dock(dock_id, invokation_id, fold_gcloud_bucket):
         gs_out_folder,
         dock.ligand_name,
         dock.ligand_smiles,
-        dock.tool or 'vina',
+        dock.tool or "vina",
         *extra_args,
     ]
 
