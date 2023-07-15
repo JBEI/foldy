@@ -53,7 +53,10 @@ export function makeFoldTable(folds: Fold[]) {
                   </Link>
                 </td>
                 <td>{fold.sequence.length}</td>
-                <td className="uk-text-truncate">
+                <td
+                  className="uk-text-truncate"
+                  uk-tooltip={`title: ${describeFoldState(fold)}`}
+                >
                   {/* {foldIsFinished(fold) ? null : <div uk-spinner="ratio: 0.5"></div>}&nbsp;  */}
                   {describeFoldState(fold)}
                 </td>

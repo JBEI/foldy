@@ -23,6 +23,7 @@ class Invokation(PkModel):
 
     type = Column(db.String(80), nullable=False)
     state = Column(db.String(80), nullable=True)
+    starttime = Column(db.DateTime, nullable=True)
     timedelta = Column(db.Interval, nullable=True)
 
     log = deferred(Column(db.Text, nullable=True))

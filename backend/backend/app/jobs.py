@@ -40,7 +40,11 @@ def start_generic_script(invokation_id, process_args):
     try:
         invokation = Invokation.get_by_id(invokation_id)
 
-        invokation.update(state="running", log="Ongoing...")
+        invokation.update(
+            state="running",
+            log="Ongoing...",
+            starttime=datetime.datetime.fromtimestamp(start_time),
+        )
 
         def handle_sigterm(signum, frame):
             # This function will be called when SIGTERM is received.
