@@ -56,10 +56,11 @@ def start_generic_script(invokation_id, process_args):
                 + "\n\n\nRECEIVED SIGTERM\nRECEIVED SIGTERM\nRECEIVED SIGTERM\nRECEIVED SIGTERM\nRECEIVED SIGTERM",
                 timedelta=datetime.timedelta(seconds=time.time() - start_time),
             )
-            exit()
+            raise RuntimeError(f"Got SIGTERM:\n{_tail(''.join(stdout))}")
 
         # Set up the signal handler for SIGTERM
         signal.signal(signal.SIGTERM, handle_sigterm)
+        signal.signal(signal.SIGKILL, handle_sigterm)
 
         process = subprocess.Popen(
             process_args,

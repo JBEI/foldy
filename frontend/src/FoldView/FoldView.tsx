@@ -369,10 +369,18 @@ class InternalFoldView extends Component<FoldProps, FoldState> {
   render() {
     const renderBadge = (
       stageName: string,
-      state: string | null | undefined
+      state: string | null | undefined,
+      starttime: string | null
     ) => {
       if (!state) {
         return null;
+      }
+
+      var jobIsSuspiciouslyLongRunning = false;
+      if (starttime) {
+        const hoursElapsed =
+          (new Date().getTime() - new Date(starttime).getTime()) / 36e5;
+        jobIsSuspiciouslyLongRunning = hoursElapsed > 24;
       }
 
       var badgeColor;
@@ -383,7 +391,11 @@ class InternalFoldView extends Component<FoldProps, FoldState> {
       } else if (state === "deferred") {
         badgeColor = "#999999";
       } else {
-        badgeColor = "#1C87EF";
+        if (jobIsSuspiciouslyLongRunning) {
+          badgeColor = "eed202";
+        } else {
+          badgeColor = "#1C87EF";
+        }
       }
 
       return (
@@ -393,6 +405,11 @@ class InternalFoldView extends Component<FoldProps, FoldState> {
         >
           <span>
             {stageName}: {state}
+            {jobIsSuspiciouslyLongRunning ? (
+              <div uk-tooltip="This job has been marked running for more than 24 hours. It may have failed. You should restart this stage from the 'Actions' tab below.">
+                ⚠️
+              </div>
+            ) : null}
           </span>
         </span>
       );
@@ -819,7 +836,7 @@ class InternalFoldView extends Component<FoldProps, FoldState> {
             }
             return (
               <div key={job.id}>
-                {renderBadge(job.type || "misc", job.state)}
+                {renderBadge(job.type || "misc", job.state, job.starttime)}
                 {/* <br /> */}
               </div>
             );
@@ -905,6 +922,18 @@ class InternalFoldView extends Component<FoldProps, FoldState> {
                               : "??"}{" "}
                             min]
                           </h3>
+                          <pre>
+                            {job.starttime
+                              ? "Start time: " +
+                                new Date(job.starttime).toLocaleString(
+                                  "en-US",
+                                  {
+                                    timeStyle: "short",
+                                    dateStyle: "short",
+                                  }
+                                )
+                              : "Not yet started."}
+                          </pre>
                           <pre>{job.log}</pre>
                         </div>
                       );

@@ -95,9 +95,12 @@ def register_extensions(app):
             # 'models_log': _models_log_formatter,
         }
 
+    class InvokationModelView(VerifiedModelView):
+        column_searchable_list = ["id", "fold_id", "type", "state", "log"]
+
     admin.add_view(UserModelView(models.User, db.session))
     admin.add_view(FoldModelView(models.Fold, db.session))
-    admin.add_view(VerifiedModelView(models.Invokation, db.session))
+    admin.add_view(InvokationModelView(models.Invokation, db.session))
     admin.add_view(VerifiedModelView(models.Dock, db.session))
 
     admin.init_app(app)

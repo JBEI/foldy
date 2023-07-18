@@ -45,6 +45,7 @@ full_invokation_fields = ns.clone(
             required=False,
             attribute=lambda r: r.timedelta.total_seconds() if r.timedelta else None,
         ),
+        "starttime": fields.DateTime(readonly=True, required=False),
     },
 )
 
@@ -209,6 +210,7 @@ fold_pdb_fields = ns.model(
         "pdb_string": fields.String(readonly=True),
     },
 )
+
 
 # @compress.compressed()
 @ns.route("/fold_pdb/<int:fold_id>/<int:model_number>")

@@ -74,6 +74,7 @@ export interface Invokation {
   state: string | null;
   log: string | null;
   timedelta_sec: number | null;
+  starttime: string | null; // ISO formatted datetime string.
 }
 
 export interface Fold extends FoldInput {

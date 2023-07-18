@@ -156,7 +156,7 @@ spec:
         - name: master
           image: us-central1-docker.pkg.dev/{{ .Values.GoogleProjectId }}/{{ .Values.ArtifactRepo }}/worker:{{  .Values.ImageVersion }}
           command: ["/opt/conda/envs/worker/bin/flask"]
-          args: ["rq", "worker", {{ required "RqQueueName is required." .RqQueueName | quote }}, "--burst", "--max-jobs", "1"]
+          args: ["rq", "worker", {{ required "RqQueueName is required." .RqQueueName | quote }}, "--burst", "--max-jobs", "1", "-w", "rq.worker.ColdWorker"]
           env:
           - name: FLASK_APP
             value: /backend/backend/rq_worker_main.py
