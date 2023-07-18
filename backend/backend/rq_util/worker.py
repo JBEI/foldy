@@ -30,7 +30,9 @@ class ColdWorker(Worker):
         # Take down the horse with the worker
         if self.horse_pid:
             self.log.debug("Taking down horse %s with me", self.horse_pid)
-            self.kill_horse()
+            self.kill_horse(
+                signal.SIGTERM
+            )  # Default signal is SIGKILL, which cannot be caught.
             self.wait_for_horse()
         self.stop_scheduler()
         raise SystemExit()

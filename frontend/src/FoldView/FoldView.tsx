@@ -911,34 +911,78 @@ class InternalFoldView extends Component<FoldProps, FoldState> {
               </li>
 
               <li key="logsli">
-                {this.state.jobs
-                  ? [...this.state.jobs].map((job: Invokation) => {
-                      return (
-                        <div key={job.id || "jobid should not be null"}>
-                          <h3>
-                            {job.type} Logs [
-                            {job.timedelta_sec
-                              ? (job.timedelta_sec / 60).toFixed(0)
-                              : "??"}{" "}
-                            min]
-                          </h3>
-                          <pre>
-                            {job.starttime
-                              ? "Start time: " +
-                                new Date(job.starttime).toLocaleString(
-                                  "en-US",
-                                  {
-                                    timeStyle: "short",
-                                    dateStyle: "short",
-                                  }
-                                )
-                              : "Not yet started."}
-                          </pre>
-                          <pre>{job.log}</pre>
-                        </div>
-                      );
-                    })
-                  : null}
+                {this.state.jobs ? (
+                  <span>
+                    <h2>Invokations</h2>
+                    <table
+                      className="uk-table uk-table-hover uk-table-small"
+                      style={{ tableLayout: "fixed" }}
+                    >
+                      <thead>
+                        <tr>
+                          <th className="uk-width-small">Type</th>
+                          <th className="uk-width-small">State</th>
+                          <th className="uk-width-small">Start time</th>
+                          <th className="uk-width-small">Runtime</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {[...this.state.jobs].map((job: Invokation) => {
+                          return (
+                            <tr key={job.job_id}>
+                              <td>{job.type}</td>
+                              <td>{job.state}</td>
+                              <td>
+                                {job.starttime
+                                  ? new Date(job.starttime).toLocaleString(
+                                      "en-US",
+                                      {
+                                        timeStyle: "short",
+                                        dateStyle: "short",
+                                      }
+                                    )
+                                  : "Not Started / Unknown"}
+                              </td>
+                              <td>
+                                {job.timedelta_sec
+                                  ? `${job.timedelta_sec / (60 * 60)} hrs`
+                                  : "NA"}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                    <span>
+                      {[...this.state.jobs].map((job: Invokation) => {
+                        return (
+                          <div key={job.id || "jobid should not be null"}>
+                            <h3>
+                              {job.type} Logs [
+                              {job.timedelta_sec
+                                ? (job.timedelta_sec / 60).toFixed(0)
+                                : "??"}{" "}
+                              min]
+                            </h3>
+                            <pre>
+                              {job.starttime
+                                ? "Start time: " +
+                                  new Date(job.starttime).toLocaleString(
+                                    "en-US",
+                                    {
+                                      timeStyle: "short",
+                                      dateStyle: "short",
+                                    }
+                                  )
+                                : "Not yet started."}
+                            </pre>
+                            <pre>{job.log}</pre>
+                          </div>
+                        );
+                      })}
+                    </span>
+                  </span>
+                ) : null}
               </li>
 
               <li key="actionsli">

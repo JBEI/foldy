@@ -50,17 +50,14 @@ def start_generic_script(invokation_id, process_args):
             # This function will be called when SIGTERM is received.
             # You can perform any cleanup or termination logic here.
             # In this example, we simply exit the process.
-            invokation.update(
-                state=final_state,
-                log=_psql_tail("".join(stdout))
-                + "\n\n\nRECEIVED SIGTERM\nRECEIVED SIGTERM\nRECEIVED SIGTERM\nRECEIVED SIGTERM\nRECEIVED SIGTERM",
-                timedelta=datetime.timedelta(seconds=time.time() - start_time),
-            )
+            stdout += [
+                "\n\n\nRECEIVED SIGTERM\nRECEIVED SIGTERM\nRECEIVED SIGTERM\nRECEIVED SIGTERM\nRECEIVED SIGTERM"
+            ]
             raise RuntimeError(f"Got SIGTERM:\n{_tail(''.join(stdout))}")
 
         # Set up the signal handler for SIGTERM
         signal.signal(signal.SIGTERM, handle_sigterm)
-        signal.signal(signal.SIGKILL, handle_sigterm)
+        # signal.signal(signal.SIGKILL, handle_sigterm)
 
         process = subprocess.Popen(
             process_args,
@@ -84,18 +81,23 @@ def start_generic_script(invokation_id, process_args):
         final_state = "finished"
         return True
     except subprocess.SubprocessError as err:
+        stdout += [f"\n\n\nInterrupted by SubprocessError: {str(err)}"]
         raise RuntimeError(f"Got error {err} and stdout:\n{_tail(''.join(stdout))}")
     except TimeoutError as err:
+        stdout += [f"\n\n\nInterrupted by TimeoutError: {str(err)}"]
         raise RuntimeError("Somehow time ran out...")
     except KeyboardInterrupt as err:
+        stdout += [f"\n\n\nInterrupted by KeyboardInterrupt: {str(err)}"]
         print("Received a KeyboardInterrupt.", flush=True)
         process.send_signal(signal.SIGINT)
         process.wait()
     except ValueError as err:
+        stdout += [f"\n\n\nInterrupted by ValueError: {str(err)}"]
         raise RuntimeError(
             f"Called Popen invalidly, got error {err} and stdout:\n{_tail(''.join(stdout))}"
         )
     except subprocess.CalledProcessError as err:
+        stdout += [f"\n\n\nInterrupted by CalledProcessError: {str(err)}"]
         raise RuntimeError(
             f"Got CalledProcessError, got error {err} and stdout:\n{_tail(''.join(stdout))}"
         )

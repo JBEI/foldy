@@ -16,3 +16,5 @@ RUN_AF2_PATH = env.str("RUN_AF2_PATH", "not_provided")
 DECOMPRESS_PKLS_PATH = env.str("DECOMPRESS_PKLS_PATH", "not_provided")
 RUN_ANNOTATE_PATH = env.str("RUN_ANNOTATE_PATH", "not_provided")
 RUN_DOCK = env.str("RUN_DOCK", "not_provided")
+
+RQ_WORKER_CLASS = "rq_util.worker.ColdWorker"
