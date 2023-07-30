@@ -11,6 +11,7 @@ import {
   getFile,
   getFileList,
   getFold,
+  getFoldPae,
   getFoldPdb,
   getFoldPfam,
   getInvokation,
@@ -820,6 +821,23 @@ class InternalFoldView extends Component<FoldProps, FoldState> {
       }
     };
 
+    const formatStartTime = (jobstarttime: string | null) => {
+      return jobstarttime
+        ? new Date(jobstarttime).toLocaleString("en-US", {
+            timeStyle: "short",
+            dateStyle: "short",
+          })
+        : "Not Started / Unknown";
+    };
+
+    const formatRunTime = (jobRunTime: number | null) => {
+      return jobRunTime
+        ? `${Math.floor(jobRunTime / (60 * 60))} hr ${
+            Math.floor(jobRunTime / 60) % 60
+          } min ${Math.floor(jobRunTime) % 60} sec`
+        : "NA";
+    };
+
     return (
       <div>
         <h2
@@ -860,13 +878,13 @@ class InternalFoldView extends Component<FoldProps, FoldState> {
               </li>
             } */}
               <li>
-                <a>Sequence</a>
+                <a>Inputs</a>
               </li>
               <li>
-                <a>Logging</a>
+                <a>Logs</a>
               </li>
               <li>
-                <a>Actions</a>
+                <a>Files</a>
               </li>
               {/* TODO(jbr): Figure out why we can't pass displayStructure here... */}
               <li>
@@ -877,6 +895,9 @@ class InternalFoldView extends Component<FoldProps, FoldState> {
               </li>
               <li>
                 <a>Dock</a>
+              </li>
+              <li>
+                <a>Actions</a>
               </li>
             </ul>
 
@@ -920,33 +941,53 @@ class InternalFoldView extends Component<FoldProps, FoldState> {
                     >
                       <thead>
                         <tr>
-                          <th className="uk-width-small">Type</th>
-                          <th className="uk-width-small">State</th>
-                          <th className="uk-width-small">Start time</th>
-                          <th className="uk-width-small">Runtime</th>
+                          <th className="uk-table-shrink uk-text-nowrap">
+                            Type
+                          </th>
+                          <th className="uk-table-shrink uk-text-nowrap">
+                            State
+                          </th>
+                          <th className="uk-table-shrink uk-text-nowrap">
+                            Start time
+                          </th>
+                          <th className="uk-table-shrink uk-text-nowrap">
+                            Runtime
+                          </th>
+                          <th className="uk-table-shrink uk-text-nowrap">
+                            Logs
+                          </th>
                         </tr>
                       </thead>
                       <tbody>
                         {[...this.state.jobs].map((job: Invokation) => {
                           return (
                             <tr key={job.job_id}>
-                              <td>{job.type}</td>
-                              <td>{job.state}</td>
-                              <td>
-                                {job.starttime
-                                  ? new Date(job.starttime).toLocaleString(
-                                      "en-US",
-                                      {
-                                        timeStyle: "short",
-                                        dateStyle: "short",
-                                      }
-                                    )
-                                  : "Not Started / Unknown"}
+                              <td
+                                className="uk-text-nowrap uk-text-truncate"
+                                uk-tooltip={job.type}
+                              >
+                                {job.type}
                               </td>
-                              <td>
-                                {job.timedelta_sec
-                                  ? `${job.timedelta_sec / (60 * 60)} hrs`
-                                  : "NA"}
+                              <td
+                                className="uk-text-nowrap uk-text-truncate"
+                                uk-tooltip={job.state}
+                              >
+                                {job.state}
+                              </td>
+                              <td
+                                className="uk-text-nowrap uk-text-truncate"
+                                uk-tooltip={formatStartTime(job.starttime)}
+                              >
+                                {formatStartTime(job.starttime)}
+                              </td>
+                              <td
+                                className="uk-text-nowrap uk-text-truncate"
+                                uk-tooltip={formatRunTime(job.timedelta_sec)}
+                              >
+                                {formatRunTime(job.timedelta_sec)}
+                              </td>
+                              <td className="uk-text-nowrap uk-text-truncate">
+                                <a href={`#logs_${job.id.toString()}`}>View</a>
                               </td>
                             </tr>
                           );
@@ -956,26 +997,11 @@ class InternalFoldView extends Component<FoldProps, FoldState> {
                     <span>
                       {[...this.state.jobs].map((job: Invokation) => {
                         return (
-                          <div key={job.id || "jobid should not be null"}>
-                            <h3>
-                              {job.type} Logs [
-                              {job.timedelta_sec
-                                ? (job.timedelta_sec / 60).toFixed(0)
-                                : "??"}{" "}
-                              min]
-                            </h3>
-                            <pre>
-                              {job.starttime
-                                ? "Start time: " +
-                                  new Date(job.starttime).toLocaleString(
-                                    "en-US",
-                                    {
-                                      timeStyle: "short",
-                                      dateStyle: "short",
-                                    }
-                                  )
-                                : "Not yet started."}
-                            </pre>
+                          <div
+                            id={`logs_${job.id.toString()}`}
+                            key={job.id || "jobid should not be null"}
+                          >
+                            <h3>{job.type} Logs</h3>
                             <pre>{job.log}</pre>
                           </div>
                         );
@@ -985,8 +1011,8 @@ class InternalFoldView extends Component<FoldProps, FoldState> {
                 ) : null}
               </li>
 
-              <li key="actionsli">
-                <h3>Quick Actions</h3>
+              <li key="filesli">
+                <h3>Quick Access</h3>
                 <form className="uk-margin-bottom">
                   <fieldset className="uk-fieldset">
                     <div>
@@ -1021,25 +1047,6 @@ class InternalFoldView extends Component<FoldProps, FoldState> {
                   }}
                   onDownloadFile={downloadFile}
                 />
-
-                <form>
-                  <fieldset className="uk-fieldset uk-margin">
-                    <h3>Job Management</h3>
-                    {[...actionToStageName].map((actionAndStageName) => {
-                      return (
-                        <div key={actionAndStageName[1]}>
-                          <button
-                            type="button"
-                            className="uk-button uk-button-primary uk-margin-left uk-margin-small-bottom uk-form-small"
-                            onClick={() => startStage(actionAndStageName[1])}
-                          >
-                            {actionAndStageName[0]}
-                          </button>
-                        </div>
-                      );
-                    })}
-                  </fieldset>
-                </form>
               </li>
 
               <li key="paeli" id="paeli">
@@ -1073,6 +1080,27 @@ class InternalFoldView extends Component<FoldProps, FoldState> {
                   shiftFrame={shiftFrame}
                   deleteLigandPose={deleteLigandPose}
                 />
+              </li>
+
+              <li key="actionsli">
+                <form>
+                  <fieldset className="uk-fieldset uk-margin">
+                    <h3>Job Management</h3>
+                    {[...actionToStageName].map((actionAndStageName) => {
+                      return (
+                        <div key={actionAndStageName[1]}>
+                          <button
+                            type="button"
+                            className="uk-button uk-button-primary uk-margin-left uk-margin-small-bottom uk-form-small"
+                            onClick={() => startStage(actionAndStageName[1])}
+                          >
+                            {actionAndStageName[0]}
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </fieldset>
+                </form>
               </li>
             </ul>
           </div>

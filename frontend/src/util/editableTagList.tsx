@@ -32,9 +32,9 @@ export function EditableTagList(props: EditableTagListProps) {
 
   return (
     <div
-      className="uk-input"
+      className="uk-input uk-text-nowrap hiddenscrollbar" // uk-text-truncate
       onInput={(e) => console.log(e)}
-      style={{ borderRadius: "100px" }}
+      style={{ borderRadius: "100px", overflow: "scroll" }}
     >
       <span className="uk-margin-small-right uk-text-light">Tags:</span>
       {props.tags.map((tag: string) => {

@@ -35,7 +35,7 @@ export function makeFoldTable(folds: Fold[]) {
               Public
             </th>
             <th className="uk-width-small">Docked Ligands</th>
-            <th className="uk-table-small">Tags</th>
+            <th className="uk-width-small">Tags</th>
           </tr>
         </thead>
         <tbody>
@@ -75,7 +75,7 @@ export function makeFoldTable(folds: Fold[]) {
                   ) : null}
                 </td>
                 <td
-                  className="uk-text-truncate"
+                  className="uk-text-truncate "
                   uk-tooltip={`title: ${(fold.docks || [])
                     .map((d) => d.ligand_name)
                     .slice(0, 5)
@@ -83,7 +83,12 @@ export function makeFoldTable(folds: Fold[]) {
                 >
                   {(fold.docks || []).length}
                 </td>
-                <td>{[...fold.tags].map(getTagBadge)}</td>
+                <td
+                  className="uk-text-nowrap hiddenscrollbar"
+                  style={{ overflow: "scroll" }}
+                >
+                  {[...fold.tags].map(getTagBadge)}
+                </td>
               </tr>
             );
           })}
