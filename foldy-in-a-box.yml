@@ -33,7 +33,7 @@ services:
       - FOLDY_USERS=tester@test.edu
       - PORT=8081
       - FOLDY_STORAGE_TYPE=Local
-      - FOLDY_LOCAL_STORAGE_DIR=/foldy_data
+      - FOLDY_LOCAL_STORAGE_DIR=/aftmp
     networks:
       - default
     ports:
@@ -64,11 +64,12 @@ services:
       - RQ_REDIS_URL=redis://redis:6379/0
 
       - FOLDY_STORAGE_TYPE=Local
-      - FOLDY_LOCAL_STORAGE_DIR=/foldy_data
+      - FOLDY_LOCAL_STORAGE_DIR=/aftmp
     networks:
       - default
     volumes:
-      - /foldy_data:/foldy_data
+      - /foldydbs:/foldydbs
+      - /aftmp:/aftmp
     restart: always
     entrypoint: /opt/conda/envs/worker/bin/flask rq worker cpu gpu biggpu emailparrot
 
