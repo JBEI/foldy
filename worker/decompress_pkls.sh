@@ -20,6 +20,7 @@ if [ "$STORAGE_TYPE" = "Local" ]; then
 elif [ "$STORAGE_TYPE" = "Cloud" ]; then
     if [ $# -eq 3 ]; then
         GS_OUT_FOLDER=$3
+        echo "Using cloud storage at $GS_OUT_FOLDER"
     else
         echo "Invalid: There are six arguments, but the fifth argument is not 'Cloud'."
         exit 1

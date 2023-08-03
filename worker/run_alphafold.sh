@@ -58,6 +58,7 @@ if [ "$STORAGE_TYPE" = "Local" ]; then
 elif [ "$STORAGE_TYPE" = "Cloud" ]; then
     if [ $# -eq 6 ]; then
         GS_OUT_FOLDER=$6
+        echo "Using cloud storage at $GS_OUT_FOLDER"
     else
         echo "Invalid: There are six arguments, but the fifth argument is not 'Cloud'."
         exit 1
@@ -75,7 +76,6 @@ echo "  Stage: $STAGE";
 echo "  Model preset: $MODEL_PRESET";
 echo "  Run amber relax: $RUN_AMBER_RELAX";
 echo "  Storage Type: $STORAGE_TYPE";
-echo "  Google Storage Out Path: $GS_OUT_FOLDER";
 
 
 FASTA_PATH=/aftmp/$PADDED_ID/$PADDED_ID.fasta
