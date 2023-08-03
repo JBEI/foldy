@@ -33,6 +33,8 @@ services:
       - DISABLE_OAUTH_AUTHENTICATION=True
       - FOLDY_USERS=tester@test.edu
       - PORT=8081
+      - FOLDY_STORAGE_TYPE=Local
+      - FOLDY_LOCAL_STORAGE_DIR=/foldy_data
     networks:
       - default
     ports:
