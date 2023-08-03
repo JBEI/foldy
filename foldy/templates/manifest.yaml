@@ -10,10 +10,11 @@ data:
   FRONTEND_URL: "https://{{ required "Must specify FoldyDomain" .Values.FoldyDomain }}"
   FOLDY_USER_EMAIL_DOMAIN: "{{ .Values.FoldyUserEmailDomain }}"
   FOLDY_USERS: "{{ .Values.FoldyUsers }}"
+  FOLDY_STORAGE_TYPE: "Cloud"
   FOLDY_GCLOUD_PROJECT: "{{ required "Must specify GoogleProjectId" .Values.GoogleProjectId }}"
   FOLDY_GCLOUD_BUCKET: "{{ required "Must specify FoldyGcloudBucket" .Values.FoldyGcloudBucket }}"
   RQ_REDIS_URL: "redis://redis:6379/0"
-  PORT: "8080"
+  PORT: "8080"  # Specifies the backend port.
 
 ---
 apiVersion: v1
@@ -198,8 +199,8 @@ metadata:
     cloud.google.com/backend-config: '{"default": "frontend-backendconfig"}'
 spec:
   ports:
-  - port: 8080
-    targetPort: 8080
+  - port: 80
+    targetPort: 80
   selector:
     app: frontend
   type: NodePort
@@ -226,7 +227,7 @@ spec:
             cpu: 100m
             memory: 100Mi
         ports:
-        - containerPort: 8080
+        - containerPort: 80
 
 ---
 apiVersion: networking.k8s.io/v1
@@ -249,7 +250,7 @@ spec:
           service:
             name: frontend
             port:
-              number: 8080
+              number: 80
       - path: /api/*
         pathType: ImplementationSpecific
         backend:

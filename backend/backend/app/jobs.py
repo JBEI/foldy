@@ -72,6 +72,7 @@ def start_generic_script(invokation_id, process_args):
         process.wait(timeout=10)
 
         if process.returncode != 0:
+            stdout += [f"Process returned with code {process.returncode}"]
             raise RuntimeError(
                 f"Subprocess failed with error code {process.returncode} and stdout:\n{_tail(''.join(stdout))}"
             )
@@ -253,7 +254,7 @@ def run_dock(dock_id, invokation_id, fold_gcloud_bucket):
 
     if successful:
         fsm = FoldStorageUtil()
-        fsm.setup(fold_gcloud_bucket)
+        fsm.setup()
 
         energy = fsm.storage_manager.get_binary(
             dock.receptor_fold_id, f"dock/{dock.ligand_name}/energy.txt"

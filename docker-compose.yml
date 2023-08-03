@@ -1,4 +1,4 @@
-version: '3.6'
+version: "3.6"
 
 services:
   frontend:
@@ -15,7 +15,6 @@ services:
       - 127.0.0.1:3000:3000
     volumes:
       - ./frontend/src:/app/src
-
 
   backend:
     build: backend/
@@ -34,6 +33,8 @@ services:
       - RQ_REDIS_URL=redis://redis:6379/0
       - DISABLE_OAUTH_AUTHENTICATION=True
       - FOLDY_USERS=tester@test.edu
+      - FOLDY_STORAGE_TYPE=Local
+      - FOLDY_LOCAL_STORAGE_DIR=/app/integration_tests/testdata
     networks:
       - default
     ports:
@@ -44,7 +45,6 @@ services:
       - ./backend/backend/migrations:/app/migrations
     restart: always
     entrypoint: python /app/main.py
-
 
   db:
     environment:

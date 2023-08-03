@@ -269,16 +269,22 @@ class LocalStorageManager(StorageManager):
 
 
 class GcloudStorageManager(StorageManager):
-    client = None
+    def __init__(self):
+        """Initialize local variables."""
+        self.project = None
+        self.client = None
+        self.bucket = None
 
-    def setup(self, fold_gcloud_bucket):
-        self.client = Client(fold_gcloud_bucket)
+    def setup(self, fold_gcloud_project, foldy_gcloud_bucket):
+        self.project = fold_gcloud_project
+        self.client = Client(fold_gcloud_project)
+        self.bucket = foldy_gcloud_bucket
 
     def list_files(self, fold_id):
         padded_fold_id = "%06d" % fold_id
         prefix = f"out/{padded_fold_id}/"
 
-        bucket = self.client.get_bucket(current_app.config["FOLDY_GCLOUD_BUCKET"])
+        bucket = self.client.get_bucket(self.foldy_gcloud_bucket)
         blobs = list(bucket.list_blobs(max_results=10000, prefix=prefix))
 
         # https://dev.to/delta456/python-removeprefix-and-removesuffix-34jp
@@ -337,16 +343,22 @@ class FoldStorageUtil:
 
     storage_manager = None
 
-    def setup(self, fold_gcloud_bucket=None):
+    def setup(self):
         """Raises BadRequest if setup fails."""
-        if current_app.config["ENV"] == "development":
+        # print(current_app.config, flush=True)
+        if current_app.config["FOLDY_STORAGE_TYPE"] == "Local":
+            foldy_dir = current_app.config["FOLDY_LOCAL_STORAGE_DIR"]
+            assert foldy_dir, "FOLDY_LOCAL_STORAGE_DIR is not set"
             self.storage_manager = LocalStorageManager()
-            self.storage_manager.setup("/app/integration_tests/testdata")
-        else:
-            if not fold_gcloud_bucket:
-                fold_gcloud_bucket = current_app.config["FOLDY_GCLOUD_PROJECT"]
+            self.storage_manager.setup(foldy_dir)
+
+        elif current_app.config["FOLDY_STORAGE_TYPE"] == "Cloud":
+            project = current_app.config["FOLDY_GCLOUD_PROJECT"]
+            bucket = current_app.config["FOLDY_GCLOUD_BUCKET"]
+            assert project, "FOLDY_GCLOUD_PROJECT is not set"
+            assert bucket, "FOLDY_GCLOUD_BUCKET is not set"
             self.storage_manager = GcloudStorageManager()
-            self.storage_manager.setup(fold_gcloud_bucket)
+            self.storage_manager.setup(project, bucket)
 
     def get_fold_with_state(self, fold_id, only_public):
         fold = Fold.get_by_id(fold_id)

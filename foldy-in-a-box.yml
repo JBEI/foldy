@@ -1,0 +1,89 @@
+version: "3.6"
+
+services:
+  frontend:
+    build:
+      context: frontend/
+      target: prod-stage
+      args:
+        - BACKEND_URL="http://${FOLDY_BOX_URL}"
+        - INSTITUTION=Local
+        # - HOST=0.0.0.0
+    depends_on:
+      - backend
+    networks:
+      - default
+    ports:
+      - 80:80
+
+  backend:
+    build: backend/
+    depends_on:
+      - db
+      - redis
+    environment:
+      - FLASK_APP=main.py
+      - FLASK_ENV=production
+      - SECRET_KEY=superrandomandveryhardtoguessstring
+      - OAUTH_REDIRECT_URI="http://${FOLDY_BOX_URL}/api/authorize"
+      - BACKEND_URL="http://${FOLDY_BOX_URL}"
+      - FRONTEND_URL="http://${FOLDY_BOX_URL}"
+      - DATABASE_URL=postgresql+psycopg2://user:password@db:5432/postgres
+      - RQ_REDIS_URL=redis://redis:6379/0
+      - DISABLE_OAUTH_AUTHENTICATION=True
+      - FOLDY_USERS=tester@test.edu
+      - PORT=8081
+    networks:
+      - default
+    ports:
+      - 8081:8081
+    restart: always
+    entrypoint: python /app/main.py
+  
+  worker:
+    build:
+      context: .
+      dockerfile: worker/Dockerfile
+      args:
+        FOLDY_ALPHAFOLD_TAG: jacoberts/foldy_alphafold:latest
+    depends_on:
+      - db
+      - redis
+    environment:
+      - FLASK_APP=/backend/backend/rq_worker_main.py
+      - RUN_AF2_PATH=/worker/run_alphafold.sh
+      - DECOMPRESS_PKLS_PATH=/worker/decompress_pkls.sh
+      - RUN_ANNOTATE_PATH=/worker/run_annotate.sh
+      - RUN_DOCK=/worker/run_dock.sh
+      - SECRET_KEY=superrandomandveryhardtoguessstring
+      - OAUTH_REDIRECT_URI="http://${FOLDY_BOX_URL}/api/authorize"
+      - BACKEND_URL="http://${FOLDY_BOX_URL}"
+      - FRONTEND_URL="http://${FOLDY_BOX_URL}"
+      - DATABASE_URL=postgresql+psycopg2://user:password@db:5432/postgres
+      - RQ_REDIS_URL=redis://redis:6379/0
+
+      - FOLDY_STORAGE_TYPE=Local
+      - FOLDY_LOCAL_STORAGE_DIR=/foldy_data
+    networks:
+      - default
+    volumes:
+      - /foldy_data:/foldy_data
+    restart: always
+    entrypoint: /opt/conda/envs/worker/bin/flask rq worker cpu gpu biggpu emailparrot
+
+  db:
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: dbname
+    image: postgres:latest
+    networks:
+      - default
+    ports:
+      - 127.0.0.1:5432:5432
+    restart: always
+
+  redis:
+    image: "redis:alpine"
+    ports:
+      - 127.0.0.1:6379:6379

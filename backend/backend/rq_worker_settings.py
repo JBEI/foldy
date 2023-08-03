@@ -4,8 +4,14 @@ from environs import Env
 env = Env()
 env.read_env()
 
-FOLDY_GCLOUD_PROJECT = env.str("FOLDY_GCLOUD_PROJECT")
-FOLDY_GCLOUD_BUCKET = env.str("FOLDY_GCLOUD_BUCKET")
+# Either "Local" or "Cloud". Determines which of below flags are necessary.
+FOLDY_STORAGE_TYPE = env.str("FOLDY_STORAGE_TYPE")
+
+FOLDY_LOCAL_STORAGE_DIR = env.str("FOLDY_LOCAL_STORAGE_DIR", None)
+
+FOLDY_GCLOUD_PROJECT = env.str("FOLDY_GCLOUD_PROJECT", None)
+FOLDY_GCLOUD_BUCKET = env.str("FOLDY_GCLOUD_BUCKET", None)
+
 SQLALCHEMY_DATABASE_URI = env.str("DATABASE_URL")
 RQ_REDIS_URL = env.str("RQ_REDIS_URL")
 FRONTEND_URL = env.str("FRONTEND_URL")
