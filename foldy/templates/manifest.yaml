@@ -12,7 +12,7 @@ data:
   FOLDY_USERS: "{{ .Values.FoldyUsers }}"
   FOLDY_STORAGE_TYPE: "Cloud"
   FOLDY_GCLOUD_PROJECT: "{{ required "Must specify GoogleProjectId" .Values.GoogleProjectId }}"
-  FOLDY_GCLOUD_BUCKET: "{{ required "Must specify FoldyGcloudBucket" .Values.FoldyGcloudBucket }}"
+  FOLDY_GSTORAGE_DIR: "{{ required "Must specify FoldyGstorageDir" .Values.FoldyGstorageDir }}"
   RQ_REDIS_URL: "redis://redis:6379/0"
   PORT: "8080"  # Specifies the backend port.
 

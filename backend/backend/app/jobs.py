@@ -119,7 +119,6 @@ def start_generic_script(invokation_id, process_args):
 def run_features(
     fold_id,
     invokation_id,
-    fold_gcloud_bucket,
 ):
     """Run alphafold feature generation and upload to cloud
 
@@ -139,8 +138,7 @@ def run_features(
         current_app.config["FOLDY_STORAGE_TYPE"],
     ]
     if current_app.config["FOLDY_STORAGE_TYPE"] == "Cloud":
-        gs_out_folder = f"gs://{fold_gcloud_bucket}/out"
-        process_args.append(gs_out_folder)
+        process_args.append(current_app.config["FOLDY_GSTORAGE_DIR"])
 
     start_generic_script(invokation_id, process_args)
 
@@ -148,7 +146,6 @@ def run_features(
 def run_models(
     fold_id,
     invokation_id,
-    fold_gcloud_bucket,
 ):
     """Run alphafold models pipeline and upload results to google cloud."""
     fold = Fold.get_by_id(fold_id)
@@ -164,8 +161,7 @@ def run_models(
         current_app.config["FOLDY_STORAGE_TYPE"],
     ]
     if current_app.config["FOLDY_STORAGE_TYPE"] == "Cloud":
-        gs_out_folder = f"gs://{fold_gcloud_bucket}/out"
-        process_args.append(gs_out_folder)
+        process_args.append(current_app.config["FOLDY_GSTORAGE_DIR"])
 
     start_generic_script(invokation_id, process_args)
 
@@ -173,7 +169,6 @@ def run_models(
 def decompress_pkls(
     fold_id,
     invokation_id,
-    fold_gcloud_bucket,
 ):
     process_args = [
         current_app.config["DECOMPRESS_PKLS_PATH"],
@@ -181,8 +176,7 @@ def decompress_pkls(
         current_app.config["FOLDY_STORAGE_TYPE"],
     ]
     if current_app.config["FOLDY_STORAGE_TYPE"] == "Cloud":
-        gs_out_folder = f"gs://{fold_gcloud_bucket}/out"
-        process_args.append(gs_out_folder)
+        process_args.append(current_app.config["FOLDY_GSTORAGE_DIR"])
 
     start_generic_script(invokation_id, process_args)
 
@@ -190,7 +184,6 @@ def decompress_pkls(
 def run_annotate(
     fold_id: int,
     invokation_id: int,
-    fold_gcloud_bucket: str,
 ):
     fold = Fold.get_by_id(fold_id)
     if not fold:
@@ -202,8 +195,7 @@ def run_annotate(
         current_app.config["FOLDY_STORAGE_TYPE"],
     ]
     if current_app.config["FOLDY_STORAGE_TYPE"] == "Cloud":
-        gs_out_folder = f"gs://{fold_gcloud_bucket}/out"
-        process_args.append(gs_out_folder)
+        process_args.append(current_app.config["FOLDY_GSTORAGE_DIR"])
 
     start_generic_script(invokation_id, process_args)
 
@@ -236,7 +228,7 @@ def send_email(fold_id, protein_name, recipient):
     )
 
 
-def run_dock(dock_id, invokation_id, fold_gcloud_bucket):
+def run_dock(dock_id, invokation_id):
     """Execute the docking run described by the provided Dock instance."""
     dock = Dock.get_by_id(dock_id)
 
@@ -256,8 +248,7 @@ def run_dock(dock_id, invokation_id, fold_gcloud_bucket):
         current_app.config["FOLDY_STORAGE_TYPE"],
     ]
     if current_app.config["FOLDY_STORAGE_TYPE"] == "Cloud":
-        gs_out_folder = f"gs://{fold_gcloud_bucket}/out"
-        process_args.append(gs_out_folder)
+        process_args.append(current_app.config["FOLDY_GSTORAGE_DIR"])
 
     process_args += [*extra_args]
 

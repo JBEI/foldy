@@ -107,7 +107,7 @@ Prior to deployment, you must choose the following variables:
 
 - `FOLDY_DOMAIN`: Domain name selected for foldy application
 - `FOLDY_USER_EMAIL_DOMAIN`: Email domain to allow access, e.g. "lbl.gov" will allow all users with "@lbl.gov" email addresses to access
-- `GOOGLE_BUCKET_NAME`: Name of google cloud bucket, for example 'berkeley-foldy-bucket' however it needs to be unique globally like an email address needs to be unique globally
+- `GOOGLE_STORAGE_DIRECTORY`: Name of google cloud bucket, for example 'berkeley-foldy-bucket' however it needs to be unique globally like an email address needs to be unique globally
 - `GOOGLE_ARTIFACT_REPO`: Name of google cloud docker image repository, typically 'foldy-repo'
 - `GOOGLE_CLOUD_STATIC_IP_NAME`: Name of google cloud static IP resource, typically 'foldy-ip'
 
@@ -187,7 +187,7 @@ These variables will be used throughout this procedure. Once completed, execute 
        - Authorized redirect URIs: `https://${FOLDY_DOMAIN}/api/authorize`
        - Then paste the ID and secret in the `GOOGLE_CLIENT_{ID,SECRET}` fields in `foldy/values.yaml`
    - **Create gcloud bucket** using [cloud console](https://cloud.google.com/storage/docs/creating-buckets) with following attributes:
-     - Name = `${GOOGLE_BUCKET_NAME}`
+     - Name = `${GOOGLE_STORAGE_DIRECTORY}`
      - Multi-region
      - Autoclass storage class
      - Prevent public access

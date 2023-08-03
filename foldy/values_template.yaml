@@ -19,8 +19,8 @@ FoldyUserEmailDomain: ${FOLDY_USER_EMAIL_DOMAIN}
 # CSV list of extra user emails who should have access to Foldy.
 FoldyUsers:
 
-# Name of the cloud bucket for Foldy.
-FoldyGcloudBucket: ${GOOGLE_BUCKET_NAME}
+# Name of the cloud bucket for Foldy (eg: "gs://myfolds/mysubdir").
+FoldyGstorageDir: ${GOOGLE_STORAGE_DIRECTORY}
 
 # Google Cloud Static IP Address.
 StaticIpName: ${GOOGLE_CLOUD_STATIC_IP_NAME}

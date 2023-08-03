@@ -94,7 +94,6 @@ def start_stage(fold_id: int, stage, email_on_completion):
             jobs.run_features,
             fold_id,
             get_job_type_replacement(fold, "features"),
-            current_app.config["FOLDY_GCLOUD_BUCKET"],
             job_timeout="12h",
             result_ttl=48 * 60 * 60,  # 2 days
         )
@@ -108,7 +107,6 @@ def start_stage(fold_id: int, stage, email_on_completion):
             jobs.run_models,
             fold_id,
             get_job_type_replacement(fold, "models"),
-            current_app.config["FOLDY_GCLOUD_BUCKET"],
             job_timeout="12h",
             result_ttl=48 * 60 * 60,  # 2 days,
             retry=Retry(max=num_retries),
@@ -121,7 +119,6 @@ def start_stage(fold_id: int, stage, email_on_completion):
             jobs.decompress_pkls,
             fold_id,
             get_job_type_replacement(fold, "decompress_pkls"),
-            current_app.config["FOLDY_GCLOUD_BUCKET"],
             job_timeout="12h",
             result_ttl=48 * 60 * 60,  # 2 days
         )
@@ -133,7 +130,6 @@ def start_stage(fold_id: int, stage, email_on_completion):
             jobs.run_annotate,
             fold_id,
             get_job_type_replacement(fold, "annotate"),
-            current_app.config["FOLDY_GCLOUD_BUCKET"],
             job_timeout="12h",
             result_ttl=48 * 60 * 60,  # 2 days
         )
@@ -157,7 +153,6 @@ def start_stage(fold_id: int, stage, email_on_completion):
             jobs.run_features,
             fold_id,
             get_job_type_replacement(fold, "features"),
-            current_app.config["FOLDY_GCLOUD_BUCKET"],
             job_timeout="12h",
             result_ttl=48 * 60 * 60,  # 2 days
         )
@@ -165,7 +160,6 @@ def start_stage(fold_id: int, stage, email_on_completion):
             jobs.run_models,
             fold_id,
             get_job_type_replacement(fold, "models"),
-            current_app.config["FOLDY_GCLOUD_BUCKET"],
             job_timeout="12h",
             result_ttl=48 * 60 * 60,  # 2 days
             depends_on=[features_job],
@@ -175,7 +169,6 @@ def start_stage(fold_id: int, stage, email_on_completion):
             jobs.decompress_pkls,
             fold_id,
             get_job_type_replacement(fold, "decompress_pkls"),
-            current_app.config["FOLDY_GCLOUD_BUCKET"],
             job_timeout="12h",
             result_ttl=48 * 60 * 60,  # 2 days
             depends_on=[models_job],
@@ -184,7 +177,6 @@ def start_stage(fold_id: int, stage, email_on_completion):
             jobs.run_annotate,
             fold_id,
             get_job_type_replacement(fold, "annotate"),
-            current_app.config["FOLDY_GCLOUD_BUCKET"],
             job_timeout="12h",
             result_ttl=48 * 60 * 60,  # 2 days
             # Note: no dependent jobs.
@@ -273,18 +265,28 @@ class GcloudStorageManager(StorageManager):
         """Initialize local variables."""
         self.project = None
         self.client = None
-        self.bucket = None
+        self.bucket_name = None
+        self.bucket_prefix = None
 
-    def setup(self, fold_gcloud_project, foldy_gcloud_bucket):
+    def setup(self, fold_gcloud_project, foldy_gstorage_dir):
         self.project = fold_gcloud_project
         self.client = Client(fold_gcloud_project)
-        self.bucket = foldy_gcloud_bucket
+
+        match = re.match(r"gs://(.*)", foldy_gstorage_dir)
+        assert match, "Invalid google storage directory: {foldy_gstorage_dir}"
+
+        self.bucket_name = match.groups()[0].split("/")[0]
+        self.bucket_prefix = "/".join(match.groups()[0].split("/")[1:])
 
     def list_files(self, fold_id):
         padded_fold_id = "%06d" % fold_id
-        prefix = f"out/{padded_fold_id}/"
+        prefix = (
+            f"{self.bucket_prefix}/{padded_fold_id}"
+            if self.bucket_prefix
+            else padded_fold_id
+        )
 
-        bucket = self.client.get_bucket(self.foldy_gcloud_bucket)
+        bucket = self.client.get_bucket(self.bucket_name)
         blobs = list(bucket.list_blobs(max_results=10000, prefix=prefix))
 
         # https://dev.to/delta456/python-removeprefix-and-removesuffix-34jp
@@ -307,7 +309,9 @@ class GcloudStorageManager(StorageManager):
         ]
 
     def write_file(self, file_path, file_contents_str):
-        bucket = self.client.get_bucket(current_app.config["FOLDY_GCLOUD_BUCKET"])
+        bucket = self.client.get_bucket(self.bucket_name)
+        if self.bucket_prefix:
+            file_path = f"{self.bucket_prefix}/{file_path}"
         aa_blob = bucket.blob(file_path)
         aa_blob.upload_from_string(file_contents_str)
 
@@ -316,10 +320,13 @@ class GcloudStorageManager(StorageManager):
         download_start = time.time()
         padded_fold_id = "%06d" % fold_id
 
-        gcloud_path = f"out/{padded_fold_id}/{relative_path}"
+        if self.bucket_prefix:
+            gcloud_path = f"{self.bucket_prefix}/{padded_fold_id}/{relative_path}"
+        else:
+            gcloud_path = f"{padded_fold_id}/{relative_path}"
         blobs = list(
             self.client.list_blobs(
-                bucket_or_name=current_app.config["FOLDY_GCLOUD_BUCKET"],
+                bucket_or_name=self.bucket_name,
                 prefix=gcloud_path,
             )
         )
@@ -354,9 +361,9 @@ class FoldStorageUtil:
 
         elif current_app.config["FOLDY_STORAGE_TYPE"] == "Cloud":
             project = current_app.config["FOLDY_GCLOUD_PROJECT"]
-            bucket = current_app.config["FOLDY_GCLOUD_BUCKET"]
+            bucket = current_app.config["FOLDY_GSTORAGE_DIR"]
             assert project, "FOLDY_GCLOUD_PROJECT is not set"
-            assert bucket, "FOLDY_GCLOUD_BUCKET is not set"
+            assert bucket, "FOLDY_GSTORAGE_DIR is not set"
             self.storage_manager = GcloudStorageManager()
             self.storage_manager.setup(project, bucket)
 
@@ -465,8 +472,8 @@ class FoldStorageUtil:
     def write_fastas(self, id, sequence):
         """Raises an exception if writing fails."""
         padded_fold_id = "%06d" % id
-        aa_blob_path = f"out/{padded_fold_id}/{padded_fold_id}.fasta"
-        dna_blob_path = f"out/{padded_fold_id}/{padded_fold_id}_dna.fasta"
+        aa_blob_path = f"{padded_fold_id}/{padded_fold_id}.fasta"
+        dna_blob_path = f"{padded_fold_id}/{padded_fold_id}_dna.fasta"
 
         if ":" in sequence or ";" in sequence:
             monomers = [m.split(":") for m in sequence.split(";")]
