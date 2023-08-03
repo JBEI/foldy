@@ -6,9 +6,8 @@ services:
       context: frontend/
       target: prod-stage
       args:
-        - BACKEND_URL="http://${FOLDY_BOX_URL}"
+        - BACKEND_URL=http://${FOLDY_BOX_URL}
         - INSTITUTION=Local
-        # - HOST=0.0.0.0
     depends_on:
       - backend
     networks:
@@ -23,11 +22,11 @@ services:
       - redis
     environment:
       - FLASK_APP=main.py
-      - FLASK_ENV=production
+      - FLASK_ENV=development
       - SECRET_KEY=superrandomandveryhardtoguessstring
-      - OAUTH_REDIRECT_URI="http://${FOLDY_BOX_URL}/api/authorize"
-      - BACKEND_URL="http://${FOLDY_BOX_URL}"
-      - FRONTEND_URL="http://${FOLDY_BOX_URL}"
+      - OAUTH_REDIRECT_URI=http://${FOLDY_BOX_URL}/api/authorize
+      - BACKEND_URL=http://${FOLDY_BOX_URL}
+      - FRONTEND_URL=http://${FOLDY_BOX_URL}
       - DATABASE_URL=postgresql+psycopg2://user:password@db:5432/postgres
       - RQ_REDIS_URL=redis://redis:6379/0
       - DISABLE_OAUTH_AUTHENTICATION=True
@@ -58,9 +57,9 @@ services:
       - RUN_ANNOTATE_PATH=/worker/run_annotate.sh
       - RUN_DOCK=/worker/run_dock.sh
       - SECRET_KEY=superrandomandveryhardtoguessstring
-      - OAUTH_REDIRECT_URI="http://${FOLDY_BOX_URL}/api/authorize"
-      - BACKEND_URL="http://${FOLDY_BOX_URL}"
-      - FRONTEND_URL="http://${FOLDY_BOX_URL}"
+      - OAUTH_REDIRECT_URI=http://${FOLDY_BOX_URL}/api/authorize
+      - BACKEND_URL=http://${FOLDY_BOX_URL}
+      - FRONTEND_URL=http://${FOLDY_BOX_URL}
       - DATABASE_URL=postgresql+psycopg2://user:password@db:5432/postgres
       - RQ_REDIS_URL=redis://redis:6379/0
 

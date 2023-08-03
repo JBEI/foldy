@@ -2,9 +2,32 @@
 
 set -Eeuo pipefail
 
+if [ "$#" -lt 2 ]; then
+    die "Illegal number of parameters"
+fi
+
 ID=$1
 PADDED_ID=`printf %06d $ID`
-GS_OUT_FOLDER=$2
+STORAGE_TYPE=$2
+
+if [ "$STORAGE_TYPE" = "Local" ]; then
+    if [ $# -eq 2 ]; then
+        echo "Using local storage."
+    else
+        echo "Invalid: There are five arguments, but the fifth argument is not 'Local'."
+        exit 1
+    fi
+elif [ "$STORAGE_TYPE" = "Cloud" ]; then
+    if [ $# -eq 3 ]; then
+        GS_OUT_FOLDER=$3
+    else
+        echo "Invalid: There are six arguments, but the fifth argument is not 'Cloud'."
+        exit 1
+    fi
+else
+    echo "Invalid storage type: $STORAGE_TYPE"
+    exit 1
+fi
 
 OUT_DIR=/aftmp
 
@@ -13,8 +36,10 @@ OUT_DIR=/aftmp
 echo "Downloading PKLs..."
 # Make sure the receiving directory already exists.
 mkdir -p $OUT_DIR/$PADDED_ID
-/google-cloud-sdk/bin/gsutil rsync -r -x '.*\.pdb$|logs/.*|msa.*' \
-  $GS_OUT_FOLDER/$PADDED_ID/ $OUT_DIR/$PADDED_ID
+if [ "$STORAGE_TYPE" = "Cloud" ]; then
+  /google-cloud-sdk/bin/gsutil rsync -r -x '.*\.pdb$|logs/.*|msa.*' \
+    $GS_OUT_FOLDER/$PADDED_ID/ $OUT_DIR/$PADDED_ID
+fi
 
 ##############################################################
 # Decompress.
@@ -28,4 +53,6 @@ echo "Running decompression..."
 ##############################################################
 # Rsync.
 echo "Running final rsync to $GS_OUT_FOLDER/$PADDED_ID"
-/google-cloud-sdk/bin/gsutil rsync -r $OUT_DIR/$PADDED_ID $GS_OUT_FOLDER/$PADDED_ID
+if [ "$STORAGE_TYPE" = "Cloud" ]; then
+  /google-cloud-sdk/bin/gsutil rsync -r $OUT_DIR/$PADDED_ID $GS_OUT_FOLDER/$PADDED_ID
+fi

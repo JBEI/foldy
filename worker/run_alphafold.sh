@@ -8,7 +8,7 @@ script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" &>/dev/null && pwd -P)
 
 function usage() {
     cat << EOF # remove the space between << and EOF, this is due to web plugin issue
-        Usage: $(basename "${BASH_SOURCE[0]}") fold_id aa_sequence gs_out_folder run_amber_relax
+        Usage: $(basename "${BASH_SOURCE[0]}") <fold_id> <aa_sequence> <run_amber_relax> <storage type {Local|Cloud}> [<gs_out_folder>]
 
         Script description here.
 
@@ -37,7 +37,7 @@ die() {
 # The bulk of the code is below...
 ##############################################################
 
-if [ "$#" -ne 5 ]; then
+if [ "$#" -lt 5 ]; then
     die "Illegal number of parameters"
 fi
 
@@ -45,8 +45,27 @@ ID=$1
 PADDED_ID=`printf %06d $ID`
 STAGE=$2
 MODEL_PRESET=$3
-GS_OUT_FOLDER=$4
-RUN_AMBER_RELAX=$5
+RUN_AMBER_RELAX=$4
+STORAGE_TYPE=$5
+
+if [ "$STORAGE_TYPE" = "Local" ]; then
+    if [ $# -eq 5 ]; then
+        echo "Using local storage."
+    else
+        echo "Invalid: There are five arguments, but the fifth argument is not 'Local'."
+        exit 1
+    fi
+elif [ "$STORAGE_TYPE" = "Cloud" ]; then
+    if [ $# -eq 6 ]; then
+        GS_OUT_FOLDER=$6
+    else
+        echo "Invalid: There are six arguments, but the fifth argument is not 'Cloud'."
+        exit 1
+    fi
+else
+    echo "Invalid storage type: $STORAGE_TYPE"
+    exit 1
+fi
 
 
 echo "Starting feature generation with parameters:";
@@ -54,8 +73,9 @@ echo "  Fold ID: $ID";
 echo "  Padded Fold ID: $PADDED_ID";
 echo "  Stage: $STAGE";
 echo "  Model preset: $MODEL_PRESET";
-echo "  Google Storage Out Path: $GS_OUT_FOLDER";
 echo "  Run amber relax: $RUN_AMBER_RELAX";
+echo "  Storage Type: $STORAGE_TYPE";
+echo "  Google Storage Out Path: $GS_OUT_FOLDER";
 
 
 FASTA_PATH=/aftmp/$PADDED_ID/$PADDED_ID.fasta
@@ -65,7 +85,10 @@ DATA_DIR=/foldydbs/afdbs
 ##############################################################
 # Copy fasta and any results that are available.
 mkdir -p $OUT_DIR/$PADDED_ID/logs
-/google-cloud-sdk/bin/gsutil -m rsync -r $GS_OUT_FOLDER/$PADDED_ID $OUT_DIR/$PADDED_ID
+
+if [ "$STORAGE_TYPE" = "Cloud" ]; then
+    /google-cloud-sdk/bin/gsutil -m rsync -r $GS_OUT_FOLDER/$PADDED_ID $OUT_DIR/$PADDED_ID
+fi
 
 ##############################################################
 # Run Alphafold.
@@ -131,6 +154,8 @@ time /opt/conda/bin/python /app/alphafold/run_alphafold.py \
 
 ##############################################################
 # Rsync.
-/google-cloud-sdk/bin/gsutil -m rsync -r $OUT_DIR/$PADDED_ID $GS_OUT_FOLDER/$PADDED_ID
+if [ "$STORAGE_TYPE" = "Cloud" ]; then
+    /google-cloud-sdk/bin/gsutil -m rsync -r $OUT_DIR/$PADDED_ID $GS_OUT_FOLDER/$PADDED_ID
+fi
 
 rm -r $OUT_DIR/$PADDED_ID

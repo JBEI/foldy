@@ -130,15 +130,17 @@ def run_features(
     if not fold:
         raise KeyError(f"Fold ID {fold_id} not found!")
 
-    gs_out_folder = f"gs://{fold_gcloud_bucket}/out"
     process_args = [
         current_app.config["RUN_AF2_PATH"],
         str(fold_id),
         "features",
         fold.af2_model_preset,
-        gs_out_folder,
         str(not fold.disable_relaxation),
+        current_app.config["FOLDY_STORAGE_TYPE"],
     ]
+    if current_app.config["FOLDY_STORAGE_TYPE"] == "Cloud":
+        gs_out_folder = f"gs://{fold_gcloud_bucket}/out"
+        process_args.append(gs_out_folder)
 
     start_generic_script(invokation_id, process_args)
 
@@ -153,15 +155,17 @@ def run_models(
     if not fold:
         raise KeyError(f"Fold ID {fold_id} not found!")
 
-    gs_out_folder = f"gs://{fold_gcloud_bucket}/out"
     process_args = [
         current_app.config["RUN_AF2_PATH"],
         str(fold_id),
         "models",
         fold.af2_model_preset,
-        gs_out_folder,
         str(not fold.disable_relaxation),
+        current_app.config["FOLDY_STORAGE_TYPE"],
     ]
+    if current_app.config["FOLDY_STORAGE_TYPE"] == "Cloud":
+        gs_out_folder = f"gs://{fold_gcloud_bucket}/out"
+        process_args.append(gs_out_folder)
 
     start_generic_script(invokation_id, process_args)
 
@@ -171,12 +175,14 @@ def decompress_pkls(
     invokation_id,
     fold_gcloud_bucket,
 ):
-    gs_out_folder = f"gs://{fold_gcloud_bucket}/out"
     process_args = [
         current_app.config["DECOMPRESS_PKLS_PATH"],
         str(fold_id),
-        gs_out_folder,
+        current_app.config["FOLDY_STORAGE_TYPE"],
     ]
+    if current_app.config["FOLDY_STORAGE_TYPE"] == "Cloud":
+        gs_out_folder = f"gs://{fold_gcloud_bucket}/out"
+        process_args.append(gs_out_folder)
 
     start_generic_script(invokation_id, process_args)
 
@@ -190,12 +196,14 @@ def run_annotate(
     if not fold:
         raise KeyError(f"Fold ID {fold_id} not found!")
 
-    gs_out_folder = f"gs://{fold_gcloud_bucket}/out"
     process_args = [
         current_app.config["RUN_ANNOTATE_PATH"],
         str(fold_id),
-        gs_out_folder,
+        current_app.config["FOLDY_STORAGE_TYPE"],
     ]
+    if current_app.config["FOLDY_STORAGE_TYPE"] == "Cloud":
+        gs_out_folder = f"gs://{fold_gcloud_bucket}/out"
+        process_args.append(gs_out_folder)
 
     start_generic_script(invokation_id, process_args)
 
@@ -239,16 +247,19 @@ def run_dock(dock_id, invokation_id, fold_gcloud_bucket):
             f"--bounding_box_radius_angstrom={dock.bounding_box_radius_angstrom}",
         ]
 
-    gs_out_folder = f"gs://{fold_gcloud_bucket}/out"
     process_args = [
         current_app.config["RUN_DOCK"],
         str(dock.receptor_fold_id),
-        gs_out_folder,
         dock.ligand_name,
         dock.ligand_smiles,
         dock.tool or "vina",
-        *extra_args,
+        current_app.config["FOLDY_STORAGE_TYPE"],
     ]
+    if current_app.config["FOLDY_STORAGE_TYPE"] == "Cloud":
+        gs_out_folder = f"gs://{fold_gcloud_bucket}/out"
+        process_args.append(gs_out_folder)
+
+    process_args += [*extra_args]
 
     successful = start_generic_script(invokation_id, process_args)
 
