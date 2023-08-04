@@ -10,7 +10,7 @@ from flask_restplus import Resource
 from flask_jwt_extended import create_access_token
 from flask_jwt_extended import set_access_cookies, unset_jwt_cookies
 
-from app.authorization import has_full_authorization
+from app.authorization import email_should_get_edit_permission_by_default
 from app.models import User
 from app.extensions import db
 
@@ -82,32 +82,36 @@ class AuthorizeResource(Resource):
             name = oauth.google.userinfo()["name"]
             email = oauth.google.userinfo()["email"]
 
-            # # Make sure they're authorized.
-            # if (
-            #     not email.endswith("@" + current_app.config["FOLDY_USER_EMAIL_DOMAIN"])
-            #     and email not in current_app.config["FOLDY_USERS"]
-            # ):
-            #     return make_error_redirect(
-            #         f'Authorization unsuccessful. Only users with @{current_app.config["FOLDY_USER_EMAIL_DOMAIN"]} addresses can access this resource.'
-            #     )
-
         # Check if it's a new user. If it is, add them to the db.
-        user_was_registered = (
-            db.session.query(User.email).filter_by(email=email).first() is not None
-        )
+        matching_users = list(db.session.query(User).filter_by(email=email))
+        user = matching_users[0] if matching_users else None
+        user_was_registered = user is not None
         if not user_was_registered:
-            creation_successful = User.create(email=email)
+            new_user_type = (
+                "editor"
+                if email_should_get_edit_permission_by_default(email)
+                else "viewer"
+            )
+            creation_successful = User.create(email=email, access_type=new_user_type)
             if not creation_successful:
                 return make_error_redirect(
                     "Unfortunately, new user creation failed! Please contact the admins for help."
                 )
 
-        user_type = "editor" if has_full_authorization(email) else "viewer"
+        # Users pre 8/4/23 don't have access_type set. So we set it here.
+        print(user.access_type, flush=True)
+        if not user.access_type:
+            user_type = (
+                "editor"
+                if email_should_get_edit_permission_by_default(email)
+                else "viewer"
+            )
+            user = user.update(access_type=user_type)
 
         access_token = create_access_token(
             identity=email,
             fresh=True,
-            user_claims={"name": name, "email": email, "type": user_type},
+            user_claims={"name": name, "email": email, "type": user.access_type},
         )
 
         frontend_parsed = urllib.parse.urlparse(frontend_url)

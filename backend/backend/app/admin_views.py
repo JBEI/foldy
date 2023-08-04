@@ -14,11 +14,11 @@ from werkzeug.exceptions import BadRequest
 from app import jobs
 from app.models import Fold, Invokation
 from app.extensions import db, rq
-from app.authorization import verify_fully_authorized
+from app.authorization import verify_has_edit_access
 from app.util import start_stage
 
 
-ns = Namespace("admin_views", decorators=[fresh_jwt_required, verify_fully_authorized])
+ns = Namespace("admin_views", decorators=[fresh_jwt_required, verify_has_edit_access])
 
 
 @ns.route("/createdbs")
@@ -168,7 +168,7 @@ queue_test_job_fields = ns.model(
 @ns.route("/queuetestjob")
 class QueueTestJobResource(Resource):
     @ns.expect(queue_test_job_fields)
-    @verify_fully_authorized
+    @verify_has_edit_access
     def post(self):
         q = rq.get_queue(request.get_json()["queue"])
         q.enqueue(
@@ -184,7 +184,7 @@ class QueueTestJobResource(Resource):
 @ns.route("/sendtestemail")
 class SendTestEmailResource(Resource):
     @ns.expect(queue_test_job_fields)
-    @verify_fully_authorized
+    @verify_has_edit_access
     def post(self):
         q = rq.get_queue("emailparrot")
         q.enqueue(
@@ -200,7 +200,7 @@ class SendTestEmailResource(Resource):
 
 @ns.route("/addInvokationToAllJobs/<string:job_type>/<string:job_state>")
 class SendTestEmailResource(Resource):
-    @verify_fully_authorized
+    @verify_has_edit_access
     def post(self, job_type, job_state):
         for (fold_id,) in db.session.query(Fold.id).all():
             fold = Fold.get_by_id(fold_id)
@@ -214,7 +214,7 @@ class SendTestEmailResource(Resource):
 
 @ns.route("/runUnrunStages/<string:stage_name>")
 class RunUnrunStagesResource(Resource):
-    @verify_fully_authorized
+    @verify_has_edit_access
     def post(self, stage_name):
         for (fold_id,) in db.session.query(Fold.id).all():
             if stage_name == "write_fastas":

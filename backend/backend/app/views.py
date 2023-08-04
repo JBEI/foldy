@@ -1,7 +1,7 @@
 import io
 
 from flask import current_app, request, send_file, make_response
-from flask_jwt_extended.utils import get_jwt_identity
+from flask_jwt_extended.utils import get_jwt_identity, get_jwt_claims
 from flask_restplus import Namespace
 from flask_jwt_extended import fresh_jwt_required
 from flask_restplus import Resource
@@ -14,7 +14,10 @@ from app import jobs
 from app.models import Dock, Fold, Invokation
 from app.extensions import db, rq
 from app.util import start_stage, FoldStorageUtil, get_job_type_replacement
-from app.authorization import has_full_authorization, verify_fully_authorized
+from app.authorization import (
+    user_jwt_grants_edit_access,
+    verify_has_edit_access,
+)
 
 ns = Namespace("most_views", decorators=[fresh_jwt_required])
 
@@ -140,7 +143,7 @@ class FoldsResource(Resource):
         page = args.get("page", None)
         per_page = args.get("per_page", None)
 
-        only_public = not has_full_authorization(get_jwt_identity())
+        only_public = not user_jwt_grants_edit_access(get_jwt_claims())
 
         manager = FoldStorageUtil()
         manager.setup()
@@ -150,7 +153,7 @@ class FoldsResource(Resource):
 
     # TODO(jbr): Figure out what is causing this call to fail and add validation.
     @ns.expect(new_folds_fields, validate=False)
-    @verify_fully_authorized
+    @verify_has_edit_access
     def post(self):
         """Returns True if queueing is successful."""
         manager = FoldStorageUtil()
@@ -174,14 +177,14 @@ class FoldsResource(Resource):
 class FoldResource(Resource):
     @ns.marshal_with(fold_fields)
     def get(self, fold_id):
-        only_public = not has_full_authorization(get_jwt_identity())
+        only_public = not user_jwt_grants_edit_access(get_jwt_claims())
 
         manager = FoldStorageUtil()
         manager.setup()
         return manager.get_fold_with_state(fold_id, only_public)
 
     @ns.expect(fold_fields, validate=False)
-    @verify_fully_authorized
+    @verify_has_edit_access
     def post(self, fold_id):
         try:
             fields_to_update = request.get_json()
@@ -411,7 +414,7 @@ class PfamResource(Resource):
 class DockResource(Resource):
     # TODO(jbr): Figure out what is causing this call to fail and add validation.
     # @ns.expect(dock_fields)
-    @verify_fully_authorized
+    @verify_has_edit_access
     def post(self):
         req = request.get_json()
 
@@ -482,7 +485,7 @@ queue_job_fields = ns.model(
 @ns.route("/queuejob")
 class QueueJobResource(Resource):
     @ns.expect()
-    @verify_fully_authorized
+    @verify_has_edit_access
     def post(self):
         start_stage(
             request.get_json()["fold_id"],

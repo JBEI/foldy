@@ -14,7 +14,7 @@ from flask_cors import CORS
 from flask_jwt_extended.exceptions import JWTExtendedException
 from jwt.exceptions import ExpiredSignatureError
 from flask_jwt_extended import JWTManager
-from flask_jwt_extended.utils import get_jwt_identity
+from flask_jwt_extended.utils import get_jwt_claims
 from markupsafe import Markup
 import werkzeug
 from werkzeug.exceptions import BadRequest, HTTPException
@@ -22,8 +22,8 @@ from werkzeug.middleware.dispatcher import DispatcherMiddleware
 from prometheus_client import make_wsgi_app
 
 from app import models
-from app.authorization import has_full_authorization
 from app.extensions import admin, db, migrate, rq, compress
+from app.authorization import user_jwt_grants_edit_access
 import rq_dashboard
 
 
@@ -48,13 +48,14 @@ def register_extensions(app):
     class VerifiedModelView(ModelView):
         def is_accessible(self):
             verify_fresh_jwt_in_request()
-            if not has_full_authorization(get_jwt_identity()):
+            if user_jwt_grants_edit_access(get_jwt_claims()):
                 return False
             return True
 
     class UserModelView(VerifiedModelView):
-        column_list = ["email", "created_at", "num_folds"]
-        column_sortable_list = ["email", "created_at"]
+        column_list = ["email", "created_at", "access_type", "num_folds"]
+        column_editable_list = ["email", "created_at", "access_type"]
+        column_sortable_list = ["email", "created_at", "access_type"]
         can_export = True
         page_size = 50
 

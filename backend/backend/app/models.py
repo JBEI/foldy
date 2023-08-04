@@ -41,6 +41,7 @@ class User(PkModel):
 
     email = Column(db.String(80), unique=True, nullable=False)
     created_at = Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
+    access_type = Column(db.String(80), nullable=True)
     # fold = relationship("Fold", backref="user",lazy='dynamic')
 
     def __init__(self, email):
