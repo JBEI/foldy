@@ -48,9 +48,7 @@ def register_extensions(app):
     class VerifiedModelView(ModelView):
         def is_accessible(self):
             verify_fresh_jwt_in_request()
-            if user_jwt_grants_edit_access(get_jwt_claims()):
-                return False
-            return True
+            return user_jwt_grants_edit_access(get_jwt_claims())
 
     class UserModelView(VerifiedModelView):
         column_list = ["email", "created_at", "access_type", "num_folds"]

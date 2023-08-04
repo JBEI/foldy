@@ -1,4 +1,5 @@
 import io
+import re
 
 from flask import current_app, request, send_file, make_response
 from flask_jwt_extended.utils import get_jwt_identity, get_jwt_claims
@@ -190,8 +191,10 @@ class FoldResource(Resource):
             fields_to_update = request.get_json()
             if "tags" in fields_to_update:
                 for tag in fields_to_update["tags"]:
-                    if not tag.isalnum():
-                        raise BadRequest(f"Bad group name, {tag} is not alphanumeric.")
+                    if not re.match(r"^[a-zA-Z0-9_-]+$", tag):
+                        raise BadRequest(
+                            f"Invalid tag: {tag} contains a character which is not a letter, number, hyphen, or underscore."
+                        )
                 fields_to_update["tagstring"] = ",".join(fields_to_update["tags"])
                 del fields_to_update["tags"]
             Fold.get_by_id(fold_id).update(**fields_to_update)
