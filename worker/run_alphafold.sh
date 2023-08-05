@@ -130,6 +130,7 @@ echo "Contents of afdbs:"
 ls -lah /foldydbs/afdbs/
 ls -lah /foldydbs/afdbs/small_bfd/
 
+    #--mgnify_database_path=$DATA_DIR/mgnify/mgy_clusters_2018_12.fa \
 time /opt/conda/bin/python /app/alphafold/run_alphafold.py \
     --data_dir="$DATA_DIR" \
     --output_dir="$OUT_DIR" \
@@ -138,7 +139,6 @@ time /opt/conda/bin/python /app/alphafold/run_alphafold.py \
     --db_preset="reduced_dbs" \
     --model_preset=$MODEL_PRESET \
     --small_bfd_database_path=$DATA_DIR/small_bfd/bfd-first_non_consensus_sequences.fasta \
-    #--mgnify_database_path=$DATA_DIR/mgnify/mgy_clusters_2018_12.fa \
     --mgnify_database_path=$DATA_DIR/mgnify/mgy_clusters_2022_05.fa \
     --template_mmcif_dir=$DATA_DIR/pdb_mmcif/mmcif_files \
     --obsolete_pdbs_path=$DATA_DIR/pdb_mmcif/obsolete.dat \
