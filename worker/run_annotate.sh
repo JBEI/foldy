@@ -69,7 +69,7 @@ cat $OUT_DIR/$PADDED_ID/pfam/pfam.txt
 
 ##############################################################
 # Rsync.
-echo "Running final rsync to $GS_OUT_FOLDER/$PADDED_ID"
 if [ "$STORAGE_TYPE" = "Cloud" ]; then
+    echo "Running final rsync to $GS_OUT_FOLDER/$PADDED_ID"
     /google-cloud-sdk/bin/gsutil rsync -r $OUT_DIR/$PADDED_ID $GS_OUT_FOLDER/$PADDED_ID
 fi
