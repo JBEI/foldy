@@ -36,6 +36,9 @@ services:
       - FOLDY_LOCAL_STORAGE_DIR=/aftmp
     networks:
       - default
+    volumes:
+      - /foldydbs:/foldydbs
+      - /aftmp:/aftmp
     ports:
       - 8081:8081
     restart: always
