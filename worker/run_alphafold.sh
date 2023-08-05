@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+set -o xtrace
 set -Eeuo pipefail
 trap cleanup SIGINT SIGTERM ERR EXIT
 
