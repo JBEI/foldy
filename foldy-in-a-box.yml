@@ -73,6 +73,12 @@ services:
     volumes:
       - /foldydbs:/foldydbs
       - /aftmp:/aftmp
+    deploy:                                                                                                                                                                            
+      resources:                                                                                                                                                                       
+        reservations:                                                                                                                                                                  
+          devices:                                  
+            - driver: nvidia                 
+              capabilities: [gpu]                      
     restart: always
     entrypoint: /opt/conda/envs/worker/bin/flask rq worker cpu gpu biggpu emailparrot
 

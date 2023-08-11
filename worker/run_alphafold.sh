@@ -157,7 +157,8 @@ time /opt/conda/bin/python /app/alphafold/run_alphafold.py \
 ##############################################################
 # Rsync.
 if [ "$STORAGE_TYPE" = "Cloud" ]; then
+    echo "Uploading results"
     /google-cloud-sdk/bin/gsutil -m rsync -r $OUT_DIR/$PADDED_ID $GS_OUT_FOLDER/$PADDED_ID
+    echo "Deleting directory for consistency's sake."
+    rm -r $OUT_DIR/$PADDED_ID
 fi
-
-rm -r $OUT_DIR/$PADDED_ID
