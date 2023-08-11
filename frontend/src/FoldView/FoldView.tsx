@@ -471,12 +471,12 @@ class InternalFoldView extends Component<FoldProps, FoldState> {
     };
 
     const actionToStageName = [
-      ["Start All Stages", "both"],
-      ["Write Fastas", "write_fastas"],
-      ["Start Features Job", "features"],
-      ["Start Models job", "models"],
-      ["Start Decompress Pickles job", "decompress_pkls"],
-      ["Start Annotate Job", "annotate"],
+      ["Rerun whole pipeline", "both"],
+      ["Rewrite fasta files", "write_fastas"],
+      ["Rerun MSA computation", "features"],
+      ["Rerun Structure Prediction", "models"],
+      ["Rerun Decompress Pickles job", "decompress_pkls"],
+      ["Rerun PFAM Sequence Annotation", "annotate"],
       ["Send notification email", "email"],
     ];
 
