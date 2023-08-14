@@ -44,9 +44,9 @@ class User(PkModel):
     access_type = Column(db.String(80), nullable=True)
     # fold = relationship("Fold", backref="user",lazy='dynamic')
 
-    def __init__(self, email):
+    def __init__(self, email, access_type):
         """Create a new user."""
-        super().__init__(email=email)
+        super().__init__(email=email, access_type=access_type)
 
     def __repr__(self):
         return f"{self.email}"

@@ -12,8 +12,9 @@ class TestCRUDMixin:
 
     def test_create(self):
         """Test CRUD create."""
-        user = User.create(email="foo@bar.com")
+        user = User.create(email="foo@bar.com", access_type="editor")
         assert User.get_by_id(user.id).email == "foo@bar.com"
+        assert User.get_by_id(user.id).access_type == "editor"
 
     def test_create_save(self):
         """Test CRUD create with save."""
