@@ -92,8 +92,8 @@ class AuthorizeResource(Resource):
                 if email_should_get_edit_permission_by_default(email)
                 else "viewer"
             )
-            creation_successful = User.create(email=email, access_type=new_user_type)
-            if not creation_successful:
+            user = User.create(email=email, access_type=new_user_type)
+            if not user:
                 return make_error_redirect(
                     "Unfortunately, new user creation failed! Please contact the admins for help."
                 )
