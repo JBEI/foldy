@@ -92,6 +92,8 @@ services:
       - default
     ports:
       - 127.0.0.1:5432:5432
+    volumes:
+      - /pgdb:/var/lib/postgresql/data
     restart: always
 
   redis:
