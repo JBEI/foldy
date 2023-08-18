@@ -19,6 +19,7 @@ sudo apt-get install -y docker-compose-plugin
 
 echo "Create a service that runs Foldy on startup."
 sudo systemctl link /foldy/deployment/foldy-in-a-box/foldy.service
+sudo systemctl enable foldy.service
 
 echo "Start the Foldy service..."
 echo "  If this fails, you can check the service status with:"

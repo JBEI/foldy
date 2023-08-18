@@ -30,6 +30,14 @@ else
         -f deployment/foldy-in-a-box/docker-compose.yml \
         --project-directory /foldy \
         exec worker /worker/download_databases.sh
-    echo "Finished downloading Foldy Databases."
-    touch /foldydbs/FINISHED
+    if [ $? -eq 0 ]
+    then
+        echo "Finished downloading Foldy Databases."
+        touch /foldydbs/FINISHED
+    else
+        echo "Failed to download Foldy Databases, will retry next time"
+        echo "the foldy.service process starts. To restart the download"
+        echo "now, you can either restart the machine or you can call"
+        echo "  sudo systemctl restart foldy.service"
+    fi
 fi

@@ -15,7 +15,7 @@ You can find more information about employing the different deployment options i
 
 |Deployment Type|Features|Ease of setup|Setup|
 |---|---|---|---|
-|Development|No work gets run|Easy|[Instructions](deployment/development/README.md)|
+|Development|No tools, just an interface|Extremely easy|[Instructions](deployment/development/README.md)|
 |Foldy-in-a-Box|All tools can run|Easy|[Instructions](deployment/foldy-in-a-box/README.md)|
 |Helm|Scalable to hundreds of users|Hard|[Instructions](deployment/helm/README.md)|
 
