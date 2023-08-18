@@ -7,22 +7,6 @@
   <img src="frontend/public/pksito.gif" width="400" height="400" />
 </p>
 
-## Table of Contents
-
-- [Foldy](#foldy)
-  - [Table of Contents](#table-of-contents)
-  - [Deployment Options](#deployment-options)
-  - [Local Deployment](#local-deployment)
-    - [Initial setup](#initial-setup)
-    - [For live development](#for-live-development)
-    - [Upgrading Database in development](#upgrading-database-in-development)
-    - [Development Tasks](#development-tasks)
-  - [Production Deployment](#production-deployment)
-    - [Initial Setup](#initial-setup-1)
-    - [Deploying new code](#deploying-new-code)
-  - [Acknowledgements](#acknowledgements)
-  - [Code License](#code-license)
-
 ## Deployment Options
 
 Foldy is a composable set of services which can be deployed lots of different ways. We currently document three types of deployment: Development, Foldy-in-a-Box, and Helm. The development deployment is not fully featured - it cannot run jobs - but supports the frontend features and it can easily be run on a laptop for development purposes. Foldy-in-a-box is a quick deployment option - it can be run in under ten minutes - for creating a full featured Foldy instance on a Google Cloud machine. It could also be the starting point for a more bespoke deployment on a large local machine. Finally the Helm deployment is the horizontally scalable, cloud deployment, built on Kubernetes. The name comes from Helm Charts, which are a tool for specifying Kubernetes deployments. The Helm deployment is involved, but it is secure and can be scaled to hundreds of users and tens of thousands of folds.
