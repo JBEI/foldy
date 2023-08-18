@@ -10,11 +10,11 @@ if [ "$#" -gt 1 ]; then
   exit 2
 fi
 
-GCLOUD_PROJECT_ID=$(yq eval '.GoogleProjectId' foldy/values.yaml -e)
-GCLOUD_ARTIFACT_REPO=$(yq eval '.ArtifactRepo' foldy/values.yaml -e)
-VERSION=$(yq eval '.ImageVersion' foldy/values.yaml -e)
-BACKEND_URL="https://$(yq eval '.FoldyDomain' foldy/values.yaml -e)"
-INSTITUTION=$(yq eval '.Institution' foldy/values.yaml -e)
+GCLOUD_PROJECT_ID=$(yq eval '.GoogleProjectId' deployment/helm/values.yaml -e)
+GCLOUD_ARTIFACT_REPO=$(yq eval '.ArtifactRepo' deployment/helm/values.yaml -e)
+VERSION=$(yq eval '.ImageVersion' deployment/helm/values.yaml -e)
+BACKEND_URL="https://$(yq eval '.FoldyDomain' deployment/helm/values.yaml -e)"
+INSTITUTION=$(yq eval '.Institution' deployment/helm/values.yaml -e)
 
 FOLDY_ALPHAFOLD_TAG=foldyalphafold
 if [ "$#" -eq 1 ]; then

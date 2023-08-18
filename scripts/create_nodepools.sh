@@ -7,9 +7,9 @@ if [ "$#" -ne 0 ]; then
   exit 1
 fi
 
-GOOGLE_PROJECT_ID=$(yq eval '.GoogleProjectId' foldy/values.yaml -e)
-GKE_CLUSTER_NAME=$(yq eval '.GkeClusterId' foldy/values.yaml -e)
-GOOGLE_SERVICE_ACCOUNT_ID=$(yq eval '.ServiceAccount' foldy/values.yaml -e)
+GOOGLE_PROJECT_ID=$(yq eval '.GoogleProjectId' deployment/helm/values.yaml -e)
+GKE_CLUSTER_NAME=$(yq eval '.GkeClusterId' deployment/helm/values.yaml -e)
+GOOGLE_SERVICE_ACCOUNT_ID=$(yq eval '.ServiceAccount' deployment/helm/values.yaml -e)
 
 SERVICE_ACCOUNT_FULL_ADDRESS="$GOOGLE_SERVICE_ACCOUNT_ID@$GOOGLE_PROJECT_ID.iam.gserviceaccount.com"
 

@@ -40,7 +40,10 @@ Make sure you have the following tools installed on your machine:
 2. Run the following command to bring up the backend and databases:
 
    ```bash
-   docker-compose up
+   docker compose \
+     --file deployment/development/docker-compose.yml \
+     --project-directory . \
+     up
    ```
 
     This command will start the frontend & backend servers and the required databases. Note that it takes a few minutes for the images to build, and then a few more minutes for the frontend to start up (the logs will say "Starting the development server...", then it takes ~60 seconds to build the frontend, then it will say "No issues found.").
@@ -48,7 +51,10 @@ Make sure you have the following tools installed on your machine:
 4. Install the databases by running the following command:
 
    ```bash
-   docker-compose exec backend flask db upgrade
+   docker compose \
+     --file deployment/development/docker-compose.yml \
+     --project-directory . \
+     exec backend flask db upgrade
    ```
 
 5. Access the Foldy website at http://localhost:3000 in your browser.
@@ -61,9 +67,18 @@ That's it! You have successfully deployed Foldy locally for development or testi
 If any changes are made to the database models, execute the following commands to create a revision and migrate database
 
 ```bash
-docker-compose exec backend flask db stamp $CURRENT_REVISION_NUMBER
-docker-compose exec backend flask db migrate
-docker-compose exec backend flask db upgrade
+docker compose exec \
+     --file deployment/development/docker-compose.yml \
+     --project-directory . \
+     backend flask db stamp $CURRENT_REVISION_NUMBER
+docker compose exec \
+     --file deployment/development/docker-compose.yml \
+     --project-directory . \
+     backend flask db migrate
+docker compose exec \
+     --file deployment/development/docker-compose.yml \
+     --project-directory . \
+     backend flask db upgrade
 ```
 
 ### Development Tasks
@@ -123,8 +138,8 @@ These variables will be used throughout this procedure. Once completed, execute 
 1. Copy the following templates:
 
    ```bash
-   cp foldy/values_template.yaml foldy/values.yaml
-   cp db_creation_resources_template.yaml db_creation_resources.yaml
+   cp deployment/helm/values_template.yaml deployment/helm/values.yaml
+   cp deployment/helm/db_creation_resources_template.yaml deployment/helm/db_creation_resources.yaml
    ```
 
 1. Choose a domain! We named our instance `LBL foldy`, and reserved the domain `foldy.lbl.gov` with our IT folks, and we think it reads pretty well. If you don't have an IT team who can provision a domain name / record for you, you can reserve an address like _ourinstitute_-foldy.com using any commercial hostname provider
@@ -146,7 +161,7 @@ These variables will be used throughout this procedure. Once completed, execute 
        - monitoring admin
        - storage admin
        - storage object admin
-     - Fill in service account details in `foldy/values.yaml`
+     - Fill in service account details in `deployment/helm/values.yaml`
    - **Create Kubernetes project**
 
      ```bash
@@ -166,7 +181,7 @@ These variables will be used throughout this procedure. Once completed, execute 
      ```
 
      - Then, through the cloud console, enable private IP at `https://console.cloud.google.com/sql/instances/${GOOGLE_SQL_DB_NAME}`, and note the DB IP address as `GOOGLE_SQL_DB_PRIVATE_IP`
-     - Now, fill in `DATABASE_URL` in `foldy/values.yaml` using following example: `postgresql://postgres:${GOOGLE_SQL_DB_PASSWORD}@${GOOGLE_SQL_DB_PRIVATE_IP}/postgres`
+     - Now, fill in `DATABASE_URL` in `deployment/helm/values.yaml` using following example: `postgresql://postgres:${GOOGLE_SQL_DB_PASSWORD}@${GOOGLE_SQL_DB_PRIVATE_IP}/postgres`
 
    - **Allocate Static IP Address**
 
@@ -185,7 +200,7 @@ These variables will be used throughout this procedure. Once completed, execute 
        - Name: `${GKE_CLUSTER_NAME}-prod`
        - Authorized javascript origins: `https://${FOLDY_DOMAIN}`
        - Authorized redirect URIs: `https://${FOLDY_DOMAIN}/api/authorize`
-       - Then paste the ID and secret in the `GOOGLE_CLIENT_{ID,SECRET}` fields in `foldy/values.yaml`
+       - Then paste the ID and secret in the `GOOGLE_CLIENT_{ID,SECRET}` fields in `deployment/helm/values.yaml`
    - **Create gcloud bucket** using [cloud console](https://cloud.google.com/storage/docs/creating-buckets) with following attributes:
      - Name = `${GOOGLE_STORAGE_DIRECTORY}`
      - Multi-region
@@ -208,14 +223,14 @@ These variables will be used throughout this procedure. Once completed, execute 
 
 1. Fill out template files
 
-   - Fill in `SECRET_KEY` in `foldy/values.yaml` with random secure string, for example use the following command
+   - Fill in `SECRET_KEY` in `deployment/helm/values.yaml` with random secure string, for example use the following command
 
    ```bash
    python -c 'import secrets; print(secrets.token_urlsafe(32))'
    ```
 
-   - `EMAIL_USERNAME` and `EMAIL_PASSWORD` in `foldy/values.yaml` are optional. They will be used for status notifications, but they must be gmail credentials if specified.
-   - Fill in variables in `foldy/values.yaml` with appropriate values
+   - `EMAIL_USERNAME` and `EMAIL_PASSWORD` in `deployment/helm/values.yaml` are optional. They will be used for status notifications, but they must be gmail credentials if specified.
+   - Fill in variables in `deployment/helm/values.yaml` with appropriate values
 
 1. Install the Keda helm/kubernetes plugin [with docs](https://keda.sh/docs/2.9/deploy/)
 
@@ -228,13 +243,13 @@ These variables will be used throughout this procedure. Once completed, execute 
 1. Build and push docker images to your google artifact registry with
 
    ```bash
-   bash build_and_deploy_containers.sh
+   bash scripts/build_and_deploy_containers.sh
    ```
 
-1. Make sure that the `ImageVersion` is properly set in `foldy/values.yaml`, then deploy the kubernetes services using
+1. Make sure that the `ImageVersion` is properly set in `deployment/helm/values.yaml`, then deploy the kubernetes services using
 
    ```bash
-   helm install foldy foldy
+   helm install foldy deployment/helm
    ```
 
 1. Initialize tables in PostgreSQL database
@@ -271,7 +286,7 @@ _Note, using the `us-central1-c` region is required because most google A100s ar
 
 ### Deploying new code
 
-1. Increment `ImageVersion` in `foldy/values.yaml`
+1. Increment `ImageVersion` in `deployment/helm/values.yaml`
 1. Rebuild the docker images:
 
    ```bash
