@@ -24,6 +24,7 @@ Following the "five minute deployment" are high recommended security steps, whic
     ```bash
     wget -O - https://raw.githubusercontent.com/JBEI/foldy/main/deployment/foldy-in-a-box/install_foldy_in_a_box.sh | bash
     ```
+    * It will take about 30 minutes for the web interface to become available, and 48 hours for the databases to finish downloading. Make sure to leave the instance running without interruption for the databases to finish downloading. You can view the progress of the installation by SSHing into the instance and calling `sudo journalctl -u foldy.service -f`.
   3. You can now access Foldy from the external IP address listed next to the instance in the Google Cloud console. You can put the IP address listed into your browser like `http://{IP_ADDRESS}`. Make sure you use `http` not `https`.
 2. **Using the gcloud command line**
   1. Create the instance. You can change this command to fit your needs, as written it creates a machine called foldybox and allocates an Nvidia T4 GPU:
@@ -55,6 +56,7 @@ Following the "five minute deployment" are high recommended security steps, whic
     ```bash
     wget -O - https://raw.githubusercontent.com/JBEI/foldy/main/deployment/foldy-in-a-box/install_foldy_in_a_box.sh | bash
     ```
+    * It will take about 30 minutes for the web interface to become available, and 48 hours for the databases to finish downloading. Make sure to leave the instance running without interruption for the databases to finish downloading. You can view the progress of the installation by SSHing into the instance and calling `sudo journalctl -u foldy.service -f`.
   3. You can now access Foldy from the external IP address listed next to the instance in the Google Cloud console. You can put the IP address listed into your browser like `http://{IP_ADDRESS}`. Make sure you use `http` not `https`.
 
 

@@ -21,3 +21,15 @@ FOLDY_BOX_URL=$MY_URL /usr/bin/docker compose \
   -f deployment/foldy-in-a-box/docker-compose.yml \
   --project-directory . \
   exec backend flask db upgrade
+
+if [ -f "/foldydbs/FINISHED" ]; then
+    echo "Foldy DBs already finished downloading."
+else 
+    echo "Downloading Foldy Databases... might take up to 48 hours."
+    /usr/bin/docker compose \
+        -f deployment/foldy-in-a-box/docker-compose.yml \
+        --project-directory /foldy \
+        exec worker /worker/download_databases.sh
+    echo "Finished downloading Foldy Databases."
+    touch /foldydbs/FINISHED
+fi
