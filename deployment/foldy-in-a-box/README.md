@@ -20,7 +20,11 @@ Following the "five minute deployment" are high recommended security steps, whic
     * Under `Boot Disk` it probably suggests switching to an image which better supports GPUs such as `Deep Learning VM with CUDA 11.3 M110`. Click "Switch", then also change the size of the boot disk to 3000GB, to support installing the AlphaFold databases and holding your fold outputs.
     * Under `Firewall` select "Allow HTTP traffic".
   2. Install Foldy
-    * TODO
+    * You can either read and mimic the setup steps in `install_foldy_in_a_box.sh`, or you can use the console to open an SSH connection to the instance and call:
+    ```bash
+    wget -O - https://raw.githubusercontent.com/JBEI/foldy/main/deployment/foldy-in-a-box/install_foldy_in_a_box.sh | bash
+    ```
+  3. You can now access Foldy from the external IP address listed next to the instance in the Google Cloud console. You can put the IP address listed into your browser like `http://{IP_ADDRESS}`. Make sure you use `http` not `https`.
 2. **Using the gcloud command line**
   1. Create the instance. You can change this command to fit your needs, as written it creates a machine called foldybox and allocates an Nvidia T4 GPU:
     ```bash
@@ -30,19 +34,28 @@ Following the "five minute deployment" are high recommended security steps, whic
     --network-interface=network-tier=PREMIUM,stack-type=IPV4_ONLY,subnet=default \
     --maintenance-policy=TERMINATE \
     --provisioning-model=STANDARD \
-    --service-account=685681399792-compute@developer.gserviceaccount.com \
     --scopes=https://www.googleapis.com/auth/devstorage.read_only,https://www.googleapis.com/auth/logging.write,https://www.googleapis.com/auth/monitoring.write,https://www.googleapis.com/auth/servicecontrol,https://www.googleapis.com/auth/service.management.readonly,https://www.googleapis.com/auth/trace.append \
     --accelerator=count=1,type=nvidia-tesla-t4 \
     --tags=http-server \
-    --create-disk=auto-delete=yes,boot=yes,device-name=instance-1,image=projects/ml-images/global/images/c0-deeplearning-common-cu113-v20230807-debian-10,mode=rw,size=3000,type=projects/keasling/zones/us-central1-a/diskTypes/pd-balanced \
+    --create-disk=auto-delete=yes,boot=yes,device-name=instance-1,image=projects/ml-images/global/images/c0-deeplearning-common-cu113-v20230807-debian-10,mode=rw,size=3000,type=pd-balanced \
     --no-shielded-secure-boot \
     --shielded-vtpm \
     --shielded-integrity-monitoring \
     --labels=goog-ec-src=vm_add-gcloud \
     --reservation-affinity=any
     ```
+    * It may take a moment before you can SSH in.
   2. Install Foldy
-    * TODO
+    * First, SSH in. If the name of your instance is foldybox and it is located in us-central1-a, you can run:
+    ```bash
+    gcloud compute --zone=us-central1-a ssh
+    ```
+    * If it asks to install NVIDIA drivers, say yes.
+    * You can either read and mimic the setup steps in `install_foldy_in_a_box.sh`, or you can use the console to open an SSH connection to the instance and call:
+    ```bash
+    wget -O - https://raw.githubusercontent.com/JBEI/foldy/main/deployment/foldy-in-a-box/install_foldy_in_a_box.sh | bash
+    ```
+  3. You can now access Foldy from the external IP address listed next to the instance in the Google Cloud console. You can put the IP address listed into your browser like `http://{IP_ADDRESS}`. Make sure you use `http` not `https`.
 
 
 ## Highly Recommended Changes
