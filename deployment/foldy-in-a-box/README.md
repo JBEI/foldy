@@ -28,7 +28,7 @@ Go to the [Google Cloud Console](https://console.cloud.google.com/welcome) and l
         * For Machine Type choose a large base, we recommend the `High memory` option `n1-highmem-8`
     * Under `Boot Disk` it probably suggests switching to an image which better supports GPUs such as `Deep Learning VM with CUDA 11.3 M110`. Click "Switch", then also change the size of the boot disk to 3000GB, to support installing the AlphaFold databases and holding your fold outputs.
     * Under `Firewall` select "Allow HTTP traffic".
-    * That's it, you can now create your instance.
+    * That's it, you can now create your instance. **If instance creation fails, check the [debugging](#debugging) steps below.**
 2. Install Foldy
     * Once the machine is started, you can use the Cloud Console to SSH from your browser. Look for an "SSH" button on the row next to your instance. You can also SSH using the gcloud command line tool. See instructions below.
     * If it asks to install NVIDIA drivers, say yes.
@@ -62,7 +62,7 @@ Make sure you have [installed](https://cloud.google.com/sdk/docs/install-sdk) an
     --labels=goog-ec-src=vm_add-gcloud \
     --reservation-affinity=any
     ```
-    * It may take a moment before you can SSH in.
+    * It may take a moment before you can SSH in. **If instance creation fails, check the [debugging](#debugging) steps below.**
 2. Install Foldy
     * First, SSH in. If the name of your instance is foldybox and it is located in us-central1-a, you can run:
         ```bash
@@ -77,6 +77,12 @@ Make sure you have [installed](https://cloud.google.com/sdk/docs/install-sdk) an
     * *Note that sometimes the databases fail to download.* You can check status with the journalctl command above, or just wait to see if your first jobs succeed. If they don't succeed, you can prompt the databases to re-download by restarting the instance, or SSHing into the instance and restarting the Foldy service with `sudo systemctl restart foldy.service`.
 3. You can now access Foldy from the external IP address listed next to the instance in the Google Cloud console. You can put the IP address listed into your browser like `http://{IP_ADDRESS}`. Make sure you use `http` not `https`.
 
+
+## Debugging
+
+Instance creation can fail for a few common reasons:
+* **The region is low on a certain resource.** Google cloud usage varies constantly. Sometimes certain resources (eg, "n1-highmem-8" machines or "Nvidia T4" GPUs) are unavailable when you try to create your instance. Unfortunately, it is not easy to see which zone has availablity for any given resource. Instead, you should retry at another time, or retry in another zone. Eg, if creating your instance in "us-central1-a" fails due to resource availability, you can try creating your VM in "us-central1-f".
+* **Insufficient Quota.** Every project has many limits imposed on the resources it can use. If you created a new Google Cloud project, and it's not associated with an institution, your limits will likely start quite low. You can request an increase in your quota through [quota page](https://console.cloud.google.com/iam-admin/quotas). For instance, when installing Foldy in a new project, you'll likely run into limits for both the `Persistent Disk SSD` and `GPUS-ALL-REGIONS-per-project` quotas, whose defaults are something like 500GB and 0, respectively. Note that the `Persistent Disk SSD` quota is per-*region*, so you need to increase the quota for the appropriate region. Eg, if you're making your Foldy instance in region `us-central1` and zone `us-central1-a`, then you need to request more quota for region `us-central1`.
 
 ## Highly Recommended Changes
 
