@@ -4,6 +4,7 @@ cd /
 
 echo "Downloading Foldy code."
 sudo git clone http://github.com/jbei/foldy
+sudo cp /foldy/deployment/foldy-in-a-box/startup-template.sh /foldy/deployment/foldy-in-a-box/startup.sh
 
 echo "Create directories for:"
 echo " * the AlphaFold, pfam, and DiffDock databases"

@@ -23,13 +23,15 @@ services:
     environment:
       - FLASK_APP=main.py
       - FLASK_ENV=development
-      - SECRET_KEY=superrandomandveryhardtoguessstring
+      - SECRET_KEY
       - OAUTH_REDIRECT_URI=http://${FOLDY_BOX_URL}/api/authorize
       - BACKEND_URL=http://${FOLDY_BOX_URL}
       - FRONTEND_URL=http://${FOLDY_BOX_URL}
       - DATABASE_URL=postgresql+psycopg2://user:password@db:5432/postgres
       - RQ_REDIS_URL=redis://redis:6379/0
-      - DISABLE_OAUTH_AUTHENTICATION=True
+      - DISABLE_OAUTH_AUTHENTICATION
+      - GOOGLE_CLIENT_ID
+      - GOOGLE_CLIENT_SECRET
       - FOLDY_USERS=tester@test.edu
       - PORT=8081
       - FOLDY_STORAGE_TYPE=Local
@@ -43,7 +45,7 @@ services:
       - 8081:8081
     restart: always
     entrypoint: python /app/main.py
-  
+
   worker:
     build:
       context: .
@@ -59,9 +61,6 @@ services:
       - DECOMPRESS_PKLS_PATH=/worker/decompress_pkls.sh
       - RUN_ANNOTATE_PATH=/worker/run_annotate.sh
       - RUN_DOCK=/worker/run_dock.sh
-      - SECRET_KEY=superrandomandveryhardtoguessstring
-      - OAUTH_REDIRECT_URI=http://${FOLDY_BOX_URL}/api/authorize
-      - BACKEND_URL=http://${FOLDY_BOX_URL}
       - FRONTEND_URL=http://${FOLDY_BOX_URL}
       - DATABASE_URL=postgresql+psycopg2://user:password@db:5432/postgres
       - RQ_REDIS_URL=redis://redis:6379/0
@@ -73,12 +72,12 @@ services:
     volumes:
       - /foldydbs:/foldydbs
       - /aftmp:/aftmp
-    deploy:                                                                                                                                                                            
-      resources:                                                                                                                                                                       
-        reservations:                                                                                                                                                                  
-          devices:                                  
-            - driver: nvidia                 
-              capabilities: [gpu]                      
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              capabilities: [gpu]
     restart: always
     entrypoint: /opt/conda/envs/worker/bin/flask rq worker cpu gpu biggpu emailparrot
 
