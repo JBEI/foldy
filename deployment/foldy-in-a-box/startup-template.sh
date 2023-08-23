@@ -33,8 +33,6 @@ echo "Connecting to $FOLDY_BOX_URL"
 
 # Rebuild the images with the URL.
 /usr/bin/docker compose \
-  --build-arg BACKEND_URL=$FOLDY_BOX_URL \
-  --build-arg INSTITUTION=$INSTITUTION \
   -f deployment/foldy-in-a-box/docker-compose.yml \
   --project-directory . \
   build

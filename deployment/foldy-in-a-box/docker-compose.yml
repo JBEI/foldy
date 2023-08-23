@@ -7,7 +7,7 @@ services:
       target: prod-stage
       args:
         - BACKEND_URL=${FOLDY_BOX_URL}
-        - INSTITUTION=Local
+        - INSTITUTION=${INSTITUTION}
     depends_on:
       - backend
     networks:
