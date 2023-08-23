@@ -10,7 +10,7 @@ VM_EXTERNAL_IP_ADDRESS=`curl -s -H "Metadata-Flavor: Google" http://metadata/com
 #   export FOLDY_BOX_URL=localhost
 # If putting Foldy behind a URL, change this to that URL, eg
 #   export FOLDY_BOX_URL=foldy.myinstitution.edu
-export FOLDY_BOX_URL=$VM_EXTERNAL_IP_ADDRESS
+export FOLDY_BOX_URL="http://$VM_EXTERNAL_IP_ADDRESS"
 
 # Choose a random string.
 export SECRET_KEY=superrandomandveryhardtoguessstring
@@ -21,13 +21,20 @@ export SECRET_KEY=superrandomandveryhardtoguessstring
 # export GOOGLE_CLIENT_SECRET=
 export DISABLE_OAUTH_AUTHENTICATION=True
 
+# Name of the institution, to go on the frontend.
+export INSTITUTION=Local
+
 ###############################################################################
 # END SET ENVIRONMENT VARIABLES
 ###############################################################################
 
+echo "Connecting to $FOLDY_BOX_URL"
+
 
 # Rebuild the images with the URL.
 /usr/bin/docker compose \
+  --build-arg BACKEND_URL=$FOLDY_BOX_URL \
+  --build-arg INSTITUTION=$INSTITUTION \
   -f deployment/foldy-in-a-box/docker-compose.yml \
   --project-directory . \
   build
