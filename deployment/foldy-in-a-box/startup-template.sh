@@ -19,6 +19,8 @@ export SECRET_KEY=superrandomandveryhardtoguessstring
 # and uncomment and fill out the below environment variables.
 # export GOOGLE_CLIENT_ID=
 # export GOOGLE_CLIENT_SECRET=
+# export FOLDY_USER_EMAIL_DOMAIN=
+export FOLDY_USERS=tester@test.edu
 export DISABLE_OAUTH_AUTHENTICATION=True
 
 # Name of the institution, to go on the frontend.

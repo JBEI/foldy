@@ -32,7 +32,8 @@ services:
       - DISABLE_OAUTH_AUTHENTICATION
       - GOOGLE_CLIENT_ID
       - GOOGLE_CLIENT_SECRET
-      - FOLDY_USERS=tester@test.edu
+      - FOLDY_USERS
+      - FOLDY_USER_EMAIL_DOMAIN
       - PORT=8081
       - FOLDY_STORAGE_TYPE=Local
       - FOLDY_LOCAL_STORAGE_DIR=/aftmp
