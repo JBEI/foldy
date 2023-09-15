@@ -44,20 +44,24 @@ def start_generic_script(invokation_id, process_args):
             state="running",
             log="Ongoing...",
             starttime=datetime.datetime.fromtimestamp(start_time),
+            command=f"{process_args}",
         )
 
         def handle_sigterm(signum, frame):
             # This function will be called when SIGTERM is received.
             # You can perform any cleanup or termination logic here.
             # In this example, we simply exit the process.
-            stdout += [
-                "\n\n\nRECEIVED SIGTERM\nRECEIVED SIGTERM\nRECEIVED SIGTERM\nRECEIVED SIGTERM\nRECEIVED SIGTERM"
-            ]
-            raise RuntimeError(f"Got SIGTERM:\n{_tail(''.join(stdout))}")
+            # Apparently stdout stops being a local variable when sigterm comes in?
+            # stdout += [
+            #     "\n\n\nRECEIVED SIGTERM\nRECEIVED SIGTERM\nRECEIVED SIGTERM\nRECEIVED SIGTERM\nRECEIVED SIGTERM"
+            # ]
+            raise RuntimeError(f"Got SIGTERM")
 
         # Set up the signal handler for SIGTERM
         signal.signal(signal.SIGTERM, handle_sigterm)
         # signal.signal(signal.SIGKILL, handle_sigterm)
+
+        print(f"Running {process_args}")
 
         process = subprocess.Popen(
             process_args,
@@ -129,12 +133,14 @@ def run_features(
     if not fold:
         raise KeyError(f"Fold ID {fold_id} not found!")
 
+    models_to_relax = "NONE" if fold.disable_relaxation else "BEST"
+
     process_args = [
         current_app.config["RUN_AF2_PATH"],
         str(fold_id),
         "features",
         fold.af2_model_preset,
-        str(not fold.disable_relaxation),
+        models_to_relax,
         current_app.config["FOLDY_STORAGE_TYPE"],
     ]
     if current_app.config["FOLDY_STORAGE_TYPE"] == "Cloud":
@@ -152,12 +158,14 @@ def run_models(
     if not fold:
         raise KeyError(f"Fold ID {fold_id} not found!")
 
+    models_to_relax = "NONE" if fold.disable_relaxation else "BEST"
+
     process_args = [
         current_app.config["RUN_AF2_PATH"],
         str(fold_id),
         "models",
         fold.af2_model_preset,
-        str(not fold.disable_relaxation),
+        models_to_relax,
         current_app.config["FOLDY_STORAGE_TYPE"],
     ]
     if current_app.config["FOLDY_STORAGE_TYPE"] == "Cloud":

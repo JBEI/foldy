@@ -26,6 +26,7 @@ class Invokation(PkModel):
     starttime = Column(db.DateTime, nullable=True)
     timedelta = Column(db.Interval, nullable=True)
 
+    command = Column(db.Text, nullable=True)
     log = deferred(Column(db.Text, nullable=True))
 
     def __init__(self, fold_id, type, state):

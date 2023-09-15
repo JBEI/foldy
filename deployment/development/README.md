@@ -44,21 +44,29 @@ That's it! You have successfully deployed Foldy locally for development or testi
 If any changes are made to the database models, execute the following commands to create a revision and migrate database
 
 ```bash
-docker compose exec \
+docker compose \
      --file deployment/development/docker-compose.yml \
      --project-directory . \
-     backend flask db stamp $CURRENT_REVISION_NUMBER
-docker compose exec \
+     exec backend flask db stamp $CURRENT_REVISION_NUMBER
+docker compose \
      --file deployment/development/docker-compose.yml \
      --project-directory . \
-     backend flask db migrate
-docker compose exec \
+     exec backend flask db migrate
+docker compose \
      --file deployment/development/docker-compose.yml \
      --project-directory . \
-     backend flask db upgrade
+     exec backend flask db upgrade
 ```
 
 ### Development Tasks
 
 > Protein structure prediction tasks in the development environment are not actually performed.
 > Instead a few test cases have been precomputed that auto-complete once queued.
+> Example outputs are stored in a read-only on-disk object store, at `/backend/backend/integration_tests/testdata/`. You can queue the following proteins and docks to have their structures auto-populated in the UI:
+> * Fold 1
+>    * Name: <anything>
+>    * Sequence: `MNKREILKRLLSYLFEDKKGFAIAAVFLLIAAAADVSGPWLIRIFLDDYVSKDHYPAMMLWALAIGYITVTILSGFLHYAYGIRFSRIAVSIVQTIRKKVYASIINQPLSSFDYVPAGKLVSRVTNDTESLKELYVQVVASFLQSLALITAMLTAMYLLSPTLTLVVAILLPSVVLVMYYYQRRSSDPYRESRDLLTDINGVMSESIQGMSLIQLMGQEQRFSERFASLNERHLGAEVRIVKINGIFLRPLIDLLSGIALVSLVAIFGWQGHEVIGVGVLYAFISYLGRVTEPLIELMQRLSLLQQAIMAGERLFELMDAKQHQYGEDDAPIARGDINVSDVNFSYDGTTPVLNNISVSVKEGGFLALVGHTGSGKSTLASLLMGFYPPSSGEIQLGGRPIASLSQNALRNGIALVQQDPHVLPSSFRDNVTLGRNVSDEAVWDALFLVDMADYVRELPNALNTLLGTGDVSLSAGQKQLLALARVLVDKPRILILDEATANIDSGTEERVQQALSALRNTMTIVVIAHRLSTIADADNIMVLHRGHVEEQGAHQALLAQQGRYWQMYQLQKTRAHLKELEEQARD`
+>    * Dock: 
+>      * Name: nadhd2
+>      * Tool: vina
+>      * SMILES: <anything>

@@ -14,7 +14,9 @@ export interface DecodedJwt {
 }
 
 export function getDescriptionOfUserType(userType: string) {
-  if (userType === "editor") {
+  if (userType === "admin") {
+    return `Your account has "admin" permissions to ${process.env.REACT_APP_INSTITUTION} Foldy. You have edit access, plus access to debug tools available in the toolbar. The RQ page shows the status of the Redis Queue, which manages jobs. The DBs page allows direct edit access to all underlying databases, built on Flask-Admin. The Sudo Page contains some convenient buttons for manipulating folds.`;
+  } else if (userType === "editor") {
     return `Your account has "editor" permissions to ${process.env.REACT_APP_INSTITUTION} Foldy which means you can view any structure or submit your own. Check out the instructions in the About page for details.`;
   } else if (userType === "viewer") {
     return `Your account has "viewer" permissions to ${process.env.REACT_APP_INSTITUTION} Foldy which means you can view any public folds and associated data, but cannot submit your own compute jobs. See the Foldy manuscript and codebase to set up a Foldy instance at your institution!`;

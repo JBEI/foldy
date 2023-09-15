@@ -935,65 +935,69 @@ class InternalFoldView extends Component<FoldProps, FoldState> {
                 {this.state.jobs ? (
                   <span>
                     <h2>Invokations</h2>
-                    <table
-                      className="uk-table uk-table-hover uk-table-small"
-                      style={{ tableLayout: "fixed" }}
-                    >
-                      <thead>
-                        <tr>
-                          <th className="uk-table-shrink uk-text-nowrap">
-                            Type
-                          </th>
-                          <th className="uk-table-shrink uk-text-nowrap">
-                            State
-                          </th>
-                          <th className="uk-table-shrink uk-text-nowrap">
-                            Start time
-                          </th>
-                          <th className="uk-table-shrink uk-text-nowrap">
-                            Runtime
-                          </th>
-                          <th className="uk-table-shrink uk-text-nowrap">
-                            Logs
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {[...this.state.jobs].map((job: Invokation) => {
-                          return (
-                            <tr key={job.job_id}>
-                              <td
-                                className="uk-text-nowrap uk-text-truncate"
-                                uk-tooltip={job.type}
-                              >
-                                {job.type}
-                              </td>
-                              <td
-                                className="uk-text-nowrap uk-text-truncate"
-                                uk-tooltip={job.state}
-                              >
-                                {job.state}
-                              </td>
-                              <td
-                                className="uk-text-nowrap uk-text-truncate"
-                                uk-tooltip={formatStartTime(job.starttime)}
-                              >
-                                {formatStartTime(job.starttime)}
-                              </td>
-                              <td
-                                className="uk-text-nowrap uk-text-truncate"
-                                uk-tooltip={formatRunTime(job.timedelta_sec)}
-                              >
-                                {formatRunTime(job.timedelta_sec)}
-                              </td>
-                              <td className="uk-text-nowrap uk-text-truncate">
-                                <a href={`#logs_${job.id.toString()}`}>View</a>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
+                    <div className="uk-overflow-auto">
+                      <table
+                        className="uk-table uk-table-hover uk-table-small"
+                        style={{ tableLayout: "fixed" }}
+                      >
+                        <thead>
+                          <tr>
+                            <th className="uk-table-shrink uk-text-nowrap">
+                              Type
+                            </th>
+                            <th className="uk-table-shrink uk-text-nowrap">
+                              State
+                            </th>
+                            <th className="uk-table-shrink uk-text-nowrap">
+                              Start time
+                            </th>
+                            <th className="uk-table-shrink uk-text-nowrap">
+                              Runtime
+                            </th>
+                            <th className="uk-table-shrink uk-text-nowrap">
+                              Logs
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {[...this.state.jobs].map((job: Invokation) => {
+                            return (
+                              <tr key={job.job_id}>
+                                <td
+                                  className="uk-text-nowrap uk-text-truncate"
+                                  uk-tooltip={job.type}
+                                >
+                                  {job.type}
+                                </td>
+                                <td
+                                  className="uk-text-nowrap uk-text-truncate"
+                                  uk-tooltip={job.state}
+                                >
+                                  {job.state}
+                                </td>
+                                <td
+                                  className="uk-text-nowrap uk-text-truncate"
+                                  uk-tooltip={formatStartTime(job.starttime)}
+                                >
+                                  {formatStartTime(job.starttime)}
+                                </td>
+                                <td
+                                  className="uk-text-nowrap uk-text-truncate"
+                                  uk-tooltip={formatRunTime(job.timedelta_sec)}
+                                >
+                                  {formatRunTime(job.timedelta_sec)}
+                                </td>
+                                <td className="uk-text-nowrap uk-text-truncate">
+                                  <a href={`#logs_${job.id.toString()}`}>
+                                    View
+                                  </a>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
                     <span>
                       {[...this.state.jobs].map((job: Invokation) => {
                         return (
@@ -1002,6 +1006,7 @@ class InternalFoldView extends Component<FoldProps, FoldState> {
                             key={job.id || "jobid should not be null"}
                           >
                             <h3>{job.type} Logs</h3>
+                            <pre>Command: {job.command}</pre>
                             <pre>{job.log}</pre>
                           </div>
                         );

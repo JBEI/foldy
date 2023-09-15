@@ -16,8 +16,9 @@ FoldyCertificateDomain: ${FOLDY_CERTIFICATE_DOMAIN}
 # Email domain to allow access, eg "lbl.gov" will allow all users with "@lbl.gov" addresses to access.
 FoldyUserEmailDomain: ${FOLDY_USER_EMAIL_DOMAIN}
 
-# CSV list of extra user emails who should have access to Foldy.
-FoldyUsers:
+# CSV list of users who should have admin rights when the log in. This does not
+# permanently change their user type in the DB!
+FoldyAdminUsers:
 
 # Name of the cloud bucket for Foldy (eg: "gs://myfolds/mysubdir").
 FoldyGstorageDir: ${GOOGLE_STORAGE_DIRECTORY}

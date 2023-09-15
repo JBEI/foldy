@@ -162,7 +162,7 @@ function NewFold(props: {
           name: name,
           sequence: sequence,
           tags: tags,
-          af2_model_preset: af2ModelPresetOverride,
+          af2_model_preset: af2ModelPresetOverride || "multimer",
           disable_relaxation: disableRelaxation,
         };
         return newFold;

@@ -124,6 +124,9 @@ function RoutedApp() {
           {fullDecodedToken?.user_claims.type === "editor"
             ? "Edit Access"
             : null}
+          {fullDecodedToken?.user_claims.type === "admin"
+            ? "Admin Access"
+            : null}
         </sub>
       </sub>
     </span>
@@ -150,6 +153,33 @@ function RoutedApp() {
         <a href="/" className="uk-navbar-item" style={{ color: "#fff" }}>
           Dashboard
         </a>
+        {fullDecodedToken?.user_claims.type === "admin" ? (
+          <a
+            href={`${process.env.REACT_APP_BACKEND_URL}/rq/`}
+            className="uk-navbar-item"
+            style={{ color: "#fff" }}
+          >
+            RQ
+          </a>
+        ) : null}
+        {fullDecodedToken?.user_claims.type === "admin" ? (
+          <a
+            href={`${process.env.REACT_APP_BACKEND_URL}/admin/`}
+            className="uk-navbar-item"
+            style={{ color: "#fff" }}
+          >
+            DBs
+          </a>
+        ) : null}
+        {fullDecodedToken?.user_claims.type === "admin" ? (
+          <a
+            href="/sudopage"
+            className="uk-navbar-item"
+            style={{ color: "#fff" }}
+          >
+            Sudo Page
+          </a>
+        ) : null}
         <a href="/about" className="uk-navbar-item" style={{ color: "#fff" }}>
           About
         </a>
@@ -230,7 +260,7 @@ function RoutedApp() {
             uk-close={1}
           ></button>
 
-          <h3>{process.env.REACT_APP_INSTITUTION} Foldyss</h3>
+          <h3>{process.env.REACT_APP_INSTITUTION} Foldy</h3>
           <p>
             {process.env.REACT_APP_INSTITUTION} Foldy is a web app for
             predicting and using protein structures based on AlphaFold.
@@ -240,6 +270,21 @@ function RoutedApp() {
             <li className="uk-active">
               <a href="/">Dashboard</a>
             </li>
+            {fullDecodedToken?.user_claims.type === "admin" ? (
+              <li className="uk-parent">
+                <a href={`${process.env.REACT_APP_BACKEND_URL}/rq/`}>RQ</a>
+              </li>
+            ) : null}
+            {fullDecodedToken?.user_claims.type === "admin" ? (
+              <li className="uk-parent">
+                <a href={`${process.env.REACT_APP_BACKEND_URL}/admin/`}>DBs</a>
+              </li>
+            ) : null}
+            {fullDecodedToken?.user_claims.type === "admin" ? (
+              <li className="uk-parent">
+                <a href="/sudopage">Sudo Page</a>
+              </li>
+            ) : null}
             <li className="uk-parent">
               <a href="/about">About</a>
             </li>

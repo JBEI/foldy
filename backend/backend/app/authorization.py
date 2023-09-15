@@ -16,15 +16,19 @@ def email_should_get_edit_permission_by_default(current_user):
     ) and current_user.endswith("@" + current_app.config["FOLDY_USER_EMAIL_DOMAIN"]):
         return True
     if (
-        current_app.config.get("FOLDY_USERS", None)
-        and current_user in current_app.config["FOLDY_USERS"]
+        current_app.config.get("FOLDY_ADMIN_UPGRADE_LIST", None)
+        and current_user in current_app.config["FOLDY_ADMIN_UPGRADE_LIST"]
     ):
         return True
     return False
 
 
+def email_should_get_upgraded_to_admin(current_user):
+    return current_user in current_app.config["FOLDY_ADMIN_UPGRADE_LIST"]
+
+
 def user_jwt_grants_edit_access(jwt_claims):
-    return jwt_claims["type"] == "editor"
+    return jwt_claims["type"] == "editor" or jwt_claims["type"] == "admin"
 
 
 def verify_has_edit_access(fn):

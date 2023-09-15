@@ -32,7 +32,7 @@ services:
       - DATABASE_URL=postgresql+psycopg2://user:password@db:5432/postgres
       - RQ_REDIS_URL=redis://redis:6379/0
       - DISABLE_OAUTH_AUTHENTICATION=True
-      - FOLDY_USERS=tester@test.edu
+      - FOLDY_ADMIN_UPGRADE_LIST=tester@test.edu
       - FOLDY_STORAGE_TYPE=Local
       - FOLDY_LOCAL_STORAGE_DIR=/app/integration_tests/testdata
     networks:

@@ -35,6 +35,7 @@ simple_invokation_fields = ns.model(
         "id": fields.Integer(required=True),
         "type": fields.String(required=False),
         "state": fields.String(required=False),
+        "command": fields.String(required=False),
     },
 )
 
@@ -457,7 +458,6 @@ class DockResource(Resource):
             jobs.run_dock,
             new_dock.id,
             new_invokation_id,
-            current_app.config["FOLDY_GSTORAGE_DIR"],
             job_timeout="2h",
             result_ttl=48 * 60 * 60,  # 2 days
         )

@@ -9,7 +9,7 @@ script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" &>/dev/null && pwd -P)
 
 function usage() {
     cat << EOF # remove the space between << and EOF, this is due to web plugin issue
-        Usage: $(basename "${BASH_SOURCE[0]}") <fold_id> <aa_sequence> <run_amber_relax> <storage type {Local|Cloud}> [<gs_out_folder>]
+        Usage: $(basename "${BASH_SOURCE[0]}") <fold_id> <aa_sequence> <models_to_relax> <storage type {Local|Cloud}> [<gs_out_folder>]
 
         Script description here.
 
@@ -46,7 +46,7 @@ ID=$1
 PADDED_ID=`printf %06d $ID`
 STAGE=$2
 MODEL_PRESET=$3
-RUN_AMBER_RELAX=$4
+MODELS_TO_RELAX=$4
 STORAGE_TYPE=$5
 
 if [ "$STORAGE_TYPE" = "Local" ]; then
@@ -75,7 +75,7 @@ echo "  Fold ID: $ID";
 echo "  Padded Fold ID: $PADDED_ID";
 echo "  Stage: $STAGE";
 echo "  Model preset: $MODEL_PRESET";
-echo "  Run amber relax: $RUN_AMBER_RELAX";
+echo "  Run amber relax: $MODELS_TO_RELAX";
 echo "  Storage Type: $STORAGE_TYPE";
 
 
@@ -126,9 +126,8 @@ esac
 # details.
 ldconfig
 
-echo "Contents of afdbs:"
-ls -lah /foldydbs/afdbs/
-ls -lah /foldydbs/afdbs/small_bfd/
+echo "Contents of foldydbs:"
+tree -L 3 -u -g -p /foldydbs
 
     #--mgnify_database_path=$DATA_DIR/mgnify/mgy_clusters_2018_12.fa \
 time /opt/conda/bin/python /app/alphafold/run_alphafold.py \
@@ -149,7 +148,7 @@ time /opt/conda/bin/python /app/alphafold/run_alphafold.py \
     --num_multimer_predictions_per_model=1 \
     --use_precomputed_msas=True \
     --stop_after_msa=$STOP_AFTER_MSA \
-    --run_relax=$RUN_AMBER_RELAX \
+    --models_to_relax=$MODELS_TO_RELAX \
     --tmp_dir="/tmp" \
     --clear_gpu=$CLEAR_GPU \
     --use_gpu_relax=True

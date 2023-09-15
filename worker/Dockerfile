@@ -8,7 +8,7 @@ WORKDIR /
 # RUN apt-key del 7fa2af80
 # RUN apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/7fa2af80.pub
 # Install curl for this script, and aria2 and rsync for AF DB downloading.
-RUN apt-get -y update && apt-get -y install curl aria2 rsync && \
+RUN apt-get -y update && apt-get -y install tree curl aria2 rsync && \
   curl -O https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-cli-401.0.0-linux-x86_64.tar.gz && \
   tar -xf google-cloud-cli-401.0.0-linux-x86_64.tar.gz && \
   ./google-cloud-sdk/install.sh -q && \

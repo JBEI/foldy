@@ -524,7 +524,9 @@ class FoldStorageUtil:
                             )
 
                 tagstring = ",".join([t.strip() for t in fold_data.get("tags", [])])
-                af2_model_preset = fold_data.get("af2_model_preset", "monomer_ptm")
+                af2_model_preset = (
+                    fold_data.get("af2_model_preset", None) or "monomer_ptm"
+                )
 
                 self.validate_sequence(
                     fold_data["name"], fold_data["sequence"], af2_model_preset

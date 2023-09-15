@@ -10,7 +10,10 @@ from flask_restplus import Resource
 from flask_jwt_extended import create_access_token
 from flask_jwt_extended import set_access_cookies, unset_jwt_cookies
 
-from app.authorization import email_should_get_edit_permission_by_default
+from app.authorization import (
+    email_should_get_edit_permission_by_default,
+    email_should_get_upgraded_to_admin,
+)
 from app.models import User
 from app.extensions import db
 
@@ -107,6 +110,11 @@ class AuthorizeResource(Resource):
                 else "viewer"
             )
             user = user.update(access_type=user_type)
+
+        # If user is listed in FOLDY_ADMIN_UPGRADE_LIST, then they'll be upgraded
+        # to admin.
+        if email_should_get_upgraded_to_admin(email) and user.access_type != "admin":
+            user = user.update(access_type="admin")
 
         access_token = create_access_token(
             identity=email,

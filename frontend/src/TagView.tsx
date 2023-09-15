@@ -6,6 +6,7 @@ import {
   getFolds,
   getJobStatus,
   queueJob,
+  updateFold,
 } from "./services/backend.service";
 import { makeFoldTable } from "./util/foldTable";
 import { CSVLink } from "react-csv";
@@ -137,6 +138,27 @@ function TagView(props: { setErrorText: (a: string) => void }) {
     );
   };
 
+  const makeAllFoldsPublic = () => {
+    if (!folds) {
+      return;
+    }
+    UIkit.modal
+      .confirm(
+        `Are you sure you want to make all folds with tag ${tagString} public?`
+      )
+      .then(() => {
+        folds.forEach((fold) => {
+          if (!fold.id) {
+            console.error("Some fold has a null ID...");
+            return;
+          }
+          updateFold(fold.id, { public: true }).then(() => {
+            UIkit.notification(`Successfully made ${fold.name} public.`);
+          });
+        });
+      });
+  };
+
   return (
     <div className="uk-margin-small-left uk-margin-small-right">
       <h2 className="uk-heading-line uk-margin-left uk-margin-right uk-text-center">
@@ -182,7 +204,19 @@ function TagView(props: { setErrorText: (a: string) => void }) {
               className="uk-button uk-button-primary uk-form-small"
               onClick={() => downloadFoldPdbZip()}
             >
-              Downlaod Fold PDBs in Zip File
+              Download Fold PDBs in Zip File
+            </button>
+          </div>
+        </fieldset>
+
+        <fieldset className="uk-fieldset">
+          <div className="uk-margin">
+            <button
+              type="button"
+              className="uk-button uk-button-primary uk-form-small"
+              onClick={() => makeAllFoldsPublic()}
+            >
+              Make All Structures Public
             </button>
           </div>
         </fieldset>

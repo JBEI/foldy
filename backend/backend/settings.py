@@ -36,7 +36,7 @@ GOOGLE_CLIENT_SECRET = env.str("GOOGLE_CLIENT_SECRET", None)
 OAUTH_REDIRECT_URI = env.str("OAUTH_REDIRECT_URI", None)
 FRONTEND_URL = env.str("FRONTEND_URL")
 FOLDY_USER_EMAIL_DOMAIN = env.str("FOLDY_USER_EMAIL_DOMAIN", None)
-FOLDY_USERS = env.list("FOLDY_USERS", [])
+FOLDY_ADMIN_UPGRADE_LIST = env.list("FOLDY_ADMIN_UPGRADE_LIST", [])
 
 # Either "Local" or "Cloud". Determines which of below flags are necessary.
 FOLDY_STORAGE_TYPE = env.str("FOLDY_STORAGE_TYPE")

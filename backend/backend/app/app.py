@@ -54,6 +54,7 @@ def register_extensions(app):
         column_list = ["email", "created_at", "access_type", "num_folds"]
         column_editable_list = ["email", "created_at", "access_type"]
         column_sortable_list = ["email", "created_at", "access_type"]
+        column_searchable_list = ["email", "access_type"]
         can_export = True
         page_size = 50
 
@@ -95,7 +96,7 @@ def register_extensions(app):
         }
 
     class InvokationModelView(VerifiedModelView):
-        column_searchable_list = ["id", "fold_id", "type", "state", "log"]
+        column_searchable_list = ["id", "fold_id", "type", "state", "log", "command"]
 
     admin.add_view(UserModelView(models.User, db.session))
     admin.add_view(FoldModelView(models.Fold, db.session))

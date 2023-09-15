@@ -20,7 +20,7 @@ export SECRET_KEY=superrandomandveryhardtoguessstring
 # export GOOGLE_CLIENT_ID=
 # export GOOGLE_CLIENT_SECRET=
 # export FOLDY_USER_EMAIL_DOMAIN=
-export FOLDY_USERS=tester@test.edu
+export FOLDY_ADMIN_UPGRADE_LIST=tester@test.edu
 export DISABLE_OAUTH_AUTHENTICATION=True
 
 # Name of the institution, to go on the frontend.

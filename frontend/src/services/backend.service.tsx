@@ -72,6 +72,7 @@ export interface Invokation {
   type: string | null;
   job_id: string | null;
   state: string | null;
+  command: string | null;
   log: string | null;
   timedelta_sec: number | null;
   starttime: string | null; // ISO formatted datetime string.

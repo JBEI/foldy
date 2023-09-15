@@ -19,6 +19,10 @@ You can find more information about employing the different deployment options i
 |Foldy-in-a-Box|All tools can run|Easy|[Instructions](deployment/foldy-in-a-box/README.md)|
 |Helm|Scalable to hundreds of users|Hard|[Instructions](deployment/helm/README.md)|
 
+## Comparison to Other Tools
+
+There is a rich ecosystem for running structural biology tools, and Foldy is not the right structural biology wrapper for everyone! Please review the Foldy paper for a comparison to other useful structural biology tool wrappers.
+
 
 ## Acknowledgements
 
