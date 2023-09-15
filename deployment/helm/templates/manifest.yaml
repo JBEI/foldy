@@ -9,7 +9,7 @@ data:
   BACKEND_URL: "https://{{ required "Must specify FoldyDomain" .Values.FoldyDomain }}"
   FRONTEND_URL: "https://{{ required "Must specify FoldyDomain" .Values.FoldyDomain }}"
   FOLDY_USER_EMAIL_DOMAIN: "{{ .Values.FoldyUserEmailDomain }}"
-  FOLDY_ADMIN_UPGRADE_LIST: "{{ .Values.FoldyAdminUsers }}"
+  FOLDY_ADMIN_UPGRADE_LIST: "{{ .Values.FoldyAdminUpgradeList }}"
   FOLDY_STORAGE_TYPE: "Cloud"
   FOLDY_GCLOUD_PROJECT: "{{ required "Must specify GoogleProjectId" .Values.GoogleProjectId }}"
   FOLDY_GSTORAGE_DIR: "{{ required "Must specify FoldyGstorageDir" .Values.FoldyGstorageDir }}"
