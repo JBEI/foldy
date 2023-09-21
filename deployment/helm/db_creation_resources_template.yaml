@@ -36,7 +36,7 @@ spec:
 
   containers:
     - name: pod-demo
-      image: us-central1-docker.pkg.dev/${GOOGLE_PROJECT_ID}/${GOOGLE_ARTIFACT_REPO}/worker:${VERSION}
+      image: ${GOOGLE_CLOUD_REGION}-docker.pkg.dev/${GOOGLE_PROJECT_ID}/${GOOGLE_ARTIFACT_REPO}/worker:${VERSION}
       command: ["bash", "/worker/download_databases.sh"] # ['sleep', 'infinity'] #
       resources:
         limits:

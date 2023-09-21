@@ -7,6 +7,7 @@ if [ "$#" -ne 0 ]; then
   exit 1
 fi
 
+GOOGLE_CLOUD_ZONE=$(yq eval '.GoogleCloudZone' deployment/helm/values.yaml -e)
 GOOGLE_PROJECT_ID=$(yq eval '.GoogleProjectId' deployment/helm/values.yaml -e)
 GKE_CLUSTER_NAME=$(yq eval '.GkeClusterId' deployment/helm/values.yaml -e)
 GOOGLE_SERVICE_ACCOUNT_ID=$(yq eval '.ServiceAccount' deployment/helm/values.yaml -e)
@@ -17,7 +18,7 @@ echo "Using GKE Cluster ID: $GKE_CLUSTER_ID"
 echo "Using Google Service Account: $SERVICE_ACCOUNT_FULL_ADDRESS"
 
 gcloud container node-pools create generalnodes \
-  --zone us-central1-c \
+  --zone $GOOGLE_CLOUD_ZONE \
   --cluster $GKE_CLUSTER_NAME \
   --num-nodes 0 --min-nodes 0 --max-nodes 3 --enable-autoscaling \
   --spot \
@@ -28,7 +29,7 @@ gcloud container node-pools create generalnodes \
 # https://cloud.google.com/kubernetes-engine/docs/how-to/isolate-workloads-dedicated-nodes
 
 gcloud container node-pools create spothighmemnodes \
-  --zone us-central1-c \
+  --zone $GOOGLE_CLOUD_ZONE \
   --cluster $GKE_CLUSTER_NAME \
   --num-nodes 0 --min-nodes 0 --max-nodes 10 --enable-autoscaling \
   --spot \
@@ -44,7 +45,7 @@ gcloud container node-pools create spothighmemnodes \
 
 gcloud container node-pools create spota100nodes \
   --accelerator type=nvidia-a100-80gb,count=1 \
-  --zone us-central1-c \
+  --zone $GOOGLE_CLOUD_ZONE \
   --cluster $GKE_CLUSTER_NAME \
   --num-nodes 0 --min-nodes 0 --max-nodes 3 --enable-autoscaling \
   --spot \

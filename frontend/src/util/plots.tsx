@@ -175,9 +175,9 @@ export const getResidueHeatmap = (
             },
             annotations: blockAnnotations,
             margin: {
-              l: 40,
+              l: 100,
               r: 40,
-              b: 40,
+              b: 100,
               t: 40,
               pad: 5,
             },
@@ -220,9 +220,9 @@ export const getResidueHeatmap = (
             scaleanchor: "x",
           },
           margin: {
-            l: 80,
+            l: 100,
             r: 40,
-            b: 80,
+            b: 100,
             t: 40,
             pad: 5,
           },

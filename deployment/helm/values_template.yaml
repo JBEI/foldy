@@ -3,6 +3,11 @@
 # Declare variables to be passed into your templates.
 
 GoogleProjectId: ${GOOGLE_PROJECT_ID}
+
+# The region and zone for your installation.
+GoogleCloudRegion: us-central1
+GoogleCloudZone: us-central1-c
+
 ImageVersion: v1
 ServiceAccount: ${GOOGLE_SERVICE_ACCOUNT_ID}
 SecurityPolicy: ""

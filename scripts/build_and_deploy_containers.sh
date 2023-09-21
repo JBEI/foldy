@@ -10,8 +10,10 @@ if [ "$#" -gt 1 ]; then
   exit 2
 fi
 
-GCLOUD_PROJECT_ID=$(yq eval '.GoogleProjectId' deployment/helm/values.yaml -e)
-GCLOUD_ARTIFACT_REPO=$(yq eval '.ArtifactRepo' deployment/helm/values.yaml -e)
+GOOGLE_CLOUD_PROJECT_ID=$(yq eval '.GoogleProjectId' deployment/helm/values.yaml -e)
+GOOGLE_CLOUD_REGION=$(yq eval '.GoogleCloudRegion' deployment/helm/values.yaml -e)
+GOOGLE_CLOUD_ZONE=$(yq eval '.GoogleCloudZone' deployment/helm/values.yaml -e)
+GOOGLE_CLOUD_ARTIFACT_REPO=$(yq eval '.ArtifactRepo' deployment/helm/values.yaml -e)
 VERSION=$(yq eval '.ImageVersion' deployment/helm/values.yaml -e)
 BACKEND_URL="https://$(yq eval '.FoldyDomain' deployment/helm/values.yaml -e)"
 INSTITUTION=$(yq eval '.Institution' deployment/helm/values.yaml -e)
@@ -22,16 +24,18 @@ if [ "$#" -eq 1 ]; then
 fi
 
 echo "Using the following variables:"
-echo "  GCLOUD_PROJECT_ID: $GCLOUD_PROJECT_ID"
-echo "  GCLOUD_ARTIFACT_REPO: $GCLOUD_ARTIFACT_REPO"
+echo "  GOOGLE_CLOUD_PROJECT_ID: $GOOGLE_CLOUD_PROJECT_ID"
+echo "  GOOGLE_CLOUD_REGION: $GOOGLE_CLOUD_REGION"
+echo "  GOOGLE_CLOUD_ZONE: $GOOGLE_CLOUD_ZONE"
+echo "  GOOGLE_CLOUD_ARTIFACT_REPO: $GOOGLE_CLOUD_ARTIFACT_REPO"
 echo "  VERSION: $VERSION"
 echo "  BACKEND_URL: $BACKEND_URL"
 echo "  INSTITUTION: $INSTITUTION"
 echo "  FOLDY ALPHAFOLD TAG: $FOLDY_ALPHAFOLD_TAG"
 
-FRONTEND_TAG=us-central1-docker.pkg.dev/$GCLOUD_PROJECT_ID/$GCLOUD_ARTIFACT_REPO/frontend:$VERSION
-BACKEND_TAG=us-central1-docker.pkg.dev/$GCLOUD_PROJECT_ID/$GCLOUD_ARTIFACT_REPO/backend:$VERSION
-WORKER_TAG=us-central1-docker.pkg.dev/$GCLOUD_PROJECT_ID/$GCLOUD_ARTIFACT_REPO/worker:$VERSION
+FRONTEND_TAG=$GOOGLE_CLOUD_REGION-docker.pkg.dev/$GOOGLE_CLOUD_PROJECT_ID/$GOOGLE_CLOUD_ARTIFACT_REPO/frontend:$VERSION
+BACKEND_TAG=$GOOGLE_CLOUD_REGION-docker.pkg.dev/$GOOGLE_CLOUD_PROJECT_ID/$GOOGLE_CLOUD_ARTIFACT_REPO/backend:$VERSION
+WORKER_TAG=$GOOGLE_CLOUD_REGION-docker.pkg.dev/$GOOGLE_CLOUD_PROJECT_ID/$GOOGLE_CLOUD_ARTIFACT_REPO/worker:$VERSION
 
 echo "Building Alphafold (required for worker)..."
 docker build -t $FOLDY_ALPHAFOLD_TAG -f worker/alphafold/docker/Dockerfile worker/alphafold 

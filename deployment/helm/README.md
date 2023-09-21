@@ -54,10 +54,11 @@ These variables will be used throughout this procedure. Once completed, execute 
 
 1. Choose a domain! We named our instance `LBL foldy`, and reserved the domain `foldy.lbl.gov` with our IT folks, and we think it reads pretty well. If you don't have an IT team who can provision a domain name / record for you, you can reserve an address like _ourinstitute_-foldy.com using any commercial hostname provider
 1. Enable cloud logging API [for prometheus / metrics](https://cloud.google.com/logging/docs/api/enable-api)
-1. Install local tools `gcloud`, `helm`, and `kubectl`:
+1. Install local tools `gcloud`, `helm`, `kubectl`, and `yq`:
    1. Install Google Cloud CLI [[instructions here](https://cloud.google.com/sdk/docs/install-sdk)]
    2. Install Helm CLI [[instructions here](https://helm.sh/docs/intro/install/)], briefly `brew install helm`
    3. Install Kubectl CLI [[instructions here]](https://cloud.google.com/kubernetes-engine/docs/how-to/cluster-access-for-kubectl#install_kubectl)). Briefly, make sure you call `gcloud components install kubectl` and `gcloud components install gke-gcloud-auth-plugin`
+   4. Install yq [[instructions here](https://github.com/mikefarah/yq)]. Briefly, on mac, you can call `brew install yq`.
 1. Create following google cloud resources
 
    - **Create foldy service account** which has scopes/permissions to access necessary foldy resources

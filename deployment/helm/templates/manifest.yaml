@@ -143,7 +143,7 @@ spec:
 
       containers:
       - name: master
-        image: us-central1-docker.pkg.dev/{{ .Values.GoogleProjectId }}/{{ .Values.ArtifactRepo }}/backend:{{  .Values.ImageVersion }}
+        image: {{ .Values.GoogleCloudRegion }}-docker.pkg.dev/{{ .Values.GoogleProjectId }}/{{ .Values.ArtifactRepo }}/backend:{{  .Values.ImageVersion }}
         env:
         - name: PORT
           value: "8080"
@@ -221,7 +221,7 @@ spec:
     spec:
       containers:
       - name: master
-        image: us-central1-docker.pkg.dev/{{ .Values.GoogleProjectId }}/{{ .Values.ArtifactRepo }}/frontend:{{  .Values.ImageVersion }}
+        image: {{ .Values.GoogleCloudRegion }}-docker.pkg.dev/{{ .Values.GoogleProjectId }}/{{ .Values.ArtifactRepo }}/frontend:{{  .Values.ImageVersion }}
         resources:
           requests:
             cpu: 100m
