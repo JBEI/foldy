@@ -81,6 +81,11 @@ else
       --actual_steps 18 \
       --no_final_step_noise 
   cd -
+
+  # Combine all the ranked SDFs into one SDF for easy downloading.
+  cd $OUT_DIR/$PADDED_ID/
+  ls *confidence*.sdf | sort -k1.5n | xargs cat > poses.sdf
+  cd -
 fi
 
 ##############################################################

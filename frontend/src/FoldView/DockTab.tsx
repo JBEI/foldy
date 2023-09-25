@@ -32,6 +32,7 @@ interface DockTabProps {
 
   // UI Commands managed by the FoldView.
   displayedLigandNames: string[];
+  ranks: { [ligandname: string]: number };
   displayLigandPose: (ligandName: string) => void;
   shiftFrame: (ligandName: string, shift: number) => void;
   deleteLigandPose: (ligandId: number, ligandName: string) => void;
@@ -105,6 +106,7 @@ const DockTab = React.memo((props: DockTabProps) => {
             <th uk-tooltip={"[kJ/mol]"}>Energy</th>
             <th uk-tooltip={"Docking Tool"}>Tool</th>
             <th uk-tooltip={"Bounding Box"}>Box</th>
+            <th uk-tooltip={"The rank of the pose being displayed."}>Rank</th>
             <th>Actions</th>
           </tr>
         </thead>
@@ -144,10 +146,11 @@ const DockTab = React.memo((props: DockTabProps) => {
                       dock.bounding_box_radius_angstrom ? (
                         <FaCheckCircle
                           uk-tooltip={`Residue ${dock.bounding_box_residue}\n
-                  Radius ${dock.bounding_box_radius_angstrom}A`}
+                        Radius ${dock.bounding_box_radius_angstrom}A`}
                         />
                       ) : null}
                     </td>
+                    <td>{props.ranks[dock.ligand_name]}</td>
                     <td style={{ width: "100px" }}>
                       {getDockState(dock, props.jobs) === "queued" ||
                       getDockState(dock, props.jobs) === "running" ? (

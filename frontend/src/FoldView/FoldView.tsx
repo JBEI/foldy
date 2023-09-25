@@ -26,9 +26,10 @@ import {
   Stage,
   StructureComponent,
   Component as NGLComponent,
+  RepresentationCollection as NGLRepresentationCollection,
 } from "react-ngl/dist/@types/ngl/declarations/ngl";
 import { useParams } from "react-router-dom";
-import SequenceTab from "./SequenceTab";
+import SequenceTab, { SubsequenceSelection } from "./SequenceTab";
 import ContactTab from "./ContactTab";
 import PaeTab from "./PaeTab";
 import DockTab from "./DockTab";
@@ -149,6 +150,9 @@ interface FoldState {
   // Docking stuff.
   displayedDocks: { [ligandName: string]: DisplayedDock };
 
+  // Nglviewer and other view management.
+  pdbRepr: NGLRepresentationCollection | null;
+  selectionRepr: NGLRepresentationCollection | null;
   pdbFailedToLoad: boolean;
   paeIsOnScreen: boolean;
   contactIsOnScreen: boolean;
@@ -182,6 +186,8 @@ class InternalFoldView extends Component<FoldProps, FoldState> {
 
       displayedDocks: {},
 
+      pdbRepr: null,
+      selectionRepr: null,
       pdbFailedToLoad: false,
       paeIsOnScreen: false,
       contactIsOnScreen: false,
@@ -316,10 +322,21 @@ class InternalFoldView extends Component<FoldProps, FoldState> {
             const nglColorScheme = this.getNglColorSchemeName(
               this.state.colorScheme
             );
-            stage.loadFile(stringBlob, { ext: "pdb" }).then(function (o: any) {
-              o.addRepresentation("cartoon", { colorScheme: nglColorScheme });
+            stage.loadFile(stringBlob, { ext: "pdb" }).then((o: any) => {
+              const pdbRepr = o.addRepresentation("cartoon", {
+                colorScheme: nglColorScheme,
+              });
               var duration = 1000; // optional duration for animation, defaults to zero
               o.autoView(duration);
+
+              const selectionRepr = o.addRepresentation("cartoon", {
+                // Start out with nothing selected - so make an impossible selection.
+                sele: "1 and 2",
+                // color: "#F866AF",  // Hot pink.
+                color: "red",
+              });
+
+              this.setState({ pdbRepr: pdbRepr, selectionRepr: selectionRepr });
             });
             stage.setRock(false);
             this.state.stageRef.current.addEventListener(
@@ -432,19 +449,8 @@ class InternalFoldView extends Component<FoldProps, FoldState> {
 
       var nglViewerColorScheme = this.getNglColorSchemeName(newColorScheme);
 
-      this.state.stage.removeAllComponents();
-      if (this.state.pdb) {
-        var stringBlob = new Blob([this.state.pdb.pdb_string], {
-          type: "text/plain",
-        });
-        this.state.stage
-          .loadFile(stringBlob, { ext: "pdb" })
-          .then(function (o: any) {
-            o.addRepresentation("cartoon", {
-              colorScheme: nglViewerColorScheme,
-            });
-            o.autoView();
-          });
+      if (this.state.pdbRepr) {
+        this.state.pdbRepr.setColor(nglViewerColorScheme);
       }
       this.setState({ colorScheme: newColorScheme });
     };
@@ -804,11 +810,29 @@ class InternalFoldView extends Component<FoldProps, FoldState> {
     const handleTagClick = (tagToOpen: string) => {
       window.open(`/tag/${tagToOpen}`, "_self");
     };
+    const setSelectedSubsequence = (sele: SubsequenceSelection) => {
+      // Selection language described here:
+      // https://nglviewer.org/ngl/api/manual/usage/selection-language.html
+      // Convert chain index to a chain name, which is just "A" or "B" for NGL,
+      // for some reason.
+      const nglChainName = String.fromCharCode(65 + sele.chainIdx);
+      const selectionString = `${sele.startResidue}-${sele.endResidue}:${nglChainName}`;
+      if (this.state.selectionRepr) {
+        console.log(`Settings selection to "${selectionString}"`);
+        this.state.selectionRepr.setSelection(selectionString); // and :${chain}`);
+      } else {
+        console.log("No selectionRepr found.");
+      }
+    };
 
     const downloadFile = (keys: string[]) => {
+      function removeLeadingSlash(val: string) {
+        return val.startsWith("/") ? val.substring(1) : val;
+      }
       console.log(keys);
       for (let key of keys) {
-        getFile(this.props.foldId, key).then(
+        console.log(`Getting ${key} from server...`);
+        getFile(this.props.foldId, removeLeadingSlash(key)).then(
           (fileBlob: Blob) => {
             console.log(`Downloading ${key}!!!`);
             const newFname = key.split("/").slice(-1);
@@ -926,6 +950,7 @@ class InternalFoldView extends Component<FoldProps, FoldState> {
                     addTag={addTag}
                     deleteTag={deleteTag}
                     handleTagClick={handleTagClick}
+                    setSelectedSubsequence={setSelectedSubsequence}
                     userType={this.props.userType}
                   ></SequenceTab>
                 ) : null}
@@ -962,7 +987,7 @@ class InternalFoldView extends Component<FoldProps, FoldState> {
                         <tbody>
                           {[...this.state.jobs].map((job: Invokation) => {
                             return (
-                              <tr key={job.job_id}>
+                              <tr key={`${job.job_id}_${job.id}`}>
                                 <td
                                   className="uk-text-nowrap uk-text-truncate"
                                   uk-tooltip={job.type}
@@ -1081,6 +1106,11 @@ class InternalFoldView extends Component<FoldProps, FoldState> {
                   jobs={this.state.foldData ? this.state.foldData.jobs : null}
                   setErrorText={this.props.setErrorText}
                   displayedLigandNames={Object.keys(this.state.displayedDocks)}
+                  ranks={Object.fromEntries(
+                    Object.entries(this.state.displayedDocks).map(
+                      ([key, value]) => [key, value.frame + 1]
+                    )
+                  )}
                   displayLigandPose={displayLigandPose}
                   shiftFrame={shiftFrame}
                   deleteLigandPose={deleteLigandPose}

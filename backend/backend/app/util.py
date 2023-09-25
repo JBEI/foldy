@@ -658,12 +658,16 @@ class FoldStorageUtil:
             raise BadRequest(f"Failed to unpack file pfam for {fold_id} ({e}).")
 
     def get_dock_sdf(self, fold_id, tool, ligand_name):
-        if not tool or tool == "vina":
+        try:
+            # As of 9/24/23, we postprocess all DiffDock outputs into one SDF.
             return self.storage_manager.get_binary(
                 fold_id, f"dock/{ligand_name}/poses.sdf"
             )
-        elif tool == "diffdock":
+        except Exception as e:
+            if tool != "diffdock":
+                raise e
+
+            # For old diffdock structures, we'll also try the old approach:
             return self.storage_manager.get_binary(
                 fold_id, f"dock/{ligand_name}/rank1.sdf"
             )
-        raise BadRequest(f"Unknown docking tool {tool}")

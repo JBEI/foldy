@@ -4,6 +4,13 @@ import { VariousColorSchemes } from "../util/plots";
 import { AiFillEdit } from "react-icons/ai";
 const ReactSequenceViewer = require("react-sequence-viewer");
 
+export interface SubsequenceSelection {
+  chainIdx: number;
+  startResidue: number;
+  endResidue: number;
+  subsequence: string;
+}
+
 interface SequenceTabProps {
   foldId: number;
   foldName: string;
@@ -22,6 +29,8 @@ interface SequenceTabProps {
   addTag: (tagToAdd: string) => void;
   deleteTag: (tagToDelete: string) => void;
   handleTagClick: (tagToOpen: string) => void;
+
+  setSelectedSubsequence: (sele: SubsequenceSelection) => void;
 
   userType: string | null;
 }
@@ -51,25 +60,46 @@ const SequenceTab = React.memo(
     return (
       <div>
         {props.sequence.split(";").map((ss: string, idx: number) => {
-          var subseq, subseqName;
+          var chainSeq;
+          var chainName: string;
           if (ss.includes(":")) {
-            subseqName = ss.split(":")[0];
-            subseq = ss.split(":")[1];
+            chainName = ss.split(":")[0];
+            chainSeq = ss.split(":")[1];
           } else {
-            subseqName = props.foldName;
-            subseq = ss;
+            chainName = props.foldName;
+            chainSeq = ss;
           }
           return (
             <ReactSequenceViewer.default
               key={idx}
-              sequence={subseq}
-              title={subseqName}
+              sequence={chainSeq}
+              title={chainName}
               badge={false}
               id={idx.toString() + "rsv"}
               charsPerLine={50}
               wrapAminoAcids={true}
               coverage={getSequenceViewerCoverage(idx)}
               legend={getSequenceViewerLegend(idx)}
+              onMouseSelection={(sele: {
+                detail: {
+                  start: number;
+                  end: number;
+                  selection: string;
+                };
+              }) => {
+                console.log(`on mouse selection ${sele}`);
+                console.log(sele);
+                // have access to .detail.{selection, start, end}
+                props.setSelectedSubsequence({
+                  chainIdx: idx,
+                  startResidue: sele.detail.start,
+                  endResidue: sele.detail.end,
+                  subsequence: sele.detail.selection,
+                });
+              }}
+              // onSubpartSelected={(sele: string) => {
+              //   console.log(`on subpart selected ${sele}`);
+              // }}
             />
           );
         })}

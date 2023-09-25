@@ -276,6 +276,7 @@ class FoldPklResource(Resource):
 @ns.route("/dock_sdf/<int:fold_id>/<string:ligand_name>")
 class FoldPklResource(Resource):
     def post(self, fold_id, ligand_name):
+        print(f"Finding dock for {fold_id} for {ligand_name}", flush=True)
         query = db.session.query(Dock).filter(
             and_(
                 Dock.ligand_name == ligand_name,
@@ -311,6 +312,7 @@ class FoldFileResource(Resource):
 class FileDownloadResource(Resource):
     def post(self, fold_id, subpath):
         # TODO: test this.
+        print(f"Fetching {subpath}...")
         manager = FoldStorageUtil()
         manager.setup()
         sdf_str = manager.storage_manager.get_binary(fold_id, subpath)
