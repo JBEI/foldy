@@ -83,7 +83,7 @@ else
   cd -
 
   # Combine all the ranked SDFs into one SDF for easy downloading.
-  cd $OUT_DIR/$PADDED_ID/
+  cd $OUT_DIR/$PADDED_ID/dock/${LIGAND_NAME}
   ls *confidence*.sdf | sort -k1.5n | xargs cat > poses.sdf
   cd -
 fi

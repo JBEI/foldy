@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import UIkit from "uikit";
 import {
+  Dock,
   Fold,
   getFoldPdbZip,
   getFolds,
@@ -160,7 +161,15 @@ function TagView(props: { setErrorText: (a: string) => void }) {
   };
 
   return (
-    <div className="uk-margin-small-left uk-margin-small-right">
+    <div
+      className="uk-margin-small-left uk-margin-small-right"
+      style={{
+        flexGrow: 1,
+        overflowY: "scroll",
+        paddingTop: "10px",
+        paddingBottom: "10px",
+      }}
+    >
       <h2 className="uk-heading-line uk-margin-left uk-margin-right uk-text-center">
         <b>Tag: {tagString}</b>
       </h2>
@@ -255,6 +264,10 @@ function TagView(props: { setErrorText: (a: string) => void }) {
         <NewDockPrompt
           setErrorText={props.setErrorText}
           foldIds={folds.map((fold) => fold.id ?? -1)} // Should never happen, but null fold ids are replaced w/ invalid.
+          existingLigands={Array.prototype.reduce((acc, fold) => ({
+            ...acc,
+            [fold.id]: (fold.docks ?? []).map((dock: Dock) => dock.ligand_name),
+          }))}
         />
       ) : null}
     </div>

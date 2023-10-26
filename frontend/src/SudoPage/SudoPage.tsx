@@ -183,6 +183,12 @@ function SudoPage(props: { setErrorText: (a: string) => void }) {
     <form
       data-testid="Workers"
       className="uk-margin-left uk-margin-right uk-form-horizontal"
+      style={{
+        flexGrow: 1,
+        overflowY: "scroll",
+        paddingTop: "10px",
+        paddingBottom: "10px",
+      }}
     >
       <h3>Create the DBs</h3>
       <button

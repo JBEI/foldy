@@ -111,3 +111,52 @@ body {
 .hiddenscrollbar::-webkit-scrollbar {
   display: none;
 }
+
+/********************* CSS for FoldView *********************/
+.tool-page {
+  flex-grow: 1;
+  overflow: scroll;
+}
+@media (min-width: 960px) { /* Replace 768px with the breakpoint for medium screens in your framework */
+  .tool-page {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    overflow: clip;
+  }
+}
+
+// .tool-panel-container {}
+@media (min-width: 960px) { /* Replace 768px with the breakpoint for medium screens in your framework */
+  .tool-panel-container {
+    flex-grow: 1;
+    overflow-y: clip;
+  }
+}
+
+.structure-panel {
+  height: 300px;
+  min-height: 300px;
+}
+@media (min-width: 960px) { /* Replace 768px with the breakpoint for medium screens in your framework */
+  .structure-panel {
+    height: 100%;
+  }
+}
+
+// .tool-panel {}
+@media (min-width: 960px) { /* Replace 768px with the breakpoint for medium screens in your framework */
+  .tool-panel {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+}
+
+// .tool-panel-contents {}
+@media (min-width: 960px) { /* Replace 768px with the breakpoint for medium screens in your framework */
+  .tool-panel-contents {
+    flex-grow: 1;
+    overflow-y: scroll;
+  }
+}

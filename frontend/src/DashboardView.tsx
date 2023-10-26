@@ -125,100 +125,93 @@ function AuthenticatedDashboardView(props: {
     setFilter([newTerm]);
   };
 
-  return (
-    <div>
-      {authenticationService.currentJwtStringValue ? (
-        <div>
-          {/* <hr className="uk-divider-icon" /> */}
-          <div
-            className="uk-button-group uk-width-1-1 uk-padding"
-            uk-tooltip="Click the magnifying glass or hit enter to execute your search."
-          >
-            <form
-              className="uk-search uk-search-default uk-width-4-5"
-              onSubmit={(e) => updateSearchTerm(e)}
-            >
-              <button
-                className="uk-search-icon-flip"
-                uk-search-icon={1}
-              ></button>
-              <input
-                className="uk-search-input"
-                type="search"
-                placeholder="Search"
-                value={filterFormValue}
-                onChange={(e) => updateSearchBarText(e.target.value)}
-              />
-            </form>
-            &nbsp;
-            <div className="uk-width-1-5">
-              <Link to={"/newFold"}>
-                <button className="uk-button uk-button-default uk-width-1-1">
-                  New
-                </button>
-              </Link>
-            </div>
-          </div>
-
-          {folds ? (
-            <div
-              key="loadedDiv"
-              style={{ opacity: searchIsStale ? "60%" : "100%" }}
-            >
-              {makeFoldTable(folds)}
-              {folds.length === 0 ? (
-                <div className="uk-flex uk-flex-center uk-flex-middle uk-margin-top">
-                  <div
-                    className="uk-button uk-button-default"
-                    onClick={() => {
-                      searchForNewTerm("");
-                    }}
-                  >
-                    No folds found. View all folds?
-                  </div>
-                </div>
-              ) : null}
-              <ul className="uk-pagination">
-                {pageNum > 1 ? (
-                  <li>
-                    <span
-                      onClick={() => setPage(pageNum - 1)}
-                      style={{ userSelect: "none" }}
-                    >
-                      <span
-                        className="uk-margin-small-right"
-                        uk-pagination-previous={1}
-                      ></span>
-                      Previous
-                    </span>
-                  </li>
-                ) : null}
-                {folds.length === PAGE_SIZE ? (
-                  <li className="uk-margin-auto-left">
-                    <span
-                      onClick={() => setPage(pageNum + 1)}
-                      style={{ userSelect: "none" }}
-                    >
-                      Next
-                      <span
-                        className="uk-margin-small-left"
-                        uk-pagination-next={1}
-                      ></span>
-                    </span>
-                  </li>
-                ) : null}
-              </ul>
-            </div>
-          ) : (
-            <div className="uk-text-center" key="unloadedDiv">
-              {/* We're setting key so that the table doesn't spin... */}
-              <div uk-spinner="ratio: 4" key="spinner"></div>
-            </div>
-          )}
+  return authenticationService.currentJwtStringValue ? (
+    <div style={{ flexGrow: 1, overflowY: "scroll" }}>
+      {/* <hr className="uk-divider-icon" /> */}
+      <div
+        className="uk-button-group uk-width-1-1 uk-padding"
+        uk-tooltip="Click the magnifying glass or hit enter to execute your search."
+      >
+        <form
+          className="uk-search uk-search-default uk-width-4-5"
+          onSubmit={(e) => updateSearchTerm(e)}
+        >
+          <button className="uk-search-icon-flip" uk-search-icon={1}></button>
+          <input
+            className="uk-search-input"
+            type="search"
+            placeholder="Search"
+            value={filterFormValue}
+            onChange={(e) => updateSearchBarText(e.target.value)}
+          />
+        </form>
+        &nbsp;
+        <div className="uk-width-1-5">
+          <Link to={"/newFold"}>
+            <button className="uk-button uk-button-default uk-width-1-1">
+              New
+            </button>
+          </Link>
         </div>
-      ) : null}
+      </div>
+
+      {folds ? (
+        <div
+          key="loadedDiv"
+          style={{ opacity: searchIsStale ? "60%" : "100%" }}
+        >
+          {makeFoldTable(folds)}
+          {folds.length === 0 ? (
+            <div className="uk-flex uk-flex-center uk-flex-middle uk-margin-top">
+              <div
+                className="uk-button uk-button-default"
+                onClick={() => {
+                  searchForNewTerm("");
+                }}
+              >
+                No folds found. View all folds?
+              </div>
+            </div>
+          ) : null}
+          <ul className="uk-pagination">
+            {pageNum > 1 ? (
+              <li>
+                <span
+                  onClick={() => setPage(pageNum - 1)}
+                  style={{ userSelect: "none" }}
+                >
+                  <span
+                    className="uk-margin-small-right"
+                    uk-pagination-previous={1}
+                  ></span>
+                  Previous
+                </span>
+              </li>
+            ) : null}
+            {folds.length === PAGE_SIZE ? (
+              <li className="uk-margin-auto-left">
+                <span
+                  onClick={() => setPage(pageNum + 1)}
+                  style={{ userSelect: "none" }}
+                >
+                  Next
+                  <span
+                    className="uk-margin-small-left"
+                    uk-pagination-next={1}
+                  ></span>
+                </span>
+              </li>
+            ) : null}
+          </ul>
+        </div>
+      ) : (
+        <div className="uk-text-center" key="unloadedDiv">
+          {/* We're setting key so that the table doesn't spin... */}
+          <div uk-spinner="ratio: 4" key="spinner"></div>
+        </div>
+      )}
     </div>
-  );
+  ) : null;
 }
 
 function DashboardView(props: {

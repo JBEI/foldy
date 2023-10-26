@@ -44,7 +44,24 @@ const getBBResidueErrorMessage = (bboxResidue: string | null) => {
 interface newDockTextboxInterface {
   setErrorText: (error: string) => void;
   foldIds: number[];
+  existingLigands: { [foldId: number]: Array<string> };
 }
+
+const checkForExistingLigands = (
+  newLigandName: string,
+  existingLigands: { [foldId: number]: Array<string> }
+) => {
+  const matchingFolds = [];
+
+  for (const foldId in existingLigands) {
+    const ligandList = existingLigands[foldId];
+    if (ligandList.includes(newLigandName)) {
+      matchingFolds.push(foldId);
+    }
+  }
+
+  return matchingFolds.length > 0 ? matchingFolds : null;
+};
 
 export function NewDockPrompt(props: newDockTextboxInterface) {
   const [toolName, setToolName] = useState<string>("");
@@ -56,6 +73,8 @@ export function NewDockPrompt(props: newDockTextboxInterface) {
   const [boundingBoxRadiusAngstrom, setBoundingBoxRadiusAngstrom] = useState<
     string | null
   >(null);
+  const [overrideExistingLigands, setOverrideExistingLigands] =
+    useState<boolean>(false);
   const [showTextbox, setShowTextbox] = useState<boolean>(false);
   const [textboxContents, setTextboxContents] = useState<string | null>(null);
 
@@ -93,6 +112,16 @@ export function NewDockPrompt(props: newDockTextboxInterface) {
       if (toolName === "") {
         errors.push("Must select a docking tool.");
         return;
+      }
+
+      const foldsWithExistingLigand = checkForExistingLigands(
+        name,
+        props.existingLigands
+      );
+      if (foldsWithExistingLigand && !overrideExistingLigands) {
+        errors.push(
+          `This would overwrite the "${name}" ligand for ${foldsWithExistingLigand.length} folds, including for ${foldsWithExistingLigand[0]}. Aborting.`
+        );
       }
 
       props.foldIds.forEach((foldId) => {
@@ -143,6 +172,17 @@ export function NewDockPrompt(props: newDockTextboxInterface) {
 
     if (toolName === "") {
       props.setErrorText("Must select a docking tool.");
+      return;
+    }
+
+    const foldsWithExistingLigand = checkForExistingLigands(
+      ligandName,
+      props.existingLigands
+    );
+    if (foldsWithExistingLigand && !overrideExistingLigands) {
+      props.setErrorText(
+        `This would overwrite the "${ligandName}" ligand for ${foldsWithExistingLigand.length} folds, including for ${foldsWithExistingLigand[0]}. Aborting.`
+      );
       return;
     }
 
@@ -287,6 +327,20 @@ export function NewDockPrompt(props: newDockTextboxInterface) {
               onChange={(e) => setBoundingBoxRadiusAngstrom(e.target.value)}
               disabled={toolName === "diffdock"}
             />
+          </div>
+          <div className="uk-grid-small uk-child-width-auto uk-grid">
+            <label>
+              <input
+                className="uk-checkbox uk-margin-small-right uk-margin-small-left"
+                id="form-horizontal-text"
+                type="checkbox"
+                checked={overrideExistingLigands || false}
+                onChange={(e) =>
+                  setOverrideExistingLigands(!overrideExistingLigands)
+                }
+              />
+              Override Existing Docking Runs
+            </label>
           </div>
         </form>
       )}

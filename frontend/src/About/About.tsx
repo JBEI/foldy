@@ -2,7 +2,15 @@ import React from "react";
 import { getDescriptionOfUserType } from "./../services/authentication.service";
 
 const About = (props: { userType: string | null }) => (
-  <div data-testid="About">
+  <div
+    data-testid="About"
+    style={{
+      flexGrow: 1,
+      overflowY: "scroll",
+      paddingTop: "10px",
+      paddingBottom: "10px",
+    }}
+  >
     <h1>About</h1>
     <p>
       Thanks for using <b>{process.env.REACT_APP_INSTITUTION} Foldy</b>, a

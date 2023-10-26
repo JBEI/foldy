@@ -6,8 +6,10 @@ import {
   FaChevronRight,
   FaClock,
   FaDownload,
+  FaEllipsisV,
   FaEye,
   FaFrownOpen,
+  FaHamburger,
   FaRedo,
   FaTrash,
 } from "react-icons/fa";
@@ -163,17 +165,6 @@ const DockTab = React.memo((props: DockTabProps) => {
                       ) : null}
                       {getDockState(dock, props.jobs) === "finished" ? (
                         <span>
-                          <FaDownload
-                            uk-tooltip="Download SDF of ligand pose."
-                            onClick={() =>
-                              downloadLigandPose(
-                                props.foldId,
-                                props.foldName,
-                                dock.ligand_name,
-                                props.setErrorText
-                              )
-                            }
-                          />
                           <FaEye
                             uk-tooltip="Toggle display at left."
                             onClick={() =>
@@ -198,18 +189,54 @@ const DockTab = React.memo((props: DockTabProps) => {
                           />
                         </span>
                       ) : null}
-                      <FaTrash
-                        uk-tooltip="Delete docking result."
-                        onClick={() =>
-                          props.deleteLigandPose(dock.id, dock.ligand_name)
-                        }
-                      />
-                      <FaRedo
-                        uk-tooltip="Rerun this dock."
-                        onClick={() => {
-                          rerunDock(dock);
-                        }}
-                      />
+                      <FaEllipsisV></FaEllipsisV>
+                      <div uk-dropdown="pos: bottom-right; boundary: !.boundary; shift: false; flip: false">
+                        <ul className="uk-nav uk-dropdown-nav">
+                          {getDockState(dock, props.jobs) === "finished" ? (
+                            <li className="uk-active">
+                              <a
+                                uk-tooltip="Download SDF of ligand pose."
+                                onClick={() =>
+                                  downloadLigandPose(
+                                    props.foldId,
+                                    props.foldName,
+                                    dock.ligand_name,
+                                    props.setErrorText
+                                  )
+                                }
+                              >
+                                <FaDownload />
+                                Download
+                              </a>
+                            </li>
+                          ) : null}
+                          <li className="uk-active">
+                            <a
+                              uk-tooltip="Delete docking result."
+                              onClick={() =>
+                                props.deleteLigandPose(
+                                  dock.id,
+                                  dock.ligand_name
+                                )
+                              }
+                            >
+                              <FaTrash />
+                              Delete
+                            </a>
+                          </li>
+                          <li>
+                            <a
+                              uk-tooltip="Rerun this dock."
+                              onClick={() => {
+                                rerunDock(dock);
+                              }}
+                            >
+                              <FaRedo />
+                              Rerun
+                            </a>
+                          </li>
+                        </ul>
+                      </div>
                     </td>
                   </tr>
                 );
@@ -221,6 +248,11 @@ const DockTab = React.memo((props: DockTabProps) => {
       <NewDockPrompt
         setErrorText={props.setErrorText}
         foldIds={[props.foldId]}
+        existingLigands={{
+          [props.foldId]: [
+            ...(props.docks ?? []).map((dock) => dock.ligand_name),
+          ],
+        }}
       />
     </div>
   );

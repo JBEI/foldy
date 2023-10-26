@@ -343,7 +343,15 @@ function NewFold(props: {
   };
 
   return (
-    <div data-testid="NewFold">
+    <div
+      data-testid="NewFold"
+      style={{
+        flexGrow: 1,
+        overflowY: "scroll",
+        paddingTop: "10px",
+        paddingBottom: "10px",
+      }}
+    >
       <fieldset className="uk-fieldset">
         <form className="uk-form-horizontal uk-margin-left uk-margin-right">
           <legend className="uk-legend">

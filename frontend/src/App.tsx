@@ -244,7 +244,7 @@ function RoutedApp() {
   );
 
   return (
-    <div>
+    <div style={{ height: "100vh", display: "flex", flexDirection: "column" }}>
       {/* <AcceptJWTAndRedirect setToken={setToken} decodedToken={fullDecodedToken} isExpired={isExpired} /> */}
       <div className="uk-visible@m">{desktop_navbar}</div>
       <div className="uk-hidden@m">{mobile_navbar}</div>
@@ -299,7 +299,17 @@ function RoutedApp() {
         </div>
       </div>
 
-      <div className="uk-width-5-6@xl uk-container-center uk-align-center">
+      <div
+        className="uk-width-5-6@xl uk-container-center uk-align-center"
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          flexGrow: 1,
+          overflow: "clip",
+          marginTop: "0px",
+          marginBottom: "0px",
+        }}
+      >
         <Routes>
           <Route
             path="/fold/:foldId"
