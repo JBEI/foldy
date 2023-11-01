@@ -305,7 +305,7 @@ function RoutedApp() {
           display: "flex",
           flexDirection: "column",
           flexGrow: 1,
-          overflow: "clip",
+          overflow: "hidden",
           marginTop: "0px",
           marginBottom: "0px",
         }}

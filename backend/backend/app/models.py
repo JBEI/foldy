@@ -121,5 +121,8 @@ class Dock(PkModel):
         db.ForeignKey("invokation.id", ondelete="CASCADE", onupdate="CASCADE"),
     )
 
-    # Outputs.
+    # Vina output.
     pose_energy = Column(db.String, nullable=True)
+
+    # Diffdock output - a CSV of pose confidences.
+    pose_confidences = Column(db.String, nullable=True)

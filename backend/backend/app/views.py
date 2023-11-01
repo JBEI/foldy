@@ -73,6 +73,7 @@ dock_fields = ns.model(
         ),
         "invokation_id": fields.Integer(required=False),
         "pose_energy": fields.Float(required=False),
+        "pose_confidences": fields.String(required=False),
     },
 )
 
@@ -277,26 +278,30 @@ class FoldPklResource(Resource):
 class FoldPklResource(Resource):
     def post(self, fold_id, ligand_name):
         print(f"Finding dock for {fold_id} for {ligand_name}", flush=True)
-        query = db.session.query(Dock).filter(
-            and_(
-                Dock.ligand_name == ligand_name,
-                Dock.receptor_fold_id == fold_id,
+        dock = (
+            db.session.query(Dock)
+            .filter(
+                and_(
+                    Dock.ligand_name == ligand_name,
+                    Dock.receptor_fold_id == fold_id,
+                )
             )
+            .first()
         )
-        for dock in query:
-            if not dock:
-                pass
-            manager = FoldStorageUtil()
-            manager.setup()
-            sdf_str = manager.get_dock_sdf(fold_id, dock.tool, ligand_name)
-            return send_file(
-                io.BytesIO(sdf_str),
-                mimetype="application/octet-stream",
-                attachment_filename=f"{ligand_name}.sdf",
-                as_attachment=True,
+
+        if not dock:
+            raise BadRequest(
+                f"Dock for fold id {fold_id} ligand name {ligand_name} not found."
             )
-        raise BadRequest(
-            f"Dock for fold id {fold_id} ligand name {ligand_name} not found."
+
+        manager = FoldStorageUtil()
+        manager.setup()
+        sdf_str = manager.get_dock_sdf(dock)
+        return send_file(
+            io.BytesIO(sdf_str),
+            mimetype="application/octet-stream",
+            attachment_filename=f"{ligand_name}.sdf",
+            as_attachment=True,
         )
 
 

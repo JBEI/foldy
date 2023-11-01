@@ -100,150 +100,173 @@ const DockTab = React.memo((props: DockTabProps) => {
       </a>
       ). The default behavior is to look for ligand poses anywhere within the
       protein.
-      <table className="uk-table uk-table-striped uk-table-small">
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>SMILES</th>
-            <th uk-tooltip={"[kJ/mol]"}>Energy</th>
-            <th uk-tooltip={"Docking Tool"}>Tool</th>
-            <th uk-tooltip={"Bounding Box"}>Box</th>
-            <th uk-tooltip={"The rank of the pose being displayed."}>Rank</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {props.docks
-            ? [...props.docks].map((dock) => {
-                return (
-                  <tr key={dock.ligand_name}>
-                    <td>{dock.ligand_name}</td>
-                    <td style={{ overflowWrap: "anywhere", width: "300px" }}>
-                      <ReactShowMoreText
-                        lines={1}
-                        more="..."
-                        less="less"
-                        expanded={false}
-                        truncatedEndingComponent={" "}
-                      >
-                        {dock.ligand_smiles}
-                      </ReactShowMoreText>
-                    </td>
-                    <td>
-                      {dock.tool === "diffdock" ? (
-                        <span
-                          uk-tooltip={
-                            "DiffDock does not compute energy of docking."
-                          }
-                        >
-                          N/A
-                        </span>
-                      ) : (
-                        dock.pose_energy
-                      )}
-                    </td>
-                    <td>{dock.tool}</td>
-                    <td>
-                      {dock.bounding_box_residue &&
-                      dock.bounding_box_radius_angstrom ? (
-                        <FaCheckCircle
-                          uk-tooltip={`Residue ${dock.bounding_box_residue}\n
-                        Radius ${dock.bounding_box_radius_angstrom}A`}
-                        />
-                      ) : null}
-                    </td>
-                    <td>{props.ranks[dock.ligand_name]}</td>
-                    <td style={{ width: "100px" }}>
-                      {getDockState(dock, props.jobs) === "queued" ||
-                      getDockState(dock, props.jobs) === "running" ? (
-                        <FaClock uk-tooltip={getDockState(dock, props.jobs)} />
-                      ) : null}
-                      {getDockState(dock, props.jobs) === "failed" ? (
-                        <FaFrownOpen
-                          uk-tooltip={getDockState(dock, props.jobs)}
-                        />
-                      ) : null}
-                      {getDockState(dock, props.jobs) === "finished" ? (
-                        <span>
-                          <FaEye
-                            uk-tooltip="Toggle display at left."
-                            onClick={() =>
-                              props.displayLigandPose(dock.ligand_name)
-                            }
-                          />
-                        </span>
-                      ) : null}
-                      {props.displayedLigandNames.includes(dock.ligand_name) ? (
-                        <span>
-                          <FaChevronLeft
-                            onClick={() =>
-                              props.shiftFrame(dock.ligand_name, -1)
-                            }
-                            uk-tooltip="Previous prediction"
-                          />
-                          <FaChevronRight
-                            onClick={() =>
-                              props.shiftFrame(dock.ligand_name, 1)
-                            }
-                            uk-tooltip="Next prediction"
-                          />
-                        </span>
-                      ) : null}
-                      <FaEllipsisV></FaEllipsisV>
-                      <div uk-dropdown="pos: bottom-right; boundary: !.boundary; shift: false; flip: false">
-                        <ul className="uk-nav uk-dropdown-nav">
-                          {getDockState(dock, props.jobs) === "finished" ? (
-                            <li className="uk-active">
-                              <a
-                                uk-tooltip="Download SDF of ligand pose."
-                                onClick={() =>
-                                  downloadLigandPose(
-                                    props.foldId,
-                                    props.foldName,
-                                    dock.ligand_name,
-                                    props.setErrorText
-                                  )
-                                }
-                              >
-                                <FaDownload />
-                                Download
-                              </a>
-                            </li>
-                          ) : null}
-                          <li className="uk-active">
-                            <a
-                              uk-tooltip="Delete docking result."
-                              onClick={() =>
-                                props.deleteLigandPose(
-                                  dock.id,
-                                  dock.ligand_name
-                                )
+      <div style={{ display: "flex", flexDirection: "row" }}>
+        <div style={{ overflowX: "scroll", flexGrow: 1 }}>
+          <table className="uk-table uk-table-striped uk-table-small">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th
+                  uk-tooltip={
+                    "Vina- energy of pose (kJ/mol, lower is better); Diffdock- confidence (unitless, higher is better)"
+                  }
+                >
+                  Goodness
+                </th>
+                <th uk-tooltip={"The rank of the pose being displayed."}>
+                  Rank
+                </th>
+                <th uk-tooltip={"Docking Tool"}>Tool</th>
+                <th uk-tooltip={"Bounding Box"}>Box</th>
+                <th>SMILES</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {props.docks
+                ? [...props.docks].map((dock) => {
+                    return (
+                      <tr key={dock.ligand_name}>
+                        <td>{dock.ligand_name}</td>
+                        <td>
+                          {dock.tool === "diffdock" ? (
+                            <span uk-tooltip={"Confidence, higher is better."}>
+                              {
+                                dock.pose_confidences?.split(",")[
+                                  props.ranks[dock.ligand_name] - 1 || 0
+                                ]
                               }
-                            >
-                              <FaTrash />
-                              Delete
-                            </a>
-                          </li>
-                          <li>
-                            <a
-                              uk-tooltip="Rerun this dock."
-                              onClick={() => {
-                                rerunDock(dock);
-                              }}
-                            >
-                              <FaRedo />
-                              Rerun
-                            </a>
-                          </li>
-                        </ul>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })
-            : null}
-        </tbody>
-      </table>
+                            </span>
+                          ) : (
+                            <span uk-tooltip={"kJ/mol"}>
+                              {(props.ranks[dock.ligand_name] - 1 || 0) == 0
+                                ? dock.pose_energy
+                                : null}
+                            </span>
+                          )}
+                        </td>
+                        <td>{props.ranks[dock.ligand_name]}</td>
+                        <td>{dock.tool}</td>
+                        <td>
+                          {dock.bounding_box_residue &&
+                          dock.bounding_box_radius_angstrom ? (
+                            <FaCheckCircle
+                              uk-tooltip={`Residue ${dock.bounding_box_residue}\n
+                        Radius ${dock.bounding_box_radius_angstrom}A`}
+                            />
+                          ) : null}
+                        </td>
+                        <td style={{ overflowWrap: "anywhere" }}>
+                          <ReactShowMoreText
+                            lines={1}
+                            more="show"
+                            less="hide"
+                            expanded={false}
+                            truncatedEndingComponent={" "}
+                            width={1}
+                          >
+                            {dock.ligand_smiles}
+                          </ReactShowMoreText>
+                        </td>
+                        <td style={{ minWidth: "100px", userSelect: "none" }}>
+                          {getDockState(dock, props.jobs) === "queued" ||
+                          getDockState(dock, props.jobs) === "running" ? (
+                            <FaClock
+                              uk-tooltip={getDockState(dock, props.jobs)}
+                            />
+                          ) : null}
+                          {getDockState(dock, props.jobs) === "failed" ? (
+                            <FaFrownOpen
+                              uk-tooltip={getDockState(dock, props.jobs)}
+                            />
+                          ) : null}
+                          {getDockState(dock, props.jobs) === "finished" ? (
+                            <span>
+                              <FaEye
+                                uk-tooltip="Toggle display at left."
+                                onClick={() =>
+                                  props.displayLigandPose(dock.ligand_name)
+                                }
+                              />
+                            </span>
+                          ) : null}
+                          {props.displayedLigandNames.includes(
+                            dock.ligand_name
+                          ) ? (
+                            <span>
+                              <FaChevronLeft
+                                onClick={() =>
+                                  props.shiftFrame(dock.ligand_name, -1)
+                                }
+                                uk-tooltip="Previous prediction"
+                              />
+                              <FaChevronRight
+                                onClick={() =>
+                                  props.shiftFrame(dock.ligand_name, 1)
+                                }
+                                uk-tooltip="Next prediction"
+                              />
+                            </span>
+                          ) : null}
+                          <FaEllipsisV
+                            uk-tooltip={"Click for more actions"}
+                          ></FaEllipsisV>
+                          <div uk-dropdown="mode: click; pos: bottom-right; boundary: !.boundary; shift: false; flip: false">
+                            <ul className="uk-nav uk-dropdown-nav">
+                              {getDockState(dock, props.jobs) === "finished" ? (
+                                <li className="uk-active">
+                                  <a
+                                    uk-tooltip="Download SDF of ligand pose."
+                                    onClick={() =>
+                                      downloadLigandPose(
+                                        props.foldId,
+                                        props.foldName,
+                                        dock.ligand_name,
+                                        props.setErrorText
+                                      )
+                                    }
+                                  >
+                                    <FaDownload />
+                                    Download
+                                  </a>
+                                </li>
+                              ) : null}
+                              <li className="uk-active">
+                                <a
+                                  uk-tooltip="Delete docking result."
+                                  onClick={() =>
+                                    props.deleteLigandPose(
+                                      dock.id,
+                                      dock.ligand_name
+                                    )
+                                  }
+                                >
+                                  <FaTrash />
+                                  Delete
+                                </a>
+                              </li>
+                              <li className="uk-active">
+                                <a
+                                  uk-tooltip="Rerun this dock."
+                                  onClick={() => {
+                                    rerunDock(dock);
+                                  }}
+                                >
+                                  <FaRedo />
+                                  Rerun
+                                </a>
+                              </li>
+                            </ul>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                : null}
+            </tbody>
+          </table>
+        </div>
+      </div>
       <h3>Dock new ligands</h3>
       <NewDockPrompt
         setErrorText={props.setErrorText}

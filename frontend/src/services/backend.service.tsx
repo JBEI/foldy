@@ -57,6 +57,7 @@ export interface Dock extends DockInput {
   id: number;
   invokation_id: number | null;
   pose_energy: number | null;
+  pose_confidences: string | null;
 }
 
 export interface FoldInput {

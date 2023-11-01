@@ -211,7 +211,7 @@ def back_translate(aa_seq):
 
 
 class StorageManager:
-    def list_files(self, fold_id):
+    def list_files(self, fold_id, subfolder=None):
         pass
 
     def write_file(self, file_path, file_contents_str):
@@ -227,9 +227,22 @@ class LocalStorageManager(StorageManager):
     def setup(self, local_directory):
         self.local_directory = Path(local_directory)
 
-    def list_files(self, fold_id):
+    def list_files(self, fold_id, subfolder=None):
+        """Returns a list of dicts describing the contents of this fold's folder.
+
+        Arguments:
+          fold_id: fold to query
+          subfolder: prefix within the fold bucket to search, eg 'dock/nadh'.
+
+        Output: List of dictionaries with keys:
+          key: path to the file
+          size: size of the file
+          modified: last modification time
+        """
         padded_fold_id = "%06d" % fold_id
         dir = self.local_directory / padded_fold_id
+        if subfolder:
+            dir = dir / subfolder
         return [
             {
                 "key": str(file.relative_to(dir)),
@@ -278,13 +291,26 @@ class GcloudStorageManager(StorageManager):
         self.bucket_name = match.groups()[0].split("/")[0]
         self.bucket_prefix = "/".join(match.groups()[0].split("/")[1:])
 
-    def list_files(self, fold_id):
+    def list_files(self, fold_id, subfolder=None):
+        """Returns a list of dicts describing the contents of this fold's folder.
+
+        Arguments:
+          fold_id: fold to query
+          subfolder: prefix within the fold bucket to search, eg 'dock/nadh'.
+
+        Output: List of dictionaries with keys:
+          key: path to the file
+          size: size of the file
+          modified: last modification time
+        """
         padded_fold_id = "%06d" % fold_id
         prefix = (
             f"{self.bucket_prefix}/{padded_fold_id}"
             if self.bucket_prefix
             else padded_fold_id
         )
+        if subfolder:
+            prefix = f"{prefix}/{subfolder}"
 
         bucket = self.client.get_bucket(self.bucket_name)
         blobs = list(bucket.list_blobs(max_results=10000, prefix=prefix))
@@ -657,17 +683,53 @@ class FoldStorageUtil:
             print(e, flush=True)
             raise BadRequest(f"Failed to unpack file pfam for {fold_id} ({e}).")
 
-    def get_dock_sdf(self, fold_id, tool, ligand_name):
+    def get_dock_sdf(self, dock):
+        """Returns a binary string with the contents of the SDF file."""
+        # Prior to 10/31/23, we didn't extract DiffDock confidences ahead of time.
+        # This code backfills for old runs.
+        if dock.tool == "diffdock" and not dock.pose_confidences:
+            print("START UPDATING CONFIDENCES", flush=True)
+            confidence_str = self.get_diffdock_pose_confidences(
+                dock.receptor_fold_id, dock.ligand_name
+            )
+            dock.update(pose_confidences=confidence_str)
+            print("FINISHED UPDATING CONFIDENCES", flush=True)
+
+        # All tools should have a poses.sdf file, but for old diffdock structures,
+        # we'll also try the old output filename:
         try:
-            # As of 9/24/23, we postprocess all DiffDock outputs into one SDF.
             return self.storage_manager.get_binary(
-                fold_id, f"dock/{ligand_name}/poses.sdf"
+                dock.receptor_fold_id, f"dock/{dock.ligand_name}/poses.sdf"
             )
         except Exception as e:
-            if tool != "diffdock":
+            if dock.tool != "diffdock":
                 raise e
 
-            # For old diffdock structures, we'll also try the old approach:
             return self.storage_manager.get_binary(
-                fold_id, f"dock/{ligand_name}/rank1.sdf"
+                dock.receptor_fold_id, f"dock/{dock.ligand_name}/rank1.sdf"
             )
+
+    def get_diffdock_pose_confidences(self, fold_id, ligand_name):
+        confidence_map = {}
+
+        ligand_files = self.storage_manager.list_files(
+            fold_id, subfolder=f"dock/{ligand_name}"
+        )
+        for file_info in ligand_files:
+            # Confidence can be negative or positive
+            # https://github.com/gcorso/DiffDock/issues/152
+            fname = file_info["key"].split("/")[-1]
+            match = re.match(r"rank(\d+)_confidence(-?\d*\.?\d*).sdf", fname)
+            if match:
+                confidence_map[int(match.groups()[0])] = float(match.groups()[1])
+
+        confidence_list = []
+        max_rank = max(confidence_map.keys())
+        for rank in range(1, max_rank + 1):
+            if rank not in confidence_map:
+                print(
+                    f'ERROR: Missing rank {rank} among files {[l["key"] for l in ligand_files]}'
+                )
+            confidence_list.append(confidence_map[rank])
+
+        return ",".join([str(c) for c in confidence_list])

@@ -113,6 +113,9 @@ function TagView(props: { setErrorText: (a: string) => void }) {
           copy[`dock_${dock.ligand_name}_smiles`] = dock.ligand_smiles;
           const energy = dock.pose_energy === null ? NaN : dock.pose_energy;
           copy[`dock_${dock.ligand_name}_dg`] = energy;
+          const confidences =
+            dock.pose_confidences === null ? NaN : dock.pose_confidences;
+          copy[`dock_${dock.ligand_name}_confidences`] = confidences;
         });
       }
       return copy;
@@ -201,7 +204,7 @@ function TagView(props: { setErrorText: (a: string) => void }) {
               className="uk-button uk-button-primary uk-form-small"
               filename={`${tagString}_metadata`}
             >
-              Download as CSV
+              Download Metadata as CSV
             </CSVLink>
           </div>
         </fieldset>
@@ -264,10 +267,15 @@ function TagView(props: { setErrorText: (a: string) => void }) {
         <NewDockPrompt
           setErrorText={props.setErrorText}
           foldIds={folds.map((fold) => fold.id ?? -1)} // Should never happen, but null fold ids are replaced w/ invalid.
-          existingLigands={Array.prototype.reduce((acc, fold) => ({
-            ...acc,
-            [fold.id]: (fold.docks ?? []).map((dock: Dock) => dock.ligand_name),
-          }))}
+          existingLigands={Array.prototype.reduce(
+            (acc, fold) => ({
+              ...acc,
+              [fold.id]: (fold.docks ?? []).map(
+                (dock: Dock) => dock.ligand_name
+              ),
+            }),
+            []
+          )}
         />
       ) : null}
     </div>

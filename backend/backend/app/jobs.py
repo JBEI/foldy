@@ -266,8 +266,17 @@ def run_dock(dock_id, invokation_id):
         fsm = FoldStorageUtil()
         fsm.setup()
 
-        energy = fsm.storage_manager.get_binary(
-            dock.receptor_fold_id, f"dock/{dock.ligand_name}/energy.txt"
-        ).decode()
+        if dock.tool == "vina":
+            energy = fsm.storage_manager.get_binary(
+                dock.receptor_fold_id, f"dock/{dock.ligand_name}/energy.txt"
+            ).decode()
 
-        dock.update(pose_energy=energy)
+            dock.update(pose_energy=energy)
+        elif dock.tool == "diffdock":
+            confidence_str = fsm.get_diffdock_pose_confidences(
+                dock.receptor_fold_id, dock.ligand_name
+            )
+
+            dock.update(pose_confidences=confidence_str)
+        else:
+            assert False, f"Invalid tool {dock.tool}"
