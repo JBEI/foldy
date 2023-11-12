@@ -1,5 +1,5 @@
 import fileDownload from "js-file-download";
-import React from "react";
+import React, { useMemo, useState } from "react";
 import {
   FaCheckCircle,
   FaChevronLeft,
@@ -40,6 +40,11 @@ interface DockTabProps {
   deleteLigandPose: (ligandId: number, ligandName: string) => void;
 }
 
+type SortConfig = {
+  key: keyof Dock | "fit" | null;
+  direction: "ascending" | "descending";
+};
+
 const getDockState = (dock: Dock, jobs: Invokation[] | null) => {
   if (!jobs) {
     return "queued";
@@ -74,6 +79,82 @@ const downloadLigandPose = (
 };
 
 const DockTab = React.memo((props: DockTabProps) => {
+  const [sortConfig, setSortConfig] = useState<SortConfig>({
+    key: "ligand_name",
+    direction: "ascending",
+  });
+
+  const getFit = (dock: Dock) => {
+    if (dock.tool === "diffdock") {
+      const confidenceStr =
+        dock.pose_confidences?.split(",")[
+          props.ranks[dock.ligand_name] - 1 || 0
+        ];
+      return confidenceStr ? parseFloat(confidenceStr) : null;
+    } else {
+      return (props.ranks[dock.ligand_name] - 1 || 0) == 0
+        ? dock.pose_energy
+        : null;
+    }
+  };
+
+  function compareValues(
+    key: keyof Dock | "fit",
+    direction: "ascending" | "descending"
+  ) {
+    var aVal, bVal;
+    return (a: Dock, b: Dock) => {
+      if (key == "fit") {
+        aVal = getFit(a);
+        bVal = getFit(b);
+      } else {
+        aVal = a[key];
+        bVal = b[key];
+      }
+
+      // Directly return 0 if both values are equal or both are null
+      if (aVal === bVal) return 0;
+
+      // If 'a' or 'b' is null, determine their sort order
+      if (aVal === null) return direction === "ascending" ? -1 : 1;
+      if (bVal === null) return direction === "ascending" ? 1 : -1;
+
+      // If both are non-null and not equal, compare them as per direction
+      return (aVal as any) < (bVal as any)
+        ? direction === "ascending"
+          ? -1
+          : 1
+        : direction === "ascending"
+        ? 1
+        : -1;
+    };
+  }
+
+  const sortedDocks = useMemo(() => {
+    const sortFunction = sortConfig.key
+      ? compareValues(sortConfig.key, sortConfig.direction)
+      : null;
+
+    return sortFunction && props.docks
+      ? [...props.docks].sort(sortFunction)
+      : props.docks;
+  }, [props.docks, sortConfig]);
+
+  const requestSort = (key: keyof Dock | "fit") => {
+    let direction: "ascending" | "descending" = "ascending";
+    if (sortConfig.key === key && sortConfig.direction === "ascending") {
+      direction = "descending";
+    }
+    setSortConfig({ key, direction });
+  };
+
+  const getSortDirectionSymbol = (columnName: string) => {
+    if (sortConfig.key === columnName) {
+      return sortConfig.direction === "ascending" ? " ↑" : " ↓";
+    }
+    return "";
+  };
+
   const rerunDock = (dock: Dock) => {
     const dockCopy: DockInput = dock;
     dockCopy.fold_id = props.foldId;
@@ -105,45 +186,49 @@ const DockTab = React.memo((props: DockTabProps) => {
           <table className="uk-table uk-table-striped uk-table-small">
             <thead>
               <tr>
-                <th>Name</th>
+                <th onClick={() => requestSort("ligand_name")}>
+                  Name{getSortDirectionSymbol("ligand_name")}
+                </th>
                 <th
                   uk-tooltip={
                     "Vina- energy of pose (kJ/mol, lower is better); Diffdock- confidence (unitless, higher is better)"
                   }
+                  onClick={() => requestSort("fit")}
                 >
-                  Goodness
+                  Fit{getSortDirectionSymbol("fit")}
                 </th>
                 <th uk-tooltip={"The rank of the pose being displayed."}>
                   Rank
                 </th>
-                <th uk-tooltip={"Docking Tool"}>Tool</th>
+                <th
+                  uk-tooltip={"Docking Tool"}
+                  onClick={() => requestSort("tool")}
+                >
+                  Tool{getSortDirectionSymbol("tool")}
+                </th>
                 <th uk-tooltip={"Bounding Box"}>Box</th>
-                <th>SMILES</th>
+                <th onClick={() => requestSort("ligand_smiles")}>
+                  SMILES{getSortDirectionSymbol("ligand_smiles")}
+                </th>
                 <th>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {props.docks
-                ? [...props.docks].map((dock) => {
+              {sortedDocks
+                ? [...sortedDocks].map((dock) => {
                     return (
                       <tr key={dock.ligand_name}>
                         <td>{dock.ligand_name}</td>
                         <td>
-                          {dock.tool === "diffdock" ? (
-                            <span uk-tooltip={"Confidence, higher is better."}>
-                              {
-                                dock.pose_confidences?.split(",")[
-                                  props.ranks[dock.ligand_name] - 1 || 0
-                                ]
-                              }
-                            </span>
-                          ) : (
-                            <span uk-tooltip={"kJ/mol"}>
-                              {(props.ranks[dock.ligand_name] - 1 || 0) == 0
-                                ? dock.pose_energy
-                                : null}
-                            </span>
-                          )}
+                          <span
+                            uk-tooltip={
+                              dock.tool === "diffdock"
+                                ? "Confidence, higher is better."
+                                : "kJ/mol"
+                            }
+                          >
+                            {getFit(dock)}
+                          </span>
                         </td>
                         <td>{props.ranks[dock.ligand_name]}</td>
                         <td>{dock.tool}</td>
