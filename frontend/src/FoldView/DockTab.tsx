@@ -105,8 +105,14 @@ const DockTab = React.memo((props: DockTabProps) => {
     var aVal, bVal;
     return (a: Dock, b: Dock) => {
       if (key == "fit") {
-        aVal = getFit(a);
-        bVal = getFit(b);
+        // We don't compare fitness values for different tools.
+        if (a.tool != b.tool) {
+          aVal = a.tool;
+          bVal = b.tool;
+        } else {
+          aVal = getFit(a);
+          bVal = getFit(b);
+        }
       } else {
         aVal = a[key];
         bVal = b[key];
