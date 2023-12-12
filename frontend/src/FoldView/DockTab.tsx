@@ -223,7 +223,7 @@ const DockTab = React.memo((props: DockTabProps) => {
               {sortedDocks
                 ? [...sortedDocks].map((dock) => {
                     return (
-                      <tr key={dock.ligand_name}>
+                      <tr key={dock.id}>
                         <td>{dock.ligand_name}</td>
                         <td>
                           <span
