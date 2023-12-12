@@ -29,6 +29,8 @@ Go to the [Google Cloud Console](https://console.cloud.google.com/welcome) and l
     * Under `Boot Disk` it probably suggests switching to an image which better supports GPUs such as `Deep Learning VM with CUDA 11.3 M110`. Click "Switch", then also change the size of the boot disk to 3000GB, to support installing the AlphaFold databases and holding your fold outputs.
     * Under `Firewall` select "Allow HTTP traffic".
     * That's it, you can now create your instance. **If instance creation fails, check the [debugging](#debugging) steps below.**
+      > Note that resource availability errors are common. The demand for GPUs is very high these days. \ varies by GPU type, by zone, and even by time of day. We recommend trying other resource types (eg, change to a different size GPU), try a different zone, or try again later. See [Debugging](#debugging) for more info.
+
 2. Install Foldy
     * Once the machine is started, you can use the Cloud Console to SSH from your browser. Look for an "SSH" button on the row next to your instance. You can also SSH using the gcloud command line tool. See instructions below.
     * If it asks to install NVIDIA drivers, say yes.
@@ -62,6 +64,7 @@ Make sure you have [installed](https://cloud.google.com/sdk/docs/install-sdk) an
     --labels=goog-ec-src=vm_add-gcloud \
     --reservation-affinity=any
     ```
+      > Note that resource availability errors are common. The demand for GPUs is very high these days. Supply varies by GPU type, by zone, and even by time of day. We recommend trying other resource types (eg, change to a different size GPU), try a different zone, or try again later. See [Debugging](#debugging) for more info.
     * It may take a moment before you can SSH in. **If instance creation fails, check the [debugging](#debugging) steps below.**
 2. Install Foldy
     * First, SSH in. If the name of your instance is foldybox and it is located in us-central1-a, you can run:
@@ -81,7 +84,10 @@ Make sure you have [installed](https://cloud.google.com/sdk/docs/install-sdk) an
 ## Debugging
 
 Instance creation can fail for a few common reasons:
-* **The region is low on a certain resource.** Google cloud usage varies constantly. Sometimes certain resources (eg, "n1-highmem-8" machines or "Nvidia T4" GPUs) are unavailable when you try to create your instance. Unfortunately, it is not easy to see which zone has availablity for any given resource. Instead, you should retry at another time, or retry in another zone. Eg, if creating your instance in "us-central1-a" fails due to resource availability, you can try creating your VM in "us-central1-f".
+* **A resource is unavailble.** Google cloud supply and demand varies constantly. Sometimes certain resources (eg, "n1-highmem-8" machines or "Nvidia T4" GPUs) are unavailable when you try to create your instance. Unfortunately, it is not easy to see which zone has availablity for any given resource. Instead, you should retry at another time, or retry in another zone. Eg, if creating your instance in "us-central1-a" fails due to resource availability, you can try creating your VM in "us-central1-f". You can GPU availability by zone [here](https://cloud.google.com/compute/docs/gpus/gpu-regions-zones), and you can see GPU performance [here](https://cloud.google.com/compute/docs/gpus/#performance_comparison_chart). Some GPUs that we've tested:
+  * A100 (40GB or 80GB): These are the resources which DeepMind uses to calculate their largest folds, and we have used A100s w/ 80GB memory to predict structures up to 6000 amino acids.
+  * T4: We have used this as a more affordable deployment option, and have predicted structures up to 1000 amino acids.
+  * Others: Although we haven't tested other GPU types, we think other types should work as well. It seems that total memory is the determining factor for max structure size, and that FLOPS determines the speed of the prediction.
 * **Insufficient Quota.** Every project has many limits imposed on the resources it can use. If you created a new Google Cloud project, and it's not associated with an institution, your limits will likely start quite low. You can request an increase in your quota through [quota page](https://console.cloud.google.com/iam-admin/quotas). For instance, when installing Foldy in a new project, you'll likely run into limits for both the `Persistent Disk SSD` and `GPUS-ALL-REGIONS-per-project` quotas, whose defaults are something like 500GB and 0, respectively. Note that the `Persistent Disk SSD` quota is per-*region*, so you need to increase the quota for the appropriate region. Eg, if you're making your Foldy instance in region `us-central1` and zone `us-central1-a`, then you need to request more quota for region `us-central1`.
 
 ## Highly Recommended Changes
