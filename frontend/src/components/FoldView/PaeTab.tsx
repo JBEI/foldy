@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
-import { getResidueHeatmap } from "../util/plots";
-import { FoldPae, getFoldPae } from "../services/backend.service";
+import { getResidueHeatmap } from "../../util/plots";
+import { FoldPae, getFoldPae } from "../../services/backend.service";
 
 interface PaeTabProps {
   foldId: number;

@@ -3,9 +3,9 @@ import { Link } from "react-router-dom";
 import {
   authenticationService,
   DecodedJwt,
-} from "./services/authentication.service";
-import { Fold, getFolds } from "./services/backend.service";
-import { makeFoldTable } from "./util/foldTable";
+} from "../services/authentication.service";
+import { Fold, getFolds } from "../services/backend.service";
+import { makeFoldTable } from "../util/foldTable";
 import qs from "query-string";
 var debounce = require("lodash/debounce");
 

@@ -1,6 +1,6 @@
 import React from "react";
-import { EditableTagList } from "./../util/editableTagList";
-import { VariousColorSchemes } from "../util/plots";
+import { EditableTagList } from "../../util/editableTagList";
+import { VariousColorSchemes } from "../../util/plots";
 import { AiFillEdit } from "react-icons/ai";
 const ReactSequenceViewer = require("react-sequence-viewer");
 

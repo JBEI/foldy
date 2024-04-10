@@ -1,9 +1,8 @@
+import * as d3 from "d3";
 import React from "react";
 import Plot from "react-plotly.js";
-import * as d3 from "d3";
 import { Annotations } from "../services/backend.service";
 import { RdYlBu } from "./color";
-// import { isEqual } from "lodash";
 const NGL = require("./../../node_modules/ngl/dist/ngl");
 
 export const matricesAreEqual = (

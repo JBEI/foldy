@@ -9,20 +9,19 @@ import {
   FaEllipsisV,
   FaEye,
   FaFrownOpen,
-  FaHamburger,
   FaRedo,
   FaTrash,
 } from "react-icons/fa";
 import ReactShowMoreText from "react-show-more-text";
-import { NewDockPrompt } from "./../util/newDockPrompt";
 import UIkit from "uikit";
 import {
   Dock,
-  getDockSdf,
+  DockInput,
   Invokation,
+  getDockSdf,
   postDock,
-} from "../services/backend.service";
-import { DockInput } from "../services/backend.service";
+} from "../../services/backend.service";
+import { NewDockPrompt } from "../../util/newDockPrompt";
 
 interface DockTabProps {
   foldId: number;

@@ -1,43 +1,42 @@
+import jquery from "jquery";
+import ParsePdb, { ParsedPdb } from "parse-pdb";
 import React, { Component, RefObject } from "react";
-import "./FoldView.scss";
+import { AiOutlineFolder, AiOutlineFolderOpen } from "react-icons/ai";
+import { FaDownload } from "react-icons/fa";
+import FileBrowser from "react-keyed-file-browser";
+import {
+  Component as NGLComponent,
+  RepresentationCollection as NGLRepresentationCollection,
+  Stage,
+  StructureComponent,
+} from "react-ngl/dist/@types/ngl/declarations/ngl";
+import { useParams } from "react-router-dom";
 import UIkit from "uikit";
 import {
   Annotations,
-  deleteDock,
   FileInfo,
   Fold,
   FoldPdb,
+  Invokation,
+  deleteDock,
   getDockSdf,
   getFile,
   getFileList,
   getFold,
-  getFoldPae,
   getFoldPdb,
   getFoldPfam,
   getInvokation,
-  Invokation,
   queueJob,
   updateFold,
-} from "../services/backend.service";
-import jquery from "jquery";
-import { getColorsForAnnotations, VariousColorSchemes } from "../util/plots";
-import { AiOutlineFolder, AiOutlineFolderOpen } from "react-icons/ai";
-import {
-  Stage,
-  StructureComponent,
-  Component as NGLComponent,
-  RepresentationCollection as NGLRepresentationCollection,
-} from "react-ngl/dist/@types/ngl/declarations/ngl";
-import { useParams } from "react-router-dom";
-import SequenceTab, { SubsequenceSelection } from "./SequenceTab";
+} from "../../services/backend.service";
+import { FoldyMascot } from "../../util/foldyMascot";
+import { VariousColorSchemes, getColorsForAnnotations } from "../../util/plots";
 import ContactTab from "./ContactTab";
-import PaeTab from "./PaeTab";
 import DockTab from "./DockTab";
-import FileBrowser from "react-keyed-file-browser";
-import { FaDownload } from "react-icons/fa";
-import ParsePdb, { ParsedPdb } from "parse-pdb";
-import { FoldyMascot } from "./../util/foldyMascot";
-const NGL = require("./../../node_modules/ngl/dist/ngl");
+import "./FoldView.scss";
+import PaeTab from "./PaeTab";
+import SequenceTab, { SubsequenceSelection } from "./SequenceTab";
+const NGL = require("./../../../node_modules/ngl/dist/ngl");
 const fileDownload = require("js-file-download");
 
 const REFRESH_STATE_PERIOD = 3000;
@@ -569,7 +568,7 @@ class InternalFoldView extends Component<FoldProps, FoldState> {
               <div>
                 <button
                   type="button"
-                  className="uk-button uk-button-default uk-margin-left uk-form-small"
+                  className="uk-button uk-button-primary uk-margin-left uk-form-small"
                   onClick={this.maybeDownloadPdb}
                   disabled={
                     !(this.state.foldData?.name && this.state.pdb?.pdb_string)
@@ -666,13 +665,11 @@ class InternalFoldView extends Component<FoldProps, FoldState> {
           style={{
             marginBottom: "0px",
             paddingBottom: "20px",
-            overflow: "visible",
           }}
           id="foldname"
         >
           <b>{this.state.foldData ? this.state.foldData.name : "Loading..."}</b>
         </h2>
-        {/* <hr className="uk-divider-icon" /> */}
         <div className="uk-flex uk-flex-center uk-flex-wrap">
           {[...(this.state.foldData?.jobs || [])].map((job: Invokation) => {
             if (job.type?.startsWith("dock_")) {

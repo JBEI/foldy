@@ -1,5 +1,5 @@
 import React from "react";
-import { getDescriptionOfUserType } from "./../services/authentication.service";
+import { getDescriptionOfUserType } from "../../services/authentication.service";
 
 const About = (props: { userType: string | null }) => (
   <div

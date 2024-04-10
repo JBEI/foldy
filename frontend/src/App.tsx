@@ -1,17 +1,22 @@
-import React, { useState, lazy, Suspense, useEffect } from "react";
-import "./App.scss";
-import "react-tiny-fab/dist/styles.css";
+import React, { lazy, Suspense, useEffect, useState } from "react";
+import { useJwt } from "react-jwt";
 import {
+  BrowserRouter,
   Route,
   Routes,
-  BrowserRouter,
   useLocation,
   useNavigate,
   useSearchParams,
 } from "react-router-dom";
-import { useJwt } from "react-jwt";
+import "react-tiny-fab/dist/styles.css";
+import "./App.scss";
 
-import DashboardView from "./DashboardView";
+import { GoogleOAuthProvider } from "@react-oauth/google";
+import UIkit from "uikit";
+import About from "./components/AboutView/About";
+import DashboardView from "./components/DashboardView";
+import NewFold from "./components/NewFoldView/NewFold";
+import SudoPage from "./components/SudoPageView/SudoPage";
 import {
   authenticationService,
   currentJwtStringSubject,
@@ -20,16 +25,10 @@ import {
   isFullDecodedJwt,
   LoginButton,
 } from "./services/authentication.service";
-import NewFold from "./NewFold/NewFold";
-import UIkit from "uikit";
-import SudoPage from "./SudoPage/SudoPage";
-import About from "./About/About";
 import TagView from "./TagView";
-import { GoogleLogin, GoogleOAuthProvider } from "@react-oauth/google";
-import GoogleLoginButton from "./GoogleLogin";
 import { FoldyMascot } from "./util/foldyMascot";
 
-const AvatarFoldView = lazy(() => import("./FoldView/FoldView"));
+const AvatarFoldView = lazy(() => import("./components/FoldView/FoldView"));
 
 function CheckForErrorQueryString(props: {
   setErrorText: (a: string | null) => void;

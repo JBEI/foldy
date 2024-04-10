@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useRef } from "react";
-import { getResidueHeatmap } from "../util/plots";
+import React, { useEffect, useRef, useState } from "react";
 import {
   FoldContactProb,
   getFoldContactProb,
-} from "../services/backend.service";
+} from "../../services/backend.service";
+import { getResidueHeatmap } from "../../util/plots";
 
 interface ContactTabProps {
   foldId: number;

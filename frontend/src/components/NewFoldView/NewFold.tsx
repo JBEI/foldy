@@ -1,8 +1,8 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { EditableTagList } from "./../util/editableTagList";
+import { EditableTagList } from "../../util/editableTagList";
 import UIkit from "uikit";
-import { FoldInput, postFolds } from "../services/backend.service";
+import { FoldInput, postFolds } from "../../services/backend.service";
 
 const VALID_AMINO_ACIDS = [
   "A",

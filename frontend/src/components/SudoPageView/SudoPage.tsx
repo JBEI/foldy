@@ -13,7 +13,7 @@ import {
   setAllUnsetModelPresets,
   stampDbs,
   upgradeDbs,
-} from "../services/backend.service";
+} from "../../services/backend.service";
 
 function SudoPage(props: { setErrorText: (a: string) => void }) {
   const [revision, setRevision] = useState<string>("");

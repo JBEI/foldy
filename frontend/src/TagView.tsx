@@ -1,4 +1,7 @@
+import fileDownload from "js-file-download";
 import React, { useEffect, useState } from "react";
+import { CSVLink } from "react-csv";
+import { useParams } from "react-router-dom";
 import UIkit from "uikit";
 import {
   Dock,
@@ -10,9 +13,6 @@ import {
   updateFold,
 } from "./services/backend.service";
 import { makeFoldTable } from "./util/foldTable";
-import { CSVLink } from "react-csv";
-import { useParams } from "react-router-dom";
-import fileDownload from "js-file-download";
 import { NewDockPrompt } from "./util/newDockPrompt";
 
 function TagView(props: { setErrorText: (a: string) => void }) {
