@@ -38,15 +38,15 @@ BACKEND_TAG=$GOOGLE_CLOUD_REGION-docker.pkg.dev/$GOOGLE_CLOUD_PROJECT_ID/$GOOGLE
 WORKER_TAG=$GOOGLE_CLOUD_REGION-docker.pkg.dev/$GOOGLE_CLOUD_PROJECT_ID/$GOOGLE_CLOUD_ARTIFACT_REPO/worker:$VERSION
 
 echo "Building Alphafold (required for worker)..."
-docker build -t $FOLDY_ALPHAFOLD_TAG -f worker/alphafold/docker/Dockerfile worker/alphafold 
+DOCKER_DEFAULT_PLATFORM=linux/amd64 docker build -t $FOLDY_ALPHAFOLD_TAG -f worker/alphafold/docker/Dockerfile worker/alphafold 
 echo "Building backend..."
-docker build -t $BACKEND_TAG backend
+DOCKER_DEFAULT_PLATFORM=linux/amd64 docker build -t $BACKEND_TAG backend
 echo "Building worker..."
-docker build -t $WORKER_TAG -f worker/Dockerfile \
+DOCKER_DEFAULT_PLATFORM=linux/amd64 docker build -t $WORKER_TAG -f worker/Dockerfile \
   --build-arg FOLDY_ALPHAFOLD_TAG=$FOLDY_ALPHAFOLD_TAG \
   .
 echo "Building frontend..."
-docker build -t $FRONTEND_TAG \
+DOCKER_DEFAULT_PLATFORM=linux/amd64 docker build -t $FRONTEND_TAG \
   --build-arg BACKEND_URL=$BACKEND_URL \
   --build-arg INSTITUTION=$INSTITUTION \
   frontend

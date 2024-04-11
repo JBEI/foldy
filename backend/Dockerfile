@@ -1,6 +1,6 @@
 # Use the official lightweight Python image.
 # https://hub.docker.com/_/python
-FROM python:3.7.13
+FROM --platform=linux/amd64 python:3.7.13
 
 ENV APP_HOME /app
 WORKDIR $APP_HOME
