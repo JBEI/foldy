@@ -628,8 +628,8 @@ class FoldStorageUtil:
             fold_id, f"ranked_{ranked_model_number}.pdb"
         ).decode()
 
-    def get_fold_pdb_zip(self, fold_ids, dirname):
-        """Returns an open file handle to a temporary file with PDBs zipped up."""
+    def get_fold_file_zip(self, fold_ids, relative_fpath, output_dirname):
+        """Returns an open file handle to a temporary file with a certain file zipped up."""
         tmp = tempfile.TemporaryFile()
 
         with zipfile.ZipFile(tmp, "w") as archive:
@@ -638,10 +638,14 @@ class FoldStorageUtil:
                 if not fold:
                     raise BadRequest(f"Could not find fold {fold_id}")
 
-                fold_pdb_binary = self.storage_manager.get_binary(
-                    fold_id, "ranked_0.pdb"
-                )
-                archive.writestr(f"{dirname}/{fold.name}.pdb", fold_pdb_binary)
+                try:
+                    fold_pdb_binary = self.storage_manager.get_binary(
+                        fold_id, relative_fpath #"ranked_0.pdb"
+                    )
+                    padded_fold_id = format(fold_id, '06')
+                    archive.writestr(f"{output_dirname}/{padded_fold_id}/{relative_fpath}", fold_pdb_binary)
+                except Exception as e:
+                    logging.log(e)
         tmp.seek(0)
         return tmp
 

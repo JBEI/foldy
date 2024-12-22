@@ -6,7 +6,7 @@ import UIkit from "uikit";
 import {
   Dock,
   Fold,
-  getFoldPdbZip,
+  getFoldFileZip,
   getFolds,
   getJobStatus,
   queueJob,
@@ -19,6 +19,9 @@ function TagView(props: { setErrorText: (a: string) => void }) {
   let { tagStringParam } = useParams();
   const [tagString] = useState<string>(tagStringParam || "");
   const [folds, setFolds] = useState<Fold[] | null>(null);
+  const [relativeFpathToDownload, setRelativeFpathToDownload] = useState<
+    string | null
+  >(null);
   const [stageToStart, setStageToStart] = useState<string | null>(null);
 
   if (!tagStringParam) {
@@ -131,12 +134,37 @@ function TagView(props: { setErrorText: (a: string) => void }) {
       return;
     }
     const fold_ids = folds.map((fold) => fold.id || 0);
-    const dirname = `${tagString}_pdbs`;
-    getFoldPdbZip(fold_ids, dirname).then(
+    const output_dirname = `${tagString}_pdbs`;
+    getFoldFileZip(fold_ids, "ranked_0.pdb", output_dirname).then(
       (fold_pdb_blob) => {
-        fileDownload(fold_pdb_blob, `${dirname}.zip`);
+        fileDownload(fold_pdb_blob, `${output_dirname}.zip`);
       },
       (e) => {
+        props.setErrorText(e);
+      }
+    );
+  };
+
+  const downloadFoldFileZip = () => {
+    if (!folds) {
+      return;
+    }
+    if (folds.some((fold) => fold.id === null)) {
+      props.setErrorText("Some fold has a null ID... Weird.");
+      return;
+    }
+    if (!relativeFpathToDownload) {
+      props.setErrorText("No path set.");
+      return;
+    }
+    const fold_ids = folds.map((fold) => fold.id || 0);
+    const output_dirname = `${tagString}_bulk_download`;
+    getFoldFileZip(fold_ids, relativeFpathToDownload, output_dirname).then(
+      (file_blob) => {
+        fileDownload(file_blob, `${output_dirname}.zip`);
+      },
+      (e) => {
+        console.log(e);
         props.setErrorText(e);
       }
     );
@@ -185,17 +213,7 @@ function TagView(props: { setErrorText: (a: string) => void }) {
         </div>
       )}
       <form>
-        <fieldset className="uk-fieldset">
-          <div className="uk-margin">
-            <button
-              type="button"
-              className="uk-button uk-button-primary uk-form-small"
-              onClick={() => restartWholePipelineForAnyFailedjob()}
-            >
-              Restart Whole Pipeline For Any Failed Jobs
-            </button>
-          </div>
-        </fieldset>
+        <h3>Downloads</h3>
 
         <fieldset className="uk-fieldset">
           <div className="uk-margin">
@@ -220,7 +238,31 @@ function TagView(props: { setErrorText: (a: string) => void }) {
             </button>
           </div>
         </fieldset>
+        <fieldset className="uk-fieldset">
+          <div className="uk-margin">
+            <input
+              className="uk-input uk-form-small uk-form-width-large"
+              type="text"
+              id="file_to_download"
+              placeholder="ranked_0/plddt.npy"
+              uk-tooltip="Enter a relative filepath to download, like 'ranked_0.pdb' or 'ranked_0/contact_prob_8A.npy'."
+              style={{ borderRadius: "500px" }}
+              value={relativeFpathToDownload || ""}
+              onChange={(e) => {
+                setRelativeFpathToDownload(e.target.value);
+              }}
+            ></input>
+            <button
+              type="button"
+              className="uk-button uk-button-primary uk-form-small"
+              onClick={() => downloadFoldFileZip()}
+            >
+              Download File
+            </button>
+          </div>
+        </fieldset>
 
+        <h3>Visibility</h3>
         <fieldset className="uk-fieldset">
           <div className="uk-margin">
             <button
@@ -233,11 +275,24 @@ function TagView(props: { setErrorText: (a: string) => void }) {
           </div>
         </fieldset>
 
+        <h3>Job Management</h3>
+        <fieldset className="uk-fieldset">
+          <div className="uk-margin">
+            <button
+              type="button"
+              className="uk-button uk-button-primary uk-form-small"
+              onClick={() => restartWholePipelineForAnyFailedjob()}
+            >
+              Restart Whole Pipeline For Any Failed Jobs
+            </button>
+          </div>
+        </fieldset>
         <fieldset className="uk-fieldset">
           <div className="uk-margin">
             <select
               className="uk-select uk-form-width-medium uk-form-small"
               id="form-horizontal-select"
+              style={{ borderRadius: "500px" }}
               value={stageToStart || ""}
               onChange={(e) => {
                 setStageToStart(e.target.value);

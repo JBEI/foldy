@@ -25,6 +25,7 @@ interface SequenceTabProps {
   pfamColors: VariousColorSchemes | null;
 
   setPublic: (is_public: boolean) => void;
+  setDisableRelaxation: (disable_relaxation: boolean) => void;
   setFoldName: () => void;
   addTag: (tagToAdd: string) => void;
   deleteTag: (tagToDelete: string) => void;
@@ -56,6 +57,7 @@ const SequenceTab = React.memo(
         return [];
       }
     };
+    console.log(`FOLD ${props.foldDisableRelaxation}`);
 
     return (
       <div>
@@ -205,15 +207,20 @@ const SequenceTab = React.memo(
           </div>
           <div className="uk-margin">
             <label className="uk-form-label" htmlFor="form-horizontal-text">
-              Disable Relaxation
+            Disable Relaxation {typeof props.foldDisableRelaxation}
             </label>
-            <div className="uk-form-controls">
+            <div
+              className="uk-form-controls"
+              onClick={(e) => e.stopPropagation()}
+            >
               <input
-                className="uk-input uk-form-width-large"
-                id="form-horizontal-text"
-                type="text"
-                value={`${props.foldDisableRelaxation}`}
-                disabled
+                className="uk-input uk-form-width-large uk-checkbox"
+                type="checkbox"
+                checked={ (props.foldDisableRelaxation !== null) ? props.foldDisableRelaxation : true}
+                onChange={(e) => {
+                  e.stopPropagation();
+                  props.setDisableRelaxation(!props.foldDisableRelaxation);
+                }}
               />
             </div>
           </div>

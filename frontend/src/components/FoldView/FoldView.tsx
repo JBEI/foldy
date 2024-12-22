@@ -476,6 +476,7 @@ class InternalFoldView extends Component<FoldProps, FoldState> {
               colorScheme={this.state.colorScheme}
               pfamColors={this.state.pfamColors}
               setPublic={this.setPublic}
+              setDisableRelaxation={this.setDisableRelaxation}
               setFoldName={this.setFoldName}
               addTag={this.addTag}
               deleteTag={this.deleteTag}
@@ -997,6 +998,26 @@ class InternalFoldView extends Component<FoldProps, FoldState> {
           () => {
             this.refreshFoldDataFromBackend();
             UIkit.notification("Updated public status.");
+          },
+          (e) => {
+            this.props.setErrorText(e);
+          }
+        );
+      });
+  };
+
+  setDisableRelaxation = (new_disable_relaxation: boolean) => {
+    UIkit.modal
+      .confirm(
+        `Are you sure you want to set "disable relaxation" to ${
+            new_disable_relaxation
+        } for future runs of this fold?`
+      )
+      .then(() => {
+        updateFold(this.props.foldId, { disable_relaxation: new_disable_relaxation }).then(
+          () => {
+            this.refreshFoldDataFromBackend();
+            UIkit.notification("Updated disable relaxation setting.");
           },
           (e) => {
             this.props.setErrorText(e);

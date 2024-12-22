@@ -38,7 +38,8 @@ Flask-Compress==1.11
 Flask-Cors==3.0.8
 Flask-JWT-Extended==3.24.1
 Flask-Migrate==3.1.0
-flask-restplus==0.13.0
+# flask-restplus==0.13.0
+flask-RESTX
 -e git+https://github.com/Jacoberts/Flask-RQ2.git@ddc93224eda641449d77e6d452bcba0a06b731a2#egg=Flask_RQ2
 Flask-SQLAlchemy==2.5.1
 google-api-core==1.31.1

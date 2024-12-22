@@ -34,7 +34,7 @@ gcloud container node-pools create spothighmemnodes \
   --num-nodes 0 --min-nodes 0 --max-nodes 10 --enable-autoscaling \
   --spot \
   --node-taints computenode=true:NoSchedule \
-  --machine-type e2-highmem-8 \
+  --machine-type e2-highmem-16 \
   --service-account $SERVICE_ACCOUNT_FULL_ADDRESS
 
 # Instructions to set up the autoscaling A100 nodepools:

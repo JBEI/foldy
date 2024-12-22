@@ -90,7 +90,7 @@ fold_fields = ns.model(
         "public": fields.Boolean(required=False),
         "sequence": fields.String(),
         "af2_model_preset": fields.String(required=False),
-        "disable_relaxation": fields.String(required=False),
+        "disable_relaxation": fields.Boolean(required=False),
         "jobs": fields.List(fields.Nested(simple_invokation_fields)),
         "docks": fields.List(fields.Nested(dock_fields)),
     },
@@ -230,26 +230,29 @@ class FoldResource(Resource):
         return {"pdb_string": manager.get_fold_pdb(fold_id, model_number)}
 
 
-fold_pdb_zip_fields = ns.model(
+fold_file_zip_fields = ns.model(
     "FoldPdbZip",
     {
         "fold_ids": fields.List(fields.Integer(required=True)),
-        "dirname": fields.String(),
+        "relative_fpath": fields.String(),
+        "output_dirname": fields.String(),
     },
 )
 
 
 # @compress.compressed()
-@ns.route("/fold_pdb_zip")
+@ns.route("/fold_file_zip")
 class FoldPdbZipResource(Resource):
-    @ns.expect(fold_pdb_zip_fields)
+    @ns.expect(fold_file_zip_fields)
     def post(self):
         manager = FoldStorageUtil()
         manager.setup()
 
         return send_file(
-            manager.get_fold_pdb_zip(
-                request.get_json()["fold_ids"], request.get_json()["dirname"]
+            manager.get_fold_file_zip(
+                request.get_json()["fold_ids"],
+                request.get_json()["relative_fpath"],
+                request.get_json()["output_dirname"]
             ),
             mimetype="application/octet-stream",
             attachment_filename="fold_pdbs.zip",

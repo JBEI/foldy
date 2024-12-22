@@ -183,8 +183,8 @@ spec:
               memory: 100Mi
             {{- else if eq .RqQueueName "cpu" }}
             requests:
-              cpu: 7000m
-              memory: 50Gi
+              cpu: 15000m
+              memory: 115Gi
             {{- else }}
             requests:
               cpu: 10000m

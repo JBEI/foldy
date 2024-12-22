@@ -1,8 +1,10 @@
 import { authHeader, jsonBodyAuthHeader } from "../util/authHeader";
 
-function handleFileResponse(response: Response) {
+async function handleFileResponse(response: Response) {
   if (!response.ok) {
-    return Promise.reject(response.statusText);
+    const text = await response.text(); // Retrieve the text from the response body
+    console.log(text); // Log the text to the console
+    return Promise.reject(text); // Reject the promise with the text as the error message
   }
   if (response.status !== 200) {
     console.log("Here is the failed response:");
@@ -295,6 +297,29 @@ export function getFoldPdbZip(
   };
 
   var url = `${process.env.REACT_APP_BACKEND_URL}/api/fold_pdb_zip`;
+  return fetch(url, requestOptions)
+    .then(handleFileResponse)
+    .then((response) => {
+      return response.blob();
+    });
+}
+
+export function getFoldFileZip(
+  fold_ids: number[],
+  relative_fpath: string,
+  output_dirname: string
+): Promise<Blob> {
+  const requestOptions = {
+    method: "POST",
+    headers: jsonBodyAuthHeader(),
+    body: JSON.stringify({
+      fold_ids: fold_ids,
+      relative_fpath: relative_fpath,
+      output_dirname: output_dirname,
+    }),
+  };
+
+  var url = `${process.env.REACT_APP_BACKEND_URL}/api/fold_file_zip`;
   return fetch(url, requestOptions)
     .then(handleFileResponse)
     .then((response) => {
