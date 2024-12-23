@@ -5,7 +5,7 @@ from functools import wraps
 from flask import current_app
 from flask import abort
 from flask_jwt_extended import verify_jwt_in_request
-from flask_jwt_extended.utils import get_jwt_identity, get_current_user, get_jwt_claims
+from flask_jwt_extended.utils import get_jwt_identity, get_current_user, get_jwt
 
 
 def email_should_get_edit_permission_by_default(current_user):
@@ -37,9 +37,10 @@ def verify_has_edit_access(fn):
     def wrapper(*args, **kwargs):
         verify_jwt_in_request()
 
-        if user_jwt_grants_edit_access(get_jwt_claims()):
+        if user_jwt_grants_edit_access(get_jwt()["user_claims"]):
             return fn(*args, **kwargs)
         else:
+            print(f"Rejecting user for not having access {get_jwt()}", flush=True)
             abort(403, description="You do not have access to this resource.")
 
     return wrapper

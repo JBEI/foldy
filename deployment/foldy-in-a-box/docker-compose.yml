@@ -22,7 +22,7 @@ services:
       - redis
     environment:
       - FLASK_APP=main.py
-      - FLASK_ENV=development
+      - ENV=development
       - SECRET_KEY
       - OAUTH_REDIRECT_URI=${FOLDY_BOX_URL}/api/authorize
       - BACKEND_URL=${FOLDY_BOX_URL}
@@ -57,7 +57,7 @@ services:
       - db
       - redis
     environment:
-      - FLASK_APP=/backend/backend/rq_worker_main.py
+      - FLASK_APP=/backend/src/rq_worker_main.py
       - RUN_AF2_PATH=/worker/run_alphafold.sh
       - DECOMPRESS_PKLS_PATH=/worker/decompress_pkls.sh
       - RUN_ANNOTATE_PATH=/worker/run_annotate.sh

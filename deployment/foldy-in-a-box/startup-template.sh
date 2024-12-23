@@ -49,7 +49,7 @@ echo "Connecting to $FOLDY_BOX_URL"
 /usr/bin/docker compose \
   -f deployment/foldy-in-a-box/docker-compose.yml \
   --project-directory . \
-  exec backend flask db upgrade
+  exec backend python -m flask db upgrade
 
 if [ -f "/foldydbs/FINISHED" ]; then
     echo "Foldy DBs already finished downloading."

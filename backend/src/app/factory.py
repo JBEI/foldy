@@ -5,16 +5,16 @@ from flask import Flask, jsonify
 from flask.helpers import make_response
 from flask_admin.contrib.sqla import ModelView
 from flask_jwt_extended.view_decorators import (
-    fresh_jwt_required,
-    verify_fresh_jwt_in_request,
+    jwt_required,
+    verify_jwt_in_request,
 )
-from flask_restplus import Api
-from flask_restplus import Resource
+from flask_restx import Api
+from flask_restx import Resource
 from flask_cors import CORS
 from flask_jwt_extended.exceptions import JWTExtendedException
 from jwt.exceptions import ExpiredSignatureError
 from flask_jwt_extended import JWTManager
-from flask_jwt_extended.utils import get_jwt_claims
+from flask_jwt_extended.utils import get_jwt
 from markupsafe import Markup
 import werkzeug
 from werkzeug.exceptions import BadRequest, HTTPException
@@ -30,7 +30,7 @@ import rq_dashboard
 app = Flask(__name__)
 
 
-def createRestplusApi():
+def createRestxApi():
     api = Api(doc="/doc/", validate=True)
 
     # Handle authentication errors.
@@ -47,12 +47,13 @@ def register_extensions(app):
 
     class VerifiedModelView(ModelView):
         def is_accessible(self):
-            verify_fresh_jwt_in_request()
-            return user_jwt_grants_edit_access(get_jwt_claims())
+            verify_jwt_in_request()
+            return user_jwt_grants_edit_access(get_jwt()["user_claims"])
 
     class UserModelView(VerifiedModelView):
         column_list = ["email", "created_at", "access_type", "num_folds"]
-        column_editable_list = ["email", "created_at", "access_type"]
+        # column_editable_list = ["email", "created_at", "access_type"]
+        column_editable_list = ["created_at", "access_type"]
         column_sortable_list = ["email", "created_at", "access_type"]
         column_searchable_list = ["email", "access_type"]
         can_export = True
@@ -66,7 +67,7 @@ def register_extensions(app):
         can_set_page_size = True
         can_export = True
         column_editable_list = [
-            "name",
+            # "name",
             "user",
             "tagstring",
             "create_date",
@@ -97,11 +98,29 @@ def register_extensions(app):
 
     class InvokationModelView(VerifiedModelView):
         column_searchable_list = ["id", "fold_id", "type", "state", "log", "command"]
+        column_editable_list = ["state"]
+
+    class DockModelView(VerifiedModelView):
+        can_export = True
+        page_size = 50
+        column_display_pk = True
+        column_default_sort = "id"
+        can_set_page_size = True
+        column_editable_list = [
+            # "name",
+            "ligand_name",
+            "ligand_smiles",
+            "tool",
+            "receptor_fold_id",
+            "receptor_fold",
+            "bounding_box_residue",
+            "bounding_box_radius_angstrom",
+        ]
 
     admin.add_view(UserModelView(models.User, db.session))
     admin.add_view(FoldModelView(models.Fold, db.session))
     admin.add_view(InvokationModelView(models.Invokation, db.session))
-    admin.add_view(VerifiedModelView(models.Dock, db.session))
+    admin.add_view(DockModelView(models.Dock, db.session))
 
     admin.init_app(app)
     db.init_app(app)
@@ -132,7 +151,7 @@ def create_app(config_object="settings"):
     from app.login_views import ns as login_views_ns, oauth
     from app.admin_views import ns as admin_views_ns
 
-    api = createRestplusApi()
+    api = createRestxApi()
     register_extensions(app)
 
     @api.route("/healthz", strict_slashes=False)
@@ -149,7 +168,7 @@ def create_app(config_object="settings"):
     oauth.init_app(app)
 
     @rq_dashboard.blueprint.before_request
-    @fresh_jwt_required
+    @jwt_required(fresh=True)
     def before_request():
         """Protect RQ pages."""
         pass

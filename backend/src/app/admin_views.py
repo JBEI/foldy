@@ -2,10 +2,10 @@
 
 from flask import request
 from flask_migrate import stamp, upgrade
-from flask_restplus import Namespace
-from flask_jwt_extended import fresh_jwt_required
-from flask_restplus import Resource
-from flask_restplus import fields
+from flask_restx import Namespace
+from flask_jwt_extended import jwt_required
+from flask_restx import Resource
+from flask_restx import fields
 from rq.command import send_shutdown_command
 from rq.registry import FailedJobRegistry
 from sqlalchemy.sql.elements import and_
@@ -18,7 +18,9 @@ from app.authorization import verify_has_edit_access
 from app.util import start_stage
 
 
-ns = Namespace("admin_views", decorators=[fresh_jwt_required, verify_has_edit_access])
+ns = Namespace(
+    "admin_views", decorators=[jwt_required(fresh=True), verify_has_edit_access]
+)
 
 
 @ns.route("/createdbs")

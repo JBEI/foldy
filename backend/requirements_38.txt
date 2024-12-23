@@ -19,7 +19,7 @@ chardet==3.0.4
 click==7.1.2
 coverage==5.5
 croniter==1.0.15
-cryptography==2.9.2
+cryptography # TODO set version ==2.9.2
 cssselect==1.1.0
 cssutils==2.3.0
 dnachisel==3.2.8
@@ -31,17 +31,17 @@ factory-boy==3.2.0
 Faker==8.12.0
 fastapi==0.70.0
 flametree==0.1.11
-Flask==1.1.2
-Flask-Admin==1.5.8
-Flask-CLI==0.4.0
-Flask-Compress==1.11
-Flask-Cors==3.0.8
-Flask-JWT-Extended==3.24.1
-Flask-Migrate==3.1.0
+Flask # TODO set version==1.1.2
+Flask-Admin # TODO set version==1.5.8
+Flask-CLI # TODO set version==0.4.0
+Flask-Compress # TODO set version==1.11
+Flask-Cors # TODO set version==3.0.8
+Flask-JWT-Extended # TODO set version==3.24.1
+Flask-Migrate # TODO set version==3.1.0
 # flask-restplus==0.13.0
-flask-RESTX
+flask-restx
 -e git+https://github.com/Jacoberts/Flask-RQ2.git@ddc93224eda641449d77e6d452bcba0a06b731a2#egg=Flask_RQ2
-Flask-SQLAlchemy==2.5.1
+Flask-SQLAlchemy # TODO set version==2.5.1
 google-api-core==1.31.1
 google-auth==1.34.0
 google-cloud-core==1.7.2
@@ -67,10 +67,10 @@ MarkupSafe==1.1.1
 marshmallow==3.13.0
 mccabe==0.6.1
 mypy-extensions==0.4.3
-numpy==1.19.2
+numpy # TODO set version==1.19.2
 packaging==21.0
 # pandas==1.0.5
-pandas==1.3.5
+pandas  # TODO set version==1.3.5 MAYBE 2.2.3
 pathspec==0.9.0
 pg8000==1.21.1
 platformdirs==2.4.0

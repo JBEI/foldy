@@ -24,7 +24,7 @@ services:
       - redis
     environment:
       - FLASK_APP=main.py
-      - FLASK_ENV=development
+      - ENV=development
       - DEBUG=True
       - SECRET_KEY=superrandomandveryhardtoguessstring
       - OAUTH_REDIRECT_URI=http://localhost:8080/api/authorize
@@ -41,11 +41,12 @@ services:
     ports:
       - 127.0.0.1:8080:8080
     volumes:
-      - ./backend/backend/app:/app/app
-      - ./backend/backend/integration_tests:/app/integration_tests
-      - ./backend/backend/migrations:/app/migrations
+      - ./backend/src/main.py:/src/main.py
+      - ./backend/src/app:/src/app
+      - ./backend/src/integration_tests:/src/integration_tests
+      - ./backend/src/migrations:/src/migrations
     restart: always
-    entrypoint: python /app/main.py
+    entrypoint: python /src/main.py
 
   db:
     environment:

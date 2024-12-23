@@ -2,12 +2,12 @@ import io
 import re
 
 from flask import current_app, request, send_file, make_response
-from flask_jwt_extended.utils import get_jwt_identity, get_jwt_claims
-from flask_restplus import Namespace
-from flask_jwt_extended import fresh_jwt_required
-from flask_restplus import Resource
-from flask_restplus import fields
-from flask_restplus import reqparse
+from flask_jwt_extended.utils import get_jwt_identity, get_jwt
+from flask_restx import Namespace
+from flask_jwt_extended import jwt_required
+from flask_restx import Resource
+from flask_restx import fields
+from flask_restx import reqparse
 from sqlalchemy.sql.elements import and_
 from werkzeug.exceptions import BadRequest
 
@@ -20,7 +20,7 @@ from app.authorization import (
     verify_has_edit_access,
 )
 
-ns = Namespace("most_views", decorators=[fresh_jwt_required])
+ns = Namespace("most_views", decorators=[jwt_required(fresh=True)])
 
 
 @ns.route("/test")
@@ -146,7 +146,7 @@ class FoldsResource(Resource):
         page = args.get("page", None)
         per_page = args.get("per_page", None)
 
-        only_public = not user_jwt_grants_edit_access(get_jwt_claims())
+        only_public = not user_jwt_grants_edit_access(get_jwt()["user_claims"])
 
         manager = FoldStorageUtil()
         manager.setup()
@@ -180,7 +180,7 @@ class FoldsResource(Resource):
 class FoldResource(Resource):
     @ns.marshal_with(fold_fields)
     def get(self, fold_id):
-        only_public = not user_jwt_grants_edit_access(get_jwt_claims())
+        only_public = not user_jwt_grants_edit_access(get_jwt()["user_claims"])
 
         manager = FoldStorageUtil()
         manager.setup()
@@ -252,10 +252,10 @@ class FoldPdbZipResource(Resource):
             manager.get_fold_file_zip(
                 request.get_json()["fold_ids"],
                 request.get_json()["relative_fpath"],
-                request.get_json()["output_dirname"]
+                request.get_json()["output_dirname"],
             ),
             mimetype="application/octet-stream",
-            attachment_filename="fold_pdbs.zip",
+            download_name="fold_pdbs.zip",
             as_attachment=True,
         )
 
@@ -272,7 +272,7 @@ class FoldPklResource(Resource):
         return send_file(
             io.BytesIO(pkl_byte_str),
             mimetype="application/octet-stream",
-            attachment_filename="model.pkl",
+            download_name="model.pkl",
             as_attachment=True,
         )
 
@@ -303,7 +303,7 @@ class FoldPklResource(Resource):
         return send_file(
             io.BytesIO(sdf_str),
             mimetype="application/octet-stream",
-            attachment_filename=f"{ligand_name}.sdf",
+            download_name=f"{ligand_name}.sdf",
             as_attachment=True,
         )
 
@@ -328,7 +328,7 @@ class FileDownloadResource(Resource):
         return send_file(
             io.BytesIO(sdf_str),
             mimetype="application/octet-stream",
-            attachment_filename=fname,
+            download_name=fname,
             as_attachment=True,
         )
 

@@ -7,6 +7,7 @@ environment variables.
 
 Copied from https://github.com/cookiecutter-flask/cookiecutter-flask
 """
+
 import datetime
 
 from environs import Env
@@ -14,13 +15,14 @@ from environs import Env
 env = Env()
 env.read_env()
 
+ENV = env.str("ENV")
 
 # TODO(jacob): Consider using refresh tokens, instead of access tokens
 # with a long timeout (#41).
 JWT_ACCESS_TOKEN_EXPIRES = datetime.timedelta(hours=24 * 7)
 JWT_TOKEN_LOCATION = ["headers", "cookies"]
 JWT_COOKIE_CSRF_PROTECT = False
-RESTPLUS_JSON = {"indent": 0}
+RESTX_JSON = {"indent": 0}
 COMPRESS_MIMETYPES = [
     "text/html",
     "text/css",

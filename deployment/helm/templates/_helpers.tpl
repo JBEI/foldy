@@ -159,7 +159,7 @@ spec:
           args: ["rq", "worker", {{ required "RqQueueName is required." .RqQueueName | quote }}, "--burst", "--max-jobs", "1"]
           env:
           - name: FLASK_APP
-            value: /backend/backend/rq_worker_main.py
+            value: /backend/src/rq_worker_main.py
           - name: RUN_AF2_PATH
             value: /worker/run_alphafold.sh
           - name: DECOMPRESS_PKLS_PATH

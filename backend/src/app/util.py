@@ -448,7 +448,7 @@ class FoldStorageUtil:
 
         iterable = query
         if page and per_page:
-            iterable = query.paginate(page, per_page).items
+            iterable = query.paginate(page=page, per_page=per_page).items
 
         folds = []
         for fold in iterable:
@@ -640,10 +640,13 @@ class FoldStorageUtil:
 
                 try:
                     fold_pdb_binary = self.storage_manager.get_binary(
-                        fold_id, relative_fpath #"ranked_0.pdb"
+                        fold_id, relative_fpath  # "ranked_0.pdb"
                     )
-                    padded_fold_id = format(fold_id, '06')
-                    archive.writestr(f"{output_dirname}/{padded_fold_id}/{relative_fpath}", fold_pdb_binary)
+                    padded_fold_id = format(fold_id, "06")
+                    archive.writestr(
+                        f"{output_dirname}/{padded_fold_id}/{relative_fpath}",
+                        fold_pdb_binary,
+                    )
                 except Exception as e:
                     logging.log(e)
         tmp.seek(0)

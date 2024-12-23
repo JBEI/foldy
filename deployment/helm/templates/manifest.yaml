@@ -3,7 +3,7 @@ kind: ConfigMap
 metadata:
   name: foldy-configmap
 data:
-  FLASK_ENV: "production"
+  ENV: "production"
   DEBUG: "False"
   OAUTH_REDIRECT_URI: "https://{{ required "Must specify FoldyDomain" .Values.FoldyDomain }}/api/authorize"
   BACKEND_URL: "https://{{ required "Must specify FoldyDomain" .Values.FoldyDomain }}"

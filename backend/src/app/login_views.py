@@ -3,10 +3,10 @@ import urllib
 
 from authlib.integrations.flask_client import OAuth
 from flask import redirect, current_app, request, jsonify
-from flask_restplus import Namespace
+from flask_restx import Namespace
 from flask import current_app, url_for
-from flask_restplus import fields
-from flask_restplus import Resource
+from flask_restx import fields
+from flask_restx import Resource
 from flask_jwt_extended import create_access_token
 from flask_jwt_extended import set_access_cookies, unset_jwt_cookies
 
@@ -119,7 +119,9 @@ class AuthorizeResource(Resource):
         access_token = create_access_token(
             identity=email,
             fresh=True,
-            user_claims={"name": name, "email": email, "type": user.access_type},
+            additional_claims={
+                "user_claims": {"name": name, "email": email, "type": user.access_type}
+            },
         )
 
         frontend_parsed = urllib.parse.urlparse(frontend_url)
