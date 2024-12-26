@@ -25,7 +25,7 @@ def _tail(stdout, max_char=5000):
     """Return just the last few lines of the stdout, a string."""
     if not stdout:
         return ""
-    return stdout[-min(max_char, len(stdout)) : -1]
+    return stdout[-min(max_char, len(stdout)) : 0]
 
 
 PSQL_CHAR_LIMIT = 100 * 1000 * 1000
