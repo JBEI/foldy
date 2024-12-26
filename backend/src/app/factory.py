@@ -167,7 +167,10 @@ def create_app(config_object="settings"):
 
     oauth.init_app(app)
 
-    @rq_dashboard.blueprint.before_request
+    # https://github.com/Parallels/rq-dashboard/issues/464
+    rq_dashboard.web.setup_rq_connection(app)
+
+    # @rq_dashboard.blueprint.before_request
     @jwt_required(fresh=True)
     def before_request():
         """Protect RQ pages."""

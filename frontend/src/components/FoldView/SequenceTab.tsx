@@ -2,7 +2,9 @@ import React from "react";
 import { EditableTagList } from "../../util/editableTagList";
 import { VariousColorSchemes } from "../../util/plots";
 import { AiFillEdit } from "react-icons/ai";
-const ReactSequenceViewer = require("react-sequence-viewer");
+import SeqViz from 'seqviz';
+// const ReactSequenceViewer = require("react-sequence-viewer");
+// import ReactSequenceViewer from "react-sequence-viewer";
 
 export interface SubsequenceSelection {
   chainIdx: number;
@@ -71,39 +73,52 @@ const SequenceTab = React.memo(
             chainName = props.foldName;
             chainSeq = ss;
           }
-          return (
-            <ReactSequenceViewer.default
-              key={idx}
-              sequence={chainSeq}
-              title={chainName}
-              badge={false}
-              id={idx.toString() + "rsv"}
-              charsPerLine={50}
-              wrapAminoAcids={true}
-              coverage={getSequenceViewerCoverage(idx)}
-              legend={getSequenceViewerLegend(idx)}
-              onMouseSelection={(sele: {
-                detail: {
-                  start: number;
-                  end: number;
-                  selection: string;
-                };
-              }) => {
-                console.log(`on mouse selection ${sele}`);
-                console.log(sele);
-                // have access to .detail.{selection, start, end}
-                props.setSelectedSubsequence({
-                  chainIdx: idx,
-                  startResidue: sele.detail.start,
-                  endResidue: sele.detail.end,
-                  subsequence: sele.detail.selection,
-                });
-              }}
-              // onSubpartSelected={(sele: string) => {
-              //   console.log(`on subpart selected ${sele}`);
-              // }}
-            />
-          );
+          return <><h2>{chainName}</h2><SeqViz
+          key={idx}
+          name={chainName}
+          seq={chainSeq}
+        //   annotations={annotations}
+          viewer="linear" // You can adjust this based on your preferred viewer type
+          showComplement={false}
+          zoom={{ linear: 50 }} // Adjust zoom level as needed
+          style={{ width: '100%', height: '400px', marginBottom: '20px' }} // Customize styles as needed
+        //   onSelection={handleSelection}
+        /></>;
+        //   return <></>;
+
+            // //   return (
+            // <ReactSequenceViewer.default
+            //   key={idx}
+            //   sequence={chainSeq}
+            //   title={chainName}
+            //   badge={false}
+            //   id={idx.toString() + "rsv"}
+            //   charsPerLine={50}
+            //   wrapAminoAcids={true}
+            //   coverage={getSequenceViewerCoverage(idx)}
+            //   legend={getSequenceViewerLegend(idx)}
+            //   onMouseSelection={(sele: {
+            //     detail: {
+            //       start: number;
+            //       end: number;
+            //       selection: string;
+            //     };
+            //   }) => {
+            //     console.log(`on mouse selection ${sele}`);
+            //     console.log(sele);
+            //     // have access to .detail.{selection, start, end}
+            //     props.setSelectedSubsequence({
+            //       chainIdx: idx,
+            //       startResidue: sele.detail.start,
+            //       endResidue: sele.detail.end,
+            //       subsequence: sele.detail.selection,
+            //     });
+            //   }}
+            //   // onSubpartSelected={(sele: string) => {
+            //   //   console.log(`on subpart selected ${sele}`);
+            //   // }}
+            // />
+            //   );
         })}
         <form className="uk-form-horizontal uk-margin-large">
           <div className="uk-margin">

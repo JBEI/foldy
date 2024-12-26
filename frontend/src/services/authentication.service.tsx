@@ -15,11 +15,11 @@ export interface DecodedJwt {
 
 export function getDescriptionOfUserType(userType: string) {
   if (userType === "admin") {
-    return `Your account has "admin" permissions to ${process.env.REACT_APP_INSTITUTION} Foldy. You have edit access, plus access to debug tools available in the toolbar. The RQ page shows the status of the Redis Queue, which manages jobs. The DBs page allows direct edit access to all underlying databases, built on Flask-Admin. The Sudo Page contains some convenient buttons for manipulating folds.`;
+    return `Your account has "admin" permissions to ${import.meta.env.VITE_INSTITUTION} Foldy. You have edit access, plus access to debug tools available in the toolbar. The RQ page shows the status of the Redis Queue, which manages jobs. The DBs page allows direct edit access to all underlying databases, built on Flask-Admin. The Sudo Page contains some convenient buttons for manipulating folds.`;
   } else if (userType === "editor") {
-    return `Your account has "editor" permissions to ${process.env.REACT_APP_INSTITUTION} Foldy which means you can view any structure or submit your own. Check out the instructions in the About page for details.`;
+    return `Your account has "editor" permissions to ${import.meta.env.VITE_INSTITUTION} Foldy which means you can view any structure or submit your own. Check out the instructions in the About page for details.`;
   } else if (userType === "viewer") {
-    return `Your account has "viewer" permissions to ${process.env.REACT_APP_INSTITUTION} Foldy which means you can view any public folds and associated data, but cannot submit your own compute jobs. See the Foldy manuscript and codebase to set up a Foldy instance at your institution!`;
+    return `Your account has "viewer" permissions to ${import.meta.env.VITE_INSTITUTION} Foldy which means you can view any public folds and associated data, but cannot submit your own compute jobs. See the Foldy manuscript and codebase to set up a Foldy instance at your institution!`;
   } else {
     console.error(`Unknown user type ${userType}`);
     return "";
@@ -54,13 +54,13 @@ export const authenticationService = {
 export function redirectToLogin() {
   const frontend_url = encodeURIComponent(window.location.href);
   window.open(
-    `${process.env.REACT_APP_BACKEND_URL}/api/login?frontend_url=${frontend_url}`,
+    `${import.meta.env.VITE_BACKEND_URL}/api/login?frontend_url=${frontend_url}`,
     "_self"
   );
 }
 
 export function redirectToLogout() {
-  window.open(`${process.env.REACT_APP_BACKEND_URL}/api/logout`, "_self");
+  window.open(`${import.meta.env.VITE_BACKEND_URL}/api/logout`, "_self");
 }
 
 function logout() {

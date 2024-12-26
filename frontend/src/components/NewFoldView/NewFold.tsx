@@ -663,7 +663,7 @@ function NewFold(props: {
             disabled={isActivelySubmitting || props.userType === "viewer"}
             uk-tooltip={
               props.userType === "viewer"
-                ? `You do not have permissions to submit folds to the ${process.env.REACT_APP_INSTITUTION} Foldy instance.`
+                ? `You do not have permissions to submit folds to the ${import.meta.env.VITE_INSTITUTION} Foldy instance.`
                 : null
             }
           >

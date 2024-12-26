@@ -88,7 +88,7 @@ spec:
   failedJobsHistoryLimit: 5                   # Optional. Default: 100. How many failed jobs should be kept.
   # envSourceContainerName: {container-name}    # Optional. Default: .spec.JobTargetRef.template.spec.containers[0]
   minReplicaCount: 0                          # Optional. Default: 0
-  maxReplicaCount: {{ if eq .RqQueueName "cpu" -}}
+  maxReplicaCount: {{ if or (eq .RqQueueName "cpu") (eq .RqQueueName "esm") -}}
     10
   {{- else -}}
     3
@@ -142,7 +142,7 @@ spec:
           iam.gke.io/gke-metadata-server-enabled: "true"
         {{- if or (eq .RqQueueName "gpu") (eq .RqQueueName "biggpu") }}
           cloud.google.com/gke-nodepool: spota100nodes
-        {{- else if eq .RqQueueName "cpu" }}
+        {{- else if or (eq .RqQueueName "cpu") (eq .RqQueueName "esm") }}
           cloud.google.com/gke-nodepool: spothighmemnodes
         {{- end }}
 
@@ -154,7 +154,7 @@ spec:
 
         containers:
         - name: master
-          image: {{ .Values.GoogleCloudRegion }}-docker.pkg.dev/{{ .Values.GoogleProjectId }}/{{ .Values.ArtifactRepo }}/worker:{{  .Values.ImageVersion }}
+          image: {{ .Values.GoogleCloudRegion }}-docker.pkg.dev/{{ .Values.GoogleProjectId }}/{{ .Values.ArtifactRepo }}/{{ required "image name is required" .ImageName }}:{{  .Values.ImageVersion }}
           command: ["/opt/conda/envs/worker/bin/flask"]
           args: ["rq", "worker", {{ required "RqQueueName is required." .RqQueueName | quote }}, "--burst", "--max-jobs", "1"]
           env:
@@ -181,7 +181,7 @@ spec:
             requests:
               cpu: 100m
               memory: 100Mi
-            {{- else if eq .RqQueueName "cpu" }}
+            {{- else if or (eq .RqQueueName "cpu") (eq .RqQueueName "esm") }}
             requests:
               cpu: 15000m
               memory: 115Gi

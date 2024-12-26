@@ -302,16 +302,19 @@ spec:
 
 
 ---
-{{ include "foldy.createWorkerPool" (deepCopy . | merge (dict "RqQueueName" "cpu")) }}
+{{ include "foldy.createWorkerPool" (deepCopy . | merge (dict "RqQueueName" "cpu") | merge (dict "ImageName" "worker")) }}
 
 ---
-{{ include "foldy.createWorkerPool" (deepCopy . | merge (dict "RqQueueName" "emailparrot")) }}
+{{ include "foldy.createWorkerPool" (deepCopy . | merge (dict "RqQueueName" "esm") | merge (dict "ImageName" "worker_esm")) }}
 
 ---
-{{ include "foldy.createWorkerPool" (deepCopy . | merge (dict "RqQueueName" "gpu")) }}
+{{ include "foldy.createWorkerPool" (deepCopy . | merge (dict "RqQueueName" "emailparrot") | merge (dict "ImageName" "worker")) }}
 
 ---
-{{ include "foldy.createWorkerPool" (deepCopy . | merge (dict "RqQueueName" "biggpu")) }}
+{{ include "foldy.createWorkerPool" (deepCopy . | merge (dict "RqQueueName" "gpu") | merge (dict "ImageName" "worker")) }}
+
+---
+{{ include "foldy.createWorkerPool" (deepCopy . | merge (dict "RqQueueName" "biggpu") | merge (dict "ImageName" "worker")) }}
 
 ---
 # Prometheus frontend proxy, based on instructions here:

@@ -116,7 +116,7 @@ function RoutedApp() {
 
   const foldyTitle = (
     <span>
-      {process.env.REACT_APP_INSTITUTION} Foldy
+      {import.meta.env.VITE_INSTITUTION} Foldy
       <sub>
         <sub>
           {fullDecodedToken?.user_claims.type === "viewer" ? "View Only" : null}
@@ -131,7 +131,7 @@ function RoutedApp() {
     </span>
   );
 
-  const foldyWelcomeText = `Welcome to ${process.env.REACT_APP_INSTITUTION} Foldy! Login with an ${process.env.REACT_APP_INSTITUTION} account for edit access, or any other account to view public structures.`;
+  const foldyWelcomeText = `Welcome to ${import.meta.env.VITE_INSTITUTION} Foldy! Login with an ${import.meta.env.VITE_INSTITUTION} account for edit access, or any other account to view public structures.`;
 
   // JBEI orange: CF4520
   // JBEI red: CF4420
@@ -154,7 +154,7 @@ function RoutedApp() {
         </a>
         {fullDecodedToken?.user_claims.type === "admin" ? (
           <a
-            href={`${process.env.REACT_APP_BACKEND_URL}/rq/`}
+            href={`${import.meta.env.VITE_BACKEND_URL}/rq/`}
             className="uk-navbar-item"
             style={{ color: "#fff" }}
           >
@@ -163,7 +163,7 @@ function RoutedApp() {
         ) : null}
         {fullDecodedToken?.user_claims.type === "admin" ? (
           <a
-            href={`${process.env.REACT_APP_BACKEND_URL}/admin/`}
+            href={`${import.meta.env.VITE_BACKEND_URL}/admin/`}
             className="uk-navbar-item"
             style={{ color: "#fff" }}
           >
@@ -259,9 +259,9 @@ function RoutedApp() {
             uk-close={1}
           ></button>
 
-          <h3>{process.env.REACT_APP_INSTITUTION} Foldy</h3>
+          <h3>{import.meta.env.VITE_INSTITUTION} Foldy</h3>
           <p>
-            {process.env.REACT_APP_INSTITUTION} Foldy is a web app for
+            {import.meta.env.VITE_INSTITUTION} Foldy is a web app for
             predicting and using protein structures based on AlphaFold.
           </p>
 
@@ -271,12 +271,12 @@ function RoutedApp() {
             </li>
             {fullDecodedToken?.user_claims.type === "admin" ? (
               <li className="uk-parent">
-                <a href={`${process.env.REACT_APP_BACKEND_URL}/rq/`}>RQ</a>
+                <a href={`${import.meta.env.VITE_BACKEND_URL}/rq/`}>RQ</a>
               </li>
             ) : null}
             {fullDecodedToken?.user_claims.type === "admin" ? (
               <li className="uk-parent">
-                <a href={`${process.env.REACT_APP_BACKEND_URL}/admin/`}>DBs</a>
+                <a href={`${import.meta.env.VITE_BACKEND_URL}/admin/`}>DBs</a>
               </li>
             ) : null}
             {fullDecodedToken?.user_claims.type === "admin" ? (
@@ -368,18 +368,18 @@ function RoutedApp() {
 }
 
 function App() {
-  if (!process.env.REACT_APP_INSTITUTION) {
-    console.error("REACT_APP_INSTITUTION is unset.");
+  if (!import.meta.env.VITE_INSTITUTION) {
+    console.error("VITE_INSTITUTION is unset.");
   }
-  if (!process.env.REACT_APP_BACKEND_URL) {
-    console.error("REACT_APP_BACKEND_URL is unset.");
+  if (!import.meta.env.VITE_BACKEND_URL) {
+    console.error("VITE_BACKEND_URL is unset.");
   }
-  if (!process.env.REACT_APP_GOOGLE_CLIENT_ID) {
-    console.error("REACT_APP_GOOGLE_CLIENT_ID is unset.");
+  if (!import.meta.env.VITE_GOOGLE_CLIENT_ID) {
+    console.error("VITE_GOOGLE_CLIENT_ID is unset.");
   }
   return (
     <GoogleOAuthProvider
-      clientId={process.env.REACT_APP_GOOGLE_CLIENT_ID || ""}
+      clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID || ""}
     >
       <BrowserRouter>
         <RoutedApp />

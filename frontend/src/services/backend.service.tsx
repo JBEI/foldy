@@ -41,7 +41,7 @@ function handleResponse(response: Response) {
 export function getTestValue(): Promise<any> {
   const requestOptions = { method: "GET", headers: authHeader() };
   return fetch(
-    `${process.env.REACT_APP_BACKEND_URL}/api/test`,
+    `${import.meta.env.VITE_BACKEND_URL}/api/test`,
     requestOptions
   ).then(handleResponse);
 }
@@ -113,6 +113,10 @@ export interface FileInfo {
   key: string;
   size: number;
   modified: number;
+}
+
+export interface DmsEmbeddingsInput {
+    embedding_model: string;
 }
 
 export const getJobStatus = (fold: Fold, job_type: string): string | null => {
@@ -192,7 +196,7 @@ export function getFolds(
     searchParams.append("page", page.toString());
     searchParams.append("per_page", per_page.toString());
   }
-  var url = `${process.env.REACT_APP_BACKEND_URL}/api/fold?${searchParams}`;
+  var url = `${import.meta.env.VITE_BACKEND_URL}/api/fold?${searchParams}`;
   return fetch(url, requestOptions).then(handleResponse);
 }
 
@@ -213,7 +217,7 @@ export function postFolds(
     }),
   };
   return fetch(
-    `${process.env.REACT_APP_BACKEND_URL}/api/fold`,
+    `${import.meta.env.VITE_BACKEND_URL}/api/fold`,
     requestOptions
   ).then(handleResponse);
 }
@@ -221,7 +225,7 @@ export function postFolds(
 export function getFold(foldId: number): Promise<Fold> {
   const requestOptions = { method: "GET", headers: authHeader() };
 
-  var url = `${process.env.REACT_APP_BACKEND_URL}/api/fold/${foldId}`;
+  var url = `${import.meta.env.VITE_BACKEND_URL}/api/fold/${foldId}`;
   return fetch(url, requestOptions).then(handleResponse);
 }
 
@@ -235,7 +239,7 @@ export function updateFold(
     body: JSON.stringify(fieldsToUpdate),
   };
   return fetch(
-    `${process.env.REACT_APP_BACKEND_URL}/api/fold/${foldId}`,
+    `${import.meta.env.VITE_BACKEND_URL}/api/fold/${foldId}`,
     requestOptions
   ).then(handleResponse);
 }
@@ -243,7 +247,7 @@ export function updateFold(
 export function getInvokation(invokation_id: number): Promise<Invokation> {
   const requestOptions = { method: "GET", headers: authHeader() };
 
-  var url = `${process.env.REACT_APP_BACKEND_URL}/api/invokation/${invokation_id}`;
+  var url = `${import.meta.env.VITE_BACKEND_URL}/api/invokation/${invokation_id}`;
   return fetch(url, requestOptions).then(handleResponse);
 }
 
@@ -253,7 +257,7 @@ export function getFoldPdb(
 ): Promise<FoldPdb> {
   const requestOptions = { method: "GET", headers: authHeader() };
 
-  var url = `${process.env.REACT_APP_BACKEND_URL}/api/fold_pdb/${fold_id}/${model_number}`;
+  var url = `${import.meta.env.VITE_BACKEND_URL}/api/fold_pdb/${fold_id}/${model_number}`;
   return fetch(url, requestOptions).then(handleResponse);
 }
 
@@ -263,7 +267,7 @@ export function getFoldPkl(
 ): Promise<Blob> {
   const requestOptions = { method: "POST", headers: authHeader() };
 
-  var url = `${process.env.REACT_APP_BACKEND_URL}/api/fold_pkl/${fold_id}/${model_number}`;
+  var url = `${import.meta.env.VITE_BACKEND_URL}/api/fold_pkl/${fold_id}/${model_number}`;
   return fetch(url, requestOptions).then((response) => {
     return response.blob();
   });
@@ -275,7 +279,7 @@ export function getDockSdf(
 ): Promise<Blob> {
   const requestOptions = { method: "POST", headers: authHeader() };
 
-  var url = `${process.env.REACT_APP_BACKEND_URL}/api/dock_sdf/${fold_id}/${ligand_name}`;
+  var url = `${import.meta.env.VITE_BACKEND_URL}/api/dock_sdf/${fold_id}/${ligand_name}`;
   return fetch(url, requestOptions)
     .then(handleFileResponse)
     .then((response) => {
@@ -296,7 +300,7 @@ export function getFoldPdbZip(
     }),
   };
 
-  var url = `${process.env.REACT_APP_BACKEND_URL}/api/fold_pdb_zip`;
+  var url = `${import.meta.env.VITE_BACKEND_URL}/api/fold_pdb_zip`;
   return fetch(url, requestOptions)
     .then(handleFileResponse)
     .then((response) => {
@@ -319,7 +323,7 @@ export function getFoldFileZip(
     }),
   };
 
-  var url = `${process.env.REACT_APP_BACKEND_URL}/api/fold_file_zip`;
+  var url = `${import.meta.env.VITE_BACKEND_URL}/api/fold_file_zip`;
   return fetch(url, requestOptions)
     .then(handleFileResponse)
     .then((response) => {
@@ -333,7 +337,7 @@ export function getFoldPae(
 ): Promise<FoldPae> {
   const requestOptions = { method: "GET", headers: authHeader() };
 
-  var url = `${process.env.REACT_APP_BACKEND_URL}/api/pae/${fold_id}/${model_number}`;
+  var url = `${import.meta.env.VITE_BACKEND_URL}/api/pae/${fold_id}/${model_number}`;
   return fetch(url, requestOptions).then(handleResponse);
 }
 
@@ -343,33 +347,47 @@ export function getFoldContactProb(
 ): Promise<FoldContactProb> {
   const requestOptions = { method: "GET", headers: authHeader() };
 
-  var url = `${process.env.REACT_APP_BACKEND_URL}/api/contact_prob/${fold_id}/${model_number}`;
+  var url = `${import.meta.env.VITE_BACKEND_URL}/api/contact_prob/${fold_id}/${model_number}`;
   return fetch(url, requestOptions).then(handleResponse);
 }
 
 export function getFoldPfam(fold_id: number): Promise<Annotations> {
   const requestOptions = { method: "GET", headers: authHeader() };
 
-  var url = `${process.env.REACT_APP_BACKEND_URL}/api/pfam/${fold_id}`;
+  var url = `${import.meta.env.VITE_BACKEND_URL}/api/pfam/${fold_id}`;
   return fetch(url, requestOptions).then(handleResponse);
 }
 
 export function getFileList(fold_id: number): Promise<FileInfo[]> {
   const requestOptions = { method: "GET", headers: authHeader() };
 
-  var url = `${process.env.REACT_APP_BACKEND_URL}/api/file/list/${fold_id}`;
+  var url = `${import.meta.env.VITE_BACKEND_URL}/api/file/list/${fold_id}`;
   return fetch(url, requestOptions).then(handleResponse);
 }
 
 export function getFile(fold_id: number, filePath: string): Promise<Blob> {
   const requestOptions = { method: "POST", headers: authHeader() };
 
-  var url = `${process.env.REACT_APP_BACKEND_URL}/api/file/download/${fold_id}/${filePath}`;
+  var url = `${import.meta.env.VITE_BACKEND_URL}/api/file/download/${fold_id}/${filePath}`;
   return fetch(url, requestOptions)
     .then(handleFileResponse)
     .then((response) => {
       return response.blob();
     });
+}
+
+export function startDmsEmbeddings(fold_id: number, embedding_model: string): Promise<boolean> {
+    const requestOptions = {
+        method: "POST",
+        headers: jsonBodyAuthHeader(),
+        body: JSON.stringify({
+            embedding_model: embedding_model
+        }),
+      };
+      return fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/api/dms_embeddings/${fold_id}`,
+        requestOptions
+      ).then(handleResponse);
 }
 
 export function postDock(newDock: DockInput): Promise<boolean> {
@@ -379,7 +397,7 @@ export function postDock(newDock: DockInput): Promise<boolean> {
     body: JSON.stringify(newDock),
   };
   return fetch(
-    `${process.env.REACT_APP_BACKEND_URL}/api/dock`,
+    `${import.meta.env.VITE_BACKEND_URL}/api/dock`,
     requestOptions
   ).then(handleResponse);
 }
@@ -390,7 +408,7 @@ export function deleteDock(dockId: number): Promise<boolean> {
     headers: jsonBodyAuthHeader(),
   };
   return fetch(
-    `${process.env.REACT_APP_BACKEND_URL}/api/dock/${dockId}`,
+    `${import.meta.env.VITE_BACKEND_URL}/api/dock/${dockId}`,
     requestOptions
   ).then(handleResponse);
 }
@@ -405,7 +423,7 @@ export function createDbs(): Promise<any> {
     headers: headers,
     body: JSON.stringify({}),
   };
-  var url = `${process.env.REACT_APP_BACKEND_URL}/api/createdbs`;
+  var url = `${import.meta.env.VITE_BACKEND_URL}/api/createdbs`;
   return fetch(url, requestOptions).then(handleResponse);
 }
 
@@ -415,7 +433,7 @@ export function upgradeDbs(): Promise<any> {
     headers: jsonBodyAuthHeader(),
     body: JSON.stringify({}),
   };
-  var url = `${process.env.REACT_APP_BACKEND_URL}/api/upgradedbs`;
+  var url = `${import.meta.env.VITE_BACKEND_URL}/api/upgradedbs`;
   return fetch(url, requestOptions).then(handleResponse);
 }
 
@@ -425,7 +443,7 @@ export function stampDbs(revision: string): Promise<any> {
     headers: jsonBodyAuthHeader(),
     body: JSON.stringify({ revision: revision }),
   };
-  var url = `${process.env.REACT_APP_BACKEND_URL}/api/stampdbs`;
+  var url = `${import.meta.env.VITE_BACKEND_URL}/api/stampdbs`;
   return fetch(url, requestOptions).then(handleResponse);
 }
 
@@ -444,7 +462,7 @@ export function queueJob(
     }),
   };
   return fetch(
-    `${process.env.REACT_APP_BACKEND_URL}/api/queuejob`,
+    `${import.meta.env.VITE_BACKEND_URL}/api/queuejob`,
     requestOptions
   ).then(handleResponse);
 }
@@ -455,7 +473,7 @@ export function queueTestJob(queue: string): Promise<any> {
     headers: jsonBodyAuthHeader(),
     body: JSON.stringify({ queue: queue }),
   };
-  var url = `${process.env.REACT_APP_BACKEND_URL}/api/queuetestjob`;
+  var url = `${import.meta.env.VITE_BACKEND_URL}/api/queuetestjob`;
   return fetch(url, requestOptions).then(handleResponse);
 }
 
@@ -466,7 +484,7 @@ export function removeFailedJobs(queue: string): Promise<any> {
     body: JSON.stringify({ queue: queue }),
   };
   return fetch(
-    `${process.env.REACT_APP_BACKEND_URL}/api/remove_failed_jobs`,
+    `${import.meta.env.VITE_BACKEND_URL}/api/remove_failed_jobs`,
     requestOptions
   ).then(handleResponse);
 }
@@ -478,7 +496,7 @@ export function killWorker(workerToKill: string): Promise<any> {
     body: JSON.stringify({ worker_id: workerToKill }),
   };
   return fetch(
-    `${process.env.REACT_APP_BACKEND_URL}/api/kill_worker`,
+    `${import.meta.env.VITE_BACKEND_URL}/api/kill_worker`,
     requestOptions
   ).then(handleResponse);
 }
@@ -490,7 +508,7 @@ export function sendTestEmail(): Promise<any> {
     body: JSON.stringify({}),
   };
   return fetch(
-    `${process.env.REACT_APP_BACKEND_URL}/api/sendtestemail`,
+    `${import.meta.env.VITE_BACKEND_URL}/api/sendtestemail`,
     requestOptions
   ).then(handleResponse);
 }
@@ -505,7 +523,7 @@ export function addInvokationToAllJobs(
     body: JSON.stringify({}),
   };
   return fetch(
-    `${process.env.REACT_APP_BACKEND_URL}/api/addInvokationToAllJobs/${jobType}/${jobState}`,
+    `${import.meta.env.VITE_BACKEND_URL}/api/addInvokationToAllJobs/${jobType}/${jobState}`,
     requestOptions
   ).then(handleResponse);
 }
@@ -517,7 +535,7 @@ export function runUnrunStages(stageToRun: string): Promise<any> {
     body: JSON.stringify({}),
   };
   return fetch(
-    `${process.env.REACT_APP_BACKEND_URL}/api/runUnrunStages/${stageToRun}`,
+    `${import.meta.env.VITE_BACKEND_URL}/api/runUnrunStages/${stageToRun}`,
     requestOptions
   ).then(handleResponse);
 }
@@ -529,7 +547,7 @@ export function setAllUnsetModelPresets(): Promise<boolean> {
     body: JSON.stringify({}),
   };
   return fetch(
-    `${process.env.REACT_APP_BACKEND_URL}/api/set_all_unset_model_presets`,
+    `${import.meta.env.VITE_BACKEND_URL}/api/set_all_unset_model_presets`,
     requestOptions
   ).then(handleResponse);
 }
@@ -541,7 +559,7 @@ export function killFoldsInRange(foldRange: string): Promise<any> {
     body: JSON.stringify({}),
   };
   return fetch(
-    `${process.env.REACT_APP_BACKEND_URL}/api/killFolds/${foldRange}`,
+    `${import.meta.env.VITE_BACKEND_URL}/api/killFolds/${foldRange}`,
     requestOptions
   ).then(handleResponse);
 }
@@ -553,7 +571,7 @@ export function bulkAddTag(foldRange: string, newTag: string): Promise<any> {
     body: JSON.stringify({}),
   };
   return fetch(
-    `${process.env.REACT_APP_BACKEND_URL}/api/bulkAddTag/${foldRange}/${newTag}`,
+    `${import.meta.env.VITE_BACKEND_URL}/api/bulkAddTag/${foldRange}/${newTag}`,
     requestOptions
   ).then(handleResponse);
 }

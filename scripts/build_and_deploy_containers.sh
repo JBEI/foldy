@@ -36,6 +36,7 @@ echo "  FOLDY ALPHAFOLD TAG: $FOLDY_ALPHAFOLD_TAG"
 FRONTEND_TAG=$GOOGLE_CLOUD_REGION-docker.pkg.dev/$GOOGLE_CLOUD_PROJECT_ID/$GOOGLE_CLOUD_ARTIFACT_REPO/frontend:$VERSION
 BACKEND_TAG=$GOOGLE_CLOUD_REGION-docker.pkg.dev/$GOOGLE_CLOUD_PROJECT_ID/$GOOGLE_CLOUD_ARTIFACT_REPO/backend:$VERSION
 WORKER_TAG=$GOOGLE_CLOUD_REGION-docker.pkg.dev/$GOOGLE_CLOUD_PROJECT_ID/$GOOGLE_CLOUD_ARTIFACT_REPO/worker:$VERSION
+WORKER_ESM_TAG=$GOOGLE_CLOUD_REGION-docker.pkg.dev/$GOOGLE_CLOUD_PROJECT_ID/$GOOGLE_CLOUD_ARTIFACT_REPO/worker_esm:$VERSION
 
 echo "Building Alphafold (required for worker)..."
 DOCKER_DEFAULT_PLATFORM=linux/amd64 docker build -t $FOLDY_ALPHAFOLD_TAG -f worker/alphafold/docker/Dockerfile worker/alphafold 
@@ -45,6 +46,9 @@ echo "Building worker..."
 DOCKER_DEFAULT_PLATFORM=linux/amd64 docker build -t $WORKER_TAG -f worker/Dockerfile \
   --build-arg FOLDY_ALPHAFOLD_TAG=$FOLDY_ALPHAFOLD_TAG \
   .
+echo "Building worker ESM..."
+DOCKER_DEFAULT_PLATFORM=linux/amd64 docker build -t $WORKER_ESM_TAG -f worker/Dockerfile.esm \
+  .
 echo "Building frontend..."
 DOCKER_DEFAULT_PLATFORM=linux/amd64 docker build -t $FRONTEND_TAG \
   --build-arg BACKEND_URL=$BACKEND_URL \
@@ -53,6 +57,7 @@ DOCKER_DEFAULT_PLATFORM=linux/amd64 docker build -t $FRONTEND_TAG \
 
 docker push $BACKEND_TAG &&
 docker push $WORKER_TAG &&
+docker push $WORKER_ESM_TAG &&
 docker push $FRONTEND_TAG
 
 if [ "$#" -eq 1 ]; then

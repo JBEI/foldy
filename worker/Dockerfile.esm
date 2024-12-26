@@ -1,0 +1,44 @@
+FROM nvidia/cuda:11.3.1-devel-ubuntu20.04
+
+WORKDIR /
+
+# Install basic utilities and dependencies.
+RUN apt-get -y update && apt-get -y install \
+    tree vim curl wget bzip2 && \
+    rm -rf /var/lib/apt/lists/*
+
+# Install Miniconda.
+RUN wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O /tmp/miniconda.sh && \
+    bash /tmp/miniconda.sh -b -p /opt/conda && \
+    rm /tmp/miniconda.sh && \
+    /opt/conda/bin/conda init bash
+
+# Add Conda to PATH.
+ENV PATH="/opt/conda/bin:$PATH"
+
+# TODO: move this with the installs above.
+RUN apt-get -y update && apt-get -y install git
+
+
+# Install backend requirements.
+COPY backend/requirements_312_WIP.txt /backend/
+RUN conda create -n worker python=3.12
+RUN /opt/conda/envs/worker/bin/pip install --no-cache-dir -r /backend/requirements_312_WIP.txt
+
+# Install special requirements.
+RUN /opt/conda/envs/worker/bin/pip install esm
+
+
+# Copy application code.
+COPY backend/ /backend/
+COPY worker/*.sh /worker/
+COPY worker/*.py /worker/
+COPY worker/docking/* /worker/docking/
+
+WORKDIR /backend/src
+
+# Make sure to use the exec form of ENTRYPOINT, rather than the shell
+# form, so that SIGTERM gets propagated to rq.
+# https://medium.com/@tasdikrahman/handling-signals-for-applications-running-in-kubernetes-dc6537f9b542
+# https://docs.docker.com/engine/reference/builder/#entrypoint
+ENTRYPOINT ["/opt/conda/envs/worker/bin/flask"]

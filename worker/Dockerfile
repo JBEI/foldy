@@ -18,7 +18,7 @@ RUN mkdir /backend && mkdir -p /worker/docking
 
 
 # Install backend requirements.
-COPY backend/requirements.txt /backend/
+COPY backend/requirements_312_WIP.txt /backend/
 RUN conda create -n worker python=3.12
 RUN /opt/conda/envs/worker/bin/pip install --no-cache-dir -r /backend/requirements_312_WIP.txt
 
@@ -26,10 +26,10 @@ RUN /opt/conda/envs/worker/bin/pip install --no-cache-dir -r /backend/requiremen
 # Install autodockVINA requirements.
 WORKDIR /worker/docking
 COPY worker/docking/requirements.txt ./
-RUN /opt/conda/bin/conda create -y -n dock conda python==3.7 && \
-  /opt/conda/envs/dock/bin/conda install -y -c conda-forge openbabel numpy && \
-  /opt/conda/envs/dock/bin/conda clean -afy && \
-  /opt/conda/envs/dock/bin/pip install --no-input --no-cache-dir -r requirements.txt
+RUN conda create -y -n dock python=3.12 conda
+RUN /opt/conda/envs/dock/bin/conda install -y -c conda-forge openbabel numpy tqdm seaborn vina biopython && \
+  /opt/conda/envs/dock/bin/conda clean -afy
+# RUN /opt/conda/envs/dock/bin/pip install --no-input --no-cache-dir -r requirements.txt
 RUN wget https://ccsb.scripps.edu/adfr/download/1038/ADFRsuite_x86_64Linux_1.0.tar.gz
 RUN tar zxvf ADFRsuite_x86_64Linux_1.0.tar.gz && \
   cd ADFRsuite_x86_64Linux_1.0 && \
@@ -37,7 +37,7 @@ RUN tar zxvf ADFRsuite_x86_64Linux_1.0.tar.gz && \
 
 
 # Install decompress pkls requirements.
-RUN /opt/conda/envs/worker/bin/pip install --no-cache-dir --no-input install scipy
+RUN /opt/conda/envs/worker/bin/pip install --no-cache-dir --no-input scipy
 
 
 # Install annotation requirements.

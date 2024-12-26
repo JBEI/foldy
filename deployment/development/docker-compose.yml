@@ -35,7 +35,7 @@ services:
       - DISABLE_OAUTH_AUTHENTICATION=True
       - FOLDY_ADMIN_UPGRADE_LIST=tester@test.edu
       - FOLDY_STORAGE_TYPE=Local
-      - FOLDY_LOCAL_STORAGE_DIR=/app/integration_tests/testdata
+      - FOLDY_LOCAL_STORAGE_DIR=/src/integration_tests/testdata
     networks:
       - default
     ports:
@@ -47,6 +47,33 @@ services:
       - ./backend/src/migrations:/src/migrations
     restart: always
     entrypoint: python /src/main.py
+
+  worker_esm:
+    build:
+      context: .
+      dockerfile: worker/Dockerfile.esm
+    platform: linux/amd64
+    depends_on:
+      - db
+      - redis
+    environment:
+      - FLASK_APP=rq_worker_main.py
+      - ENV=development
+      - DEBUG=True
+      - FRONTEND_URL=http://localhost:3000
+      - DATABASE_URL=postgresql+psycopg2://user:password@db:5432/postgres
+      - RQ_REDIS_URL=redis://redis:6379/0
+      - FOLDY_STORAGE_TYPE=Local
+      - FOLDY_LOCAL_STORAGE_DIR=/backend/src/integration_tests/testdata
+    networks:
+      - default
+    volumes:
+      - ./backend/src/rq_worker_main.py:/backend/src/rq_worker_main.py
+      - ./backend/src/app:/backend/src/app
+      - ./backend/src/integration_tests:/backend/src/integration_tests
+      - ./backend/src/migrations:/backend/src/migrations
+    restart: always
+    entrypoint: /opt/conda/envs/worker/bin/python -m flask rq worker cpu esm
 
   db:
     environment:

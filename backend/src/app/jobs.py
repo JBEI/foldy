@@ -4,13 +4,16 @@ import signal
 import subprocess
 import sys
 import time
+from io import StringIO
+import json
 
 import docker
+import pandas as pd
 
 from app.database import db
 from app.extensions import rq
 from app.models import Fold, Invokation, Dock
-from app.util import FoldStorageUtil
+from app.util import FoldStorageManager
 from app import email_to
 
 
@@ -263,7 +266,7 @@ def run_dock(dock_id, invokation_id):
     successful = start_generic_script(invokation_id, process_args)
 
     if successful:
-        fsm = FoldStorageUtil()
+        fsm = FoldStorageManager()
         fsm.setup()
 
         if dock.tool == "vina":
@@ -280,3 +283,130 @@ def run_dock(dock_id, invokation_id):
             dock.update(pose_confidences=confidence_str)
         else:
             assert False, f"Invalid tool {dock.tool}"
+
+
+def get_esm_embeddings(fold_id: int, embedding_model: str, invokation_id: int):
+    """Compute the ESM embeddings and store them."""
+
+    final_state = "failed"
+    start_time = time.time()
+    logs = []
+
+    def add_log(msg):
+        timestamp = datetime.datetime.now(datetime.timezone.utc).isoformat(
+            sep=" ", timespec="milliseconds"
+        )
+        log = f"{timestamp} - {msg}"
+        logs.append(log)
+        print(log)
+
+    try:
+        invokation = Invokation.get_by_id(invokation_id)
+
+        invokation.update(
+            state="running",
+            log="Ongoing...",
+            starttime=datetime.datetime.fromtimestamp(start_time),
+            command="",
+        )
+
+        fold = Fold.get_by_id(fold_id)
+        if not fold:
+            raise KeyError(f"Fold ID {fold_id} not found!")
+
+        if ":" in fold.sequence or ";" in fold.sequence:
+            raise KeyError(
+                f"Fold ID {fold_id} seems to be a multimer which is not supported for ESM embeddings yet."
+            )
+
+        add_log(f"Importing ESM and creating client for {embedding_model}")
+        invokation.update(
+            state="running",
+            log=_psql_tail("\n".join(logs)),
+            timedelta=datetime.timedelta(seconds=time.time() - start_time),
+        )
+
+        from esm.models.esmc import ESMC
+        from esm.sdk.api import ESMProtein, LogitsConfig, SamplingConfig
+
+        VALID_AMINO_ACIDS = "ACDEFGHIKLMNOPQRSTUVWY"
+
+        wt_aa_seq = fold.sequence
+
+        client = ESMC.from_pretrained(embedding_model).to("cpu")  # or "cpu" or "cuda"
+
+        def get_embedding(seq):
+            protein = ESMProtein(sequence=seq)
+            protein_tensor = client.encode(protein)
+            logits_output = client.logits(
+                protein_tensor, LogitsConfig(sequence=True, return_embeddings=True)
+            )
+            # # forward_and_sample is only available for ESM3, not ESMC
+            # forward_and_sample_output = client.forward_and_sample(
+            #     protein_tensor, SamplingConfig(return_mean_embeddings=True)
+            # )
+            # # print(logits_output.logits, logits_output.embeddings)
+            # print(forward_and_sample_output)
+            return json.dumps(logits_output.embeddings.tolist())
+
+        def get_embedding_dict(seq_id, seq):
+            return {"seq_id": [seq_id], "seq": [seq], "embedding": [get_embedding(seq)]}
+
+        add_log(f"Starting with WT sequence")
+
+        embedding_dicts = []
+        wt_embedding_dict = get_embedding_dict("", wt_aa_seq)
+        embedding_dicts.append(wt_embedding_dict)
+        for aa_idx in range(len(wt_aa_seq)):
+            wt_aa_prefix = f"{wt_aa_seq[aa_idx]}{aa_idx + 1}"
+            for alternative_aa in VALID_AMINO_ACIDS:
+                if wt_aa_seq[aa_idx] == alternative_aa:
+                    continue
+                mutant_seq_id = wt_aa_prefix + alternative_aa
+                mutant_seq = (
+                    wt_aa_seq[:aa_idx] + alternative_aa + wt_aa_seq[(aa_idx + 1) :]
+                )
+                assert len(mutant_seq) == len(wt_aa_seq)
+
+                mutant_embedding_dict = get_embedding_dict(mutant_seq, mutant_seq_id)
+                embedding_dicts.append(mutant_embedding_dict)
+            add_log(f"Finished residue {aa_idx}/{len(wt_aa_seq)}")
+            invokation.update(
+                state="running",
+                log=_psql_tail("\n".join(logs)),
+                timedelta=datetime.timedelta(seconds=time.time() - start_time),
+            )
+
+        embedding_df = pd.DataFrame(embedding_dicts)
+
+        # Convert the DataFrame to a CSV string
+        csv_buffer = StringIO()
+        embedding_df.to_csv(
+            csv_buffer, index=False
+        )  # Use index=False to exclude the index
+        embedding_csv_string = csv_buffer.getvalue()
+
+        # Create a FoldStorageManager and store the embeddings.
+        padded_fold_id = "%06d" % fold_id
+        embedding_path = f"{padded_fold_id}/esm/{padded_fold_id}_embeddings_esm3.csv"
+
+        add_log(f"Saving output to {embedding_path}")
+        fsm = FoldStorageManager()
+        fsm.setup()
+        fsm.storage_manager.write_file(embedding_path, embedding_csv_string)
+
+        final_state = "finished"
+    except Exception as e:
+        add_log(f"Job failed with exception:\n\n{e}")
+    finally:
+        add_log(f"Invokation ending with final state {final_state}")
+        # This will get executed regardless of the exceptions raised in try
+        # or except statements.
+        invokation.update(
+            state=final_state,
+            log=_psql_tail("\n".join(logs)),
+            timedelta=datetime.timedelta(seconds=time.time() - start_time),
+        )
+        assert (
+            final_state == "finished"
+        ), f'Job finished in state {final_state} with logs:\n\n{_tail("\n".join(logs))}'

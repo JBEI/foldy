@@ -136,7 +136,7 @@ def start_stage(fold_id: int, stage, email_on_completion):
         email_dependent_jobs = [annotate_job]
 
     elif stage == "write_fastas":
-        fsu = FoldStorageUtil()
+        fsu = FoldStorageManager()
         fsu.setup()
         fsu.write_fastas(fold_id, fold.sequence)
         email_dependent_jobs = []
@@ -210,7 +210,7 @@ def back_translate(aa_seq):
     # randomize_codons=True,
 
 
-class StorageManager:
+class StorageAccessor:
     def list_files(self, fold_id, subfolder=None):
         pass
 
@@ -221,7 +221,7 @@ class StorageManager:
         pass
 
 
-class LocalStorageManager(StorageManager):
+class LocalStorageAccessor(StorageAccessor):
     local_directory = None
 
     def setup(self, local_directory):
@@ -254,7 +254,9 @@ class LocalStorageManager(StorageManager):
         ]
 
     def write_file(self, file_path, file_contents_str):
-        with open(self.local_directory / file_path, "w") as f:
+        target_path = self.local_directory / file_path
+        target_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(target_path, "w") as f:
             f.write(file_contents_str)
 
     def get_binary(self, fold_id, file_path):
@@ -273,7 +275,7 @@ class LocalStorageManager(StorageManager):
         return blob_bytes
 
 
-class GcloudStorageManager(StorageManager):
+class GcloudStorageAccessor(StorageAccessor):
     def __init__(self):
         """Initialize local variables."""
         self.project = None
@@ -367,7 +369,7 @@ class GcloudStorageManager(StorageManager):
         return blob_bytes
 
 
-class FoldStorageUtil:
+class FoldStorageManager:
     """Manages access to the backend storage for fold, for short term use only (see below).
 
     Note that this class aggressively caches query results to improve latency. There
@@ -382,7 +384,7 @@ class FoldStorageUtil:
         if current_app.config["FOLDY_STORAGE_TYPE"] == "Local":
             foldy_dir = current_app.config["FOLDY_LOCAL_STORAGE_DIR"]
             assert foldy_dir, "FOLDY_LOCAL_STORAGE_DIR is not set"
-            self.storage_manager = LocalStorageManager()
+            self.storage_manager = LocalStorageAccessor()
             self.storage_manager.setup(foldy_dir)
 
         elif current_app.config["FOLDY_STORAGE_TYPE"] == "Cloud":
@@ -390,7 +392,7 @@ class FoldStorageUtil:
             bucket = current_app.config["FOLDY_GSTORAGE_DIR"]
             assert project, "FOLDY_GCLOUD_PROJECT is not set"
             assert bucket, "FOLDY_GSTORAGE_DIR is not set"
-            self.storage_manager = GcloudStorageManager()
+            self.storage_manager = GcloudStorageAccessor()
             self.storage_manager.setup(project, bucket)
 
     def get_fold_with_state(self, fold_id, only_public):

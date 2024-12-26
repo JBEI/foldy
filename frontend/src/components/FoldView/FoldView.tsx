@@ -27,6 +27,7 @@ import {
   getFoldPfam,
   getInvokation,
   queueJob,
+  startDmsEmbeddings,
   updateFold,
 } from "../../services/backend.service";
 import { FoldyMascot } from "../../util/foldyMascot";
@@ -36,10 +37,11 @@ import DockTab from "./DockTab";
 import "./FoldView.scss";
 import PaeTab from "./PaeTab";
 import SequenceTab, { SubsequenceSelection } from "./SequenceTab";
-const NGL = require("./../../../node_modules/ngl/dist/ngl");
-const fileDownload = require("js-file-download");
+import * as NGL from 'ngl/dist/ngl.js';
+// const fileDownload = require("js-file-download");
+import fileDownload from "js-file-download";
 
-const REFRESH_STATE_PERIOD = 3000;
+const REFRESH_STATE_PERIOD = 5000;
 const REFRESH_STATE_MAX_ITERS = 200;
 
 const getResidueCenter = (
@@ -214,6 +216,18 @@ class InternalFoldView extends Component<FoldProps, FoldState> {
     getFold(this.props.foldId).then((new_fold_data) => {
       console.log(`Got new fold with tags ${new_fold_data.tags}`);
       this.setState({ foldData: new_fold_data });
+      if (this.state.foldData?.jobs) {
+        Promise.all(
+          this.state.foldData.jobs.map((inv) => getInvokation(inv.id))
+        ).then(
+          (fullInvs) => {
+            this.setState({ jobs: fullInvs });
+          },
+          (e) => {
+            this.props.setErrorText(e.toString());
+          }
+        );
+      }
     });
   };
 
@@ -225,6 +239,18 @@ class InternalFoldView extends Component<FoldProps, FoldState> {
           this.interval
         ) {
           clearInterval(this.interval);
+        }
+        if (this.state.foldData?.jobs) {
+          Promise.all(
+            this.state.foldData.jobs.map((inv) => getInvokation(inv.id))
+          ).then(
+            (fullInvs) => {
+              this.setState({ jobs: fullInvs });
+            },
+            (e) => {
+              this.props.setErrorText(e.toString());
+            }
+          );
         }
         this.setState({
           foldData: new_fold_data,
@@ -455,6 +481,9 @@ class InternalFoldView extends Component<FoldProps, FoldState> {
           <a>Dock</a>
         </li>
         <li>
+          <a>DMS</a>
+        </li>
+        <li>
           <a>Actions</a>
         </li>
       </ul>
@@ -634,6 +663,17 @@ class InternalFoldView extends Component<FoldProps, FoldState> {
             shiftFrame={this.shiftFrame}
             deleteLigandPose={this.deleteLigandPose}
           />
+        </li>
+
+        <li key="DMSli">
+            <button
+                type="button"
+                className="uk-button uk-button-primary uk-margin-left uk-margin-small-bottom uk-form-small"
+                onClick={() => startDmsEmbeddings(this.props.foldId, "esmc_300m").then(() => UIkit.notification('Started deep mutational scan.'))}
+            >
+                Start DMS Embedding
+            </button>
+
         </li>
 
         <li key="actionsli">

@@ -7,7 +7,8 @@ import {
 import { Fold, getFolds } from "../services/backend.service";
 import { makeFoldTable } from "../util/foldTable";
 import qs from "query-string";
-var debounce = require("lodash/debounce");
+// var debounce = require("lodash/debounce");
+import debounce from "lodash/debounce";
 
 const PAGE_SIZE = 50;
 

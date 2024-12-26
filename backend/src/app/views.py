@@ -14,7 +14,7 @@ from werkzeug.exceptions import BadRequest
 from app import jobs
 from app.models import Dock, Fold, Invokation
 from app.extensions import db, rq
-from app.util import start_stage, FoldStorageUtil, get_job_type_replacement
+from app.util import start_stage, FoldStorageManager, get_job_type_replacement
 from app.authorization import (
     user_jwt_grants_edit_access,
     verify_has_edit_access,
@@ -48,7 +48,9 @@ full_invokation_fields = ns.clone(
         "timedelta_sec": fields.Float(
             readonly=True,
             required=False,
-            attribute=lambda r: r.timedelta.total_seconds() if r.timedelta else None,
+            attribute=lambda r: (
+                r.timedelta.total_seconds() if r and r.timedelta else None
+            ),
         ),
         "starttime": fields.DateTime(readonly=True, required=False),
     },
@@ -148,7 +150,7 @@ class FoldsResource(Resource):
 
         only_public = not user_jwt_grants_edit_access(get_jwt()["user_claims"])
 
-        manager = FoldStorageUtil()
+        manager = FoldStorageManager()
         manager.setup()
 
         folds = manager.get_folds_with_state(filter, tag, only_public, page, per_page)
@@ -159,7 +161,7 @@ class FoldsResource(Resource):
     @verify_has_edit_access
     def post(self):
         """Returns True if queueing is successful."""
-        manager = FoldStorageUtil()
+        manager = FoldStorageManager()
         manager.setup()
 
         folds_data = request.get_json()["folds_data"]
@@ -182,7 +184,7 @@ class FoldResource(Resource):
     def get(self, fold_id):
         only_public = not user_jwt_grants_edit_access(get_jwt()["user_claims"])
 
-        manager = FoldStorageUtil()
+        manager = FoldStorageManager()
         manager.setup()
         return manager.get_fold_with_state(fold_id, only_public)
 
@@ -225,7 +227,7 @@ fold_pdb_fields = ns.model(
 class FoldResource(Resource):
     @ns.marshal_with(fold_pdb_fields)
     def get(self, fold_id, model_number):
-        manager = FoldStorageUtil()
+        manager = FoldStorageManager()
         manager.setup()
         return {"pdb_string": manager.get_fold_pdb(fold_id, model_number)}
 
@@ -245,7 +247,7 @@ fold_file_zip_fields = ns.model(
 class FoldPdbZipResource(Resource):
     @ns.expect(fold_file_zip_fields)
     def post(self):
-        manager = FoldStorageUtil()
+        manager = FoldStorageManager()
         manager.setup()
 
         return send_file(
@@ -263,7 +265,7 @@ class FoldPdbZipResource(Resource):
 @ns.route("/fold_pkl/<int:fold_id>/<int:model_number>")
 class FoldPklResource(Resource):
     def post(self, fold_id, model_number):
-        manager = FoldStorageUtil()
+        manager = FoldStorageManager()
         manager.setup()
         pkl_byte_str = manager.get_fold_pkl(fold_id, model_number)
         # TODO: Stream!
@@ -297,7 +299,7 @@ class FoldPklResource(Resource):
                 f"Dock for fold id {fold_id} ligand name {ligand_name} not found."
             )
 
-        manager = FoldStorageUtil()
+        manager = FoldStorageManager()
         manager.setup()
         sdf_str = manager.get_dock_sdf(dock)
         return send_file(
@@ -311,7 +313,7 @@ class FoldPklResource(Resource):
 @ns.route("/file/list/<int:fold_id>")
 class FoldFileResource(Resource):
     def get(self, fold_id):
-        manager = FoldStorageUtil()
+        manager = FoldStorageManager()
         manager.setup()
         return manager.storage_manager.list_files(fold_id)
 
@@ -321,7 +323,7 @@ class FileDownloadResource(Resource):
     def post(self, fold_id, subpath):
         # TODO: test this.
         print(f"Fetching {subpath}...")
-        manager = FoldStorageUtil()
+        manager = FoldStorageManager()
         manager.setup()
         sdf_str = manager.storage_manager.get_binary(fold_id, subpath)
         fname = subpath.split("/")[-1]
@@ -361,7 +363,7 @@ class FoldResource(Resource):
     # We can't marshal, since we're not returning json.
     # @ns.marshal_with(pae_fields)
     def get(self, fold_id, model_number):
-        manager = FoldStorageUtil()
+        manager = FoldStorageManager()
         manager.setup()
         pae = manager.get_model_pae(fold_id, model_number)
 
@@ -390,7 +392,7 @@ class ContactProbResource(Resource):
     # We can't marshal, since we're not returning json.
     # @ns.marshal_with(contact_prob_fields)
     def get(self, fold_id, model_number):
-        manager = FoldStorageUtil()
+        manager = FoldStorageManager()
         manager.setup()
         contact_prob = manager.get_contact_prob(fold_id, model_number)
 
@@ -417,11 +419,51 @@ class ContactProbResource(Resource):
 @ns.route("/pfam/<int:fold_id>")
 class PfamResource(Resource):
     def get(self, fold_id):
-        manager = FoldStorageUtil()
+        manager = FoldStorageManager()
         manager.setup()
         pfam_annotations = manager.get_pfam(fold_id)
 
         return pfam_annotations
+
+
+dms_embeddings_fields = ns.model(
+    "DMSEmbeddings",
+    {
+        "embedding_model": fields.String(required=True),
+    },
+)
+
+
+@ns.route("/dms_embeddings/<int:fold_id>")
+class CalculateDMSEmbeddingsResource(Resource):
+    @verify_has_edit_access
+    @ns.expect(dms_embeddings_fields)
+    def post(self, fold_id):
+        req = request.get_json()
+
+        embedding_model = req["embedding_model"]
+
+        ALLOWED_EMBEDDING_MODELS = ["esmc_300m"]
+        if embedding_model not in ALLOWED_EMBEDDING_MODELS:
+            raise BadRequest(
+                f"Invalid embedding model {embedding_model}: must be one of {ALLOWED_EMBEDDING_MODELS}"
+            )
+
+        fold = Fold.get_by_id(fold_id)
+
+        new_invokation_id = get_job_type_replacement(fold, f"dms_{embedding_model}")
+
+        esm_q = rq.get_queue("esm")
+        esm_q.enqueue(
+            jobs.get_esm_embeddings,
+            fold.id,
+            embedding_model,
+            new_invokation_id,
+            job_timeout="6h",
+            result_ttl=48 * 60 * 60,  # 2 days
+        )
+
+        return True
 
 
 @ns.route("/dock")

@@ -3,7 +3,16 @@ import React from "react";
 import Plot from "react-plotly.js";
 import { Annotations } from "../services/backend.service";
 import { RdYlBu } from "./color";
-const NGL = require("./../../node_modules/ngl/dist/ngl");
+// const NGL = require("./../../node_modules/ngl/dist/ngl");
+
+// // Option A: Import from the package directly
+// import NGL from 'ngl';
+
+// // or Option B: if you must point to a dist build (and it supports ESM)
+// import NGL from 'ngl/dist/ngl.js';
+
+// or if it doesn’t have a default export, you may need
+import * as NGL from 'ngl/dist/ngl.js';
 
 export const matricesAreEqual = (
   mat1: number[][],
@@ -335,6 +344,7 @@ export const getColorsForAnnotations = (
     sequenceViewerLegend.push(chainLegend);
   });
 
+  console.log(NGL);
   const nglColorscheme = NGL.ColormakerRegistry.addSelectionScheme(
     nglViewerColors,
     "pfam_colors"
