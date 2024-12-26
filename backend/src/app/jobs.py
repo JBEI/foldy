@@ -350,7 +350,7 @@ def get_esm_embeddings(fold_id: int, embedding_model: str, invokation_id: int):
             return json.dumps(logits_output.embeddings.tolist())
 
         def get_embedding_dict(seq_id, seq):
-            return {"seq_id": [seq_id], "seq": [seq], "embedding": [get_embedding(seq)]}
+            return {"seq_id": seq_id, "seq": seq, "embedding": get_embedding(seq)}
 
         add_log(f"Starting with WT sequence")
 
@@ -368,7 +368,7 @@ def get_esm_embeddings(fold_id: int, embedding_model: str, invokation_id: int):
                 )
                 assert len(mutant_seq) == len(wt_aa_seq)
 
-                mutant_embedding_dict = get_embedding_dict(mutant_seq, mutant_seq_id)
+                mutant_embedding_dict = get_embedding_dict(mutant_seq_id, mutant_seq)
                 embedding_dicts.append(mutant_embedding_dict)
             add_log(f"Finished residue {aa_idx}/{len(wt_aa_seq)}")
             invokation.update(

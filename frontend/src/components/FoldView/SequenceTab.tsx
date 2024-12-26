@@ -64,7 +64,7 @@ const SequenceTab = React.memo(
         console.log(`FOLD ${props.foldDisableRelaxation}`);
 
         return (
-            <div>
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
                 {props.sequence.split(";").map((ss: string, idx: number) => {
                     var chainSeq: string;
                     var chainName: string;
@@ -91,8 +91,8 @@ const SequenceTab = React.memo(
                             const end = Math.max(selection.start, selection.end);
                             props.setSelectedSubsequence({
                                 chainIdx: idx,
-                                startResidue: start,
-                                endResidue: end,
+                                startResidue: start + 1,
+                                endResidue: end + 1,
                                 subsequence: chainSeq.substring(start, end)
                             });
                         }
@@ -109,11 +109,11 @@ const SequenceTab = React.memo(
                             viewer="linear"
                             showComplement={false}
                             zoom={{ linear: 10 }} // Adjust zoom level as needed
-                            style={{ width: '100%', height: '400px', marginBottom: '20px' }}  // Customize styles as needed
+                            style={{ width: '100%', marginBottom: '20px' }}  // Customize styles as needed , height: '400px',
                             onSelection={onSelectionHandler}
                         /></>;
                 })}
-                <form className="uk-form-horizontal uk-margin-large">
+                <form className="uk-form-horizontal">
                     <div className="uk-margin">
                         <label className="uk-form-label" htmlFor="form-horizontal-text">
                             Name

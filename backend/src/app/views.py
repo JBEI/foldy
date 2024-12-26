@@ -1,6 +1,7 @@
 import io
 import re
 
+from flask import Response, stream_with_context
 from flask import current_app, request, send_file, make_response
 from flask_jwt_extended.utils import get_jwt_identity, get_jwt
 from flask_restx import Namespace
@@ -318,20 +319,52 @@ class FoldFileResource(Resource):
         return manager.storage_manager.list_files(fold_id)
 
 
+# @ns.route("/file/download/<int:fold_id>/<path:subpath>")
+# class FileDownloadResource(Resource):
+#     def post(self, fold_id, subpath):
+#         # TODO: test this.
+#         print(f"Fetching {subpath}...")
+#         manager = FoldStorageManager()
+#         manager.setup()
+#         sdf_str = manager.storage_manager.get_binary(fold_id, subpath)
+#         fname = subpath.split("/")[-1]
+#         return send_file(
+#             io.BytesIO(sdf_str),
+#             mimetype="application/octet-stream",
+#             download_name=fname,
+#             as_attachment=True,
+#         )
+
+
 @ns.route("/file/download/<int:fold_id>/<path:subpath>")
 class FileDownloadResource(Resource):
-    def post(self, fold_id, subpath):
-        # TODO: test this.
+    def get(self, fold_id, subpath):
         print(f"Fetching {subpath}...")
         manager = FoldStorageManager()
         manager.setup()
-        sdf_str = manager.storage_manager.get_binary(fold_id, subpath)
+
+        try:
+            blob = manager.storage_manager.get_blob(fold_id, subpath)
+        except BadRequest as e:
+            return {"message": str(e)}, 400
+
         fname = subpath.split("/")[-1]
-        return send_file(
-            io.BytesIO(sdf_str),
-            mimetype="application/octet-stream",
-            download_name=fname,
-            as_attachment=True,
+
+        def generate():
+            with blob.open("rb") as f:
+                while True:
+                    chunk = f.read(8192)  # 8KB chunks
+                    if not chunk:
+                        break
+                    yield chunk
+
+        headers = {
+            "Content-Disposition": f"attachment; filename={fname}",
+            "Content-Type": "application/octet-stream",
+        }
+
+        return Response(
+            stream_with_context(generate()), headers=headers, direct_passthrough=True
         )
 
 
@@ -443,7 +476,7 @@ class CalculateDMSEmbeddingsResource(Resource):
 
         embedding_model = req["embedding_model"]
 
-        ALLOWED_EMBEDDING_MODELS = ["esmc_300m"]
+        ALLOWED_EMBEDDING_MODELS = ["esmc_300m", "esmc_600m"]
         if embedding_model not in ALLOWED_EMBEDDING_MODELS:
             raise BadRequest(
                 f"Invalid embedding model {embedding_model}: must be one of {ALLOWED_EMBEDDING_MODELS}"

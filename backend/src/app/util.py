@@ -8,6 +8,7 @@ import re
 from re import fullmatch
 import tempfile
 import zipfile
+import os
 
 from dnachisel import biotools
 from flask import current_app
@@ -220,6 +221,43 @@ class StorageAccessor:
     def get_binary(self, file_path):
         pass
 
+    def get_blob(self, fold_id, file_path):
+        pass
+
+
+class LocalBlob:
+    """Simulate the GCS blob, for local access."""
+
+    def __init__(self, file_path):
+        """
+        Initializes the LocalBlob with the path to the local file.
+
+        Args:
+            file_path (Path or str): The path to the local file.
+        """
+        self.file_path = file_path
+
+    def open(self, mode="rb"):
+        """
+        Opens the local file in the specified mode.
+
+        Args:
+            mode (str): The mode in which to open the file. Default is 'rb'.
+
+        Returns:
+            file object: A file object opened in the specified mode.
+        """
+        return open(self.file_path, mode)
+
+    def exists(self):
+        """
+        Checks if the file exists.
+
+        Returns:
+            bool: True if the file exists, False otherwise.
+        """
+        return os.path.exists(self.file_path)
+
 
 class LocalStorageAccessor(StorageAccessor):
     local_directory = None
@@ -273,6 +311,31 @@ class LocalStorageAccessor(StorageAccessor):
             flush=True,
         )
         return blob_bytes
+
+    def get_blob(self, fold_id, file_path):
+        """Gets a Blob object from local storage based on fold_id and relative_path."""
+        """
+        Retrieves a LocalBlob object for the specified file.
+
+        Args:
+            fold_id (int): The fold identifier.
+            file_path (str): The relative path to the file within the fold.
+
+        Returns:
+            LocalBlob: An instance of LocalBlob representing the file.
+
+        Raises:
+            BadRequest: If the file does not exist.
+        """
+        padded_fold_id = f"{fold_id:06d}"
+        fpath = self.local_directory / padded_fold_id / file_path
+
+        blob = LocalBlob(fpath)
+
+        if not blob.exists():
+            raise BadRequest(f"File not found at path {fpath}.")
+
+        return blob
 
 
 class GcloudStorageAccessor(StorageAccessor):
@@ -367,6 +430,22 @@ class GcloudStorageAccessor(StorageAccessor):
             flush=True,
         )
         return blob_bytes
+
+    def get_blob(self, fold_id, relative_path):
+        """Gets a Blob object from GCS based on fold_id and relative_path."""
+        padded_fold_id = f"{fold_id:06d}"
+        if self.bucket_prefix:
+            gcloud_path = f"{self.bucket_prefix}/{padded_fold_id}/{relative_path}"
+        else:
+            gcloud_path = f"{padded_fold_id}/{relative_path}"
+
+        bucket = self.client.bucket(self.bucket_name)
+        blob = bucket.blob(gcloud_path)
+
+        if not blob.exists():
+            raise BadRequest(f"File not found at path {gcloud_path}.")
+
+        return blob
 
 
 class FoldStorageManager:
