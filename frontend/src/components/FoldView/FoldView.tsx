@@ -153,7 +153,7 @@ interface FoldState {
 
     // Nglviewer and other view management.
     pdbRepr: NGLRepresentationCollection | null;
-    selectionRepr: NGLRepresentationCollection | null;
+    selectionRepr: NGLRepresentationCollection[] | null;
     pdbFailedToLoad: boolean;
     paeIsOnScreen: boolean;
     contactIsOnScreen: boolean;
@@ -354,14 +354,21 @@ class InternalFoldView extends Component<FoldProps, FoldState> {
                             var duration = 1000; // optional duration for animation, defaults to zero
                             o.autoView(duration);
 
-                            const selectionRepr = o.addRepresentation("cartoon", {
+                            const selectionRepr1 = o.addRepresentation("licorice", {
                                 // Start out with nothing selected - so make an impossible selection.
                                 sele: "1 and 2",
                                 // color: "#F866AF",  // Hot pink.
                                 color: "red",
                             });
 
-                            this.setState({ pdbRepr: pdbRepr, selectionRepr: selectionRepr });
+                            const selectionRepr2 = o.addRepresentation("cartoon", {
+                                // Start out with nothing selected - so make an impossible selection.
+                                sele: "1 and 2",
+                                // color: "#F866AF",  // Hot pink.
+                                color: "red",
+                            });
+
+                            this.setState({ pdbRepr: pdbRepr, selectionRepr: [selectionRepr1, selectionRepr2] });
                         });
                         stage.setRock(false);
                         this.state.stageRef.current.addEventListener(
@@ -1147,7 +1154,9 @@ class InternalFoldView extends Component<FoldProps, FoldState> {
         const selectionString = `${sele.startResidue}-${sele.endResidue}:${nglChainName}`;
         if (this.state.selectionRepr) {
             console.log(`Settings selection to "${selectionString}"`);
-            this.state.selectionRepr.setSelection(selectionString); // and :${chain}`);
+            for (const singleRepr of this.state.selectionRepr) {
+                singleRepr.setSelection(selectionString); // and :${chain}`);
+            }
         } else {
             console.log("No selectionRepr found.");
         }
@@ -1163,7 +1172,7 @@ class InternalFoldView extends Component<FoldProps, FoldState> {
             getFile(this.props.foldId, removeLeadingSlash(key)).then(
                 (fileBlob: Blob) => {
                     console.log(`Downloading ${key}!!!`);
-                    const newFname = key.split("/").slice(-1);
+                    const newFname = key.split("/")[-1];  // .slice(-1);
                     fileDownload(fileBlob, newFname);
                 },
                 (e) => {
