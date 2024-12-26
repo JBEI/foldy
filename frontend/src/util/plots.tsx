@@ -242,13 +242,20 @@ export const getResidueHeatmap = (
   );
 };
 
+export interface SequenceAnnotation {
+    start: number;
+    end: number;
+    bgcolor: string;
+    tooltip: string;
+}
+
 export class VariousColorSchemes {
   nglColorscheme: string;
-  sVCoverage: object[][];
+  sVCoverage: SequenceAnnotation[][];
   sVLegend: object[][];
   constructor(
     nglColorscheme: string,
-    sVCoverage: object[][],
+    sVCoverage: SequenceAnnotation[][],
     sVLegend: object[][]
   ) {
     this.nglColorscheme = nglColorscheme;
@@ -302,7 +309,7 @@ export const getColorsForAnnotations = (
   const colors = RdYlBu.get(domains.length < 11 ? domains.length : 11) || [];
 
   const nglViewerColors: string[][] = [];
-  const sequenceViewerCoverage: object[][] = [];
+  const sequenceViewerCoverage: SequenceAnnotation[][] = [];
   const sequenceViewerLegend: object[][] = [];
 
   const whiten = (c: d3.RGBColor, alpha: number): d3.RGBColor => {
@@ -321,7 +328,7 @@ export const getColorsForAnnotations = (
     ]);
   });
   chainIDs.forEach((chainID, chainIdx) => {
-    const chainCoverage: object[] = [];
+    const chainCoverage: SequenceAnnotation[] = [];
     const chainLegend: object[] = [];
     domains.forEach((domain, domainIdx) => {
       if (domain.chainID !== chainID) {

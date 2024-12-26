@@ -180,7 +180,7 @@ class InternalFoldView extends Component<FoldProps, FoldState> {
       stage: null,
       stageRef: React.createRef(),
 
-      colorScheme: "pLDDT",
+      colorScheme: "pfam",  // pLDDT
 
       pfamAnnotations: null,
       pfamColors: null,

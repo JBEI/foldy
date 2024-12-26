@@ -1,8 +1,10 @@
 import React from "react";
 import { EditableTagList } from "../../util/editableTagList";
-import { VariousColorSchemes } from "../../util/plots";
+import { SequenceAnnotation, VariousColorSchemes } from "../../util/plots";
 import { AiFillEdit } from "react-icons/ai";
 import SeqViz from 'seqviz';
+import { Selection } from "node_modules/seqviz/dist/selectionContext";
+import SelectionColormaker from "node_modules/react-ngl/dist/@types/ngl/declarations/color/selection-colormaker";
 // const ReactSequenceViewer = require("react-sequence-viewer");
 // import ReactSequenceViewer from "react-sequence-viewer";
 
@@ -40,7 +42,7 @@ interface SequenceTabProps {
 
 const SequenceTab = React.memo(
   (props: SequenceTabProps) => {
-    const getSequenceViewerCoverage = (chainIdx: number) => {
+    const getSequenceViewerCoverage = (chainIdx: number): SequenceAnnotation[] => {
       if (props.colorScheme === "pfam") {
         return props.pfamColors?.sVCoverage
           ? props.pfamColors.sVCoverage[chainIdx]
@@ -64,7 +66,7 @@ const SequenceTab = React.memo(
     return (
       <div>
         {props.sequence.split(";").map((ss: string, idx: number) => {
-          var chainSeq;
+          var chainSeq: string;
           var chainName: string;
           if (ss.includes(":")) {
             chainName = ss.split(":")[0];
@@ -73,16 +75,40 @@ const SequenceTab = React.memo(
             chainName = props.foldName;
             chainSeq = ss;
           }
+
+          const annotations = getSequenceViewerCoverage(idx).map((v) => {
+            return {
+                start: v.start,
+                end: v.end,
+                name: v.tooltip,
+                color: v.bgcolor,
+            }
+          })
+
+          const onSelectionHandler = (selection: Selection) => {            
+            if (selection.start && selection.end) {
+                const start = Math.min(selection.start, selection.end);
+                const end = Math.max(selection.start, selection.end);
+                props.setSelectedSubsequence({
+                   chainIdx: idx,
+                    startResidue: start,
+                    endResidue: end,
+                    subsequence: chainSeq.substring(start, end)
+                });
+            }
+          }
+
           return <><h2>{chainName}</h2><SeqViz
           key={idx}
           name={chainName}
           seq={chainSeq}
-        //   annotations={annotations}
+          seqType="aa"
+          annotations={annotations}
           viewer="linear" // You can adjust this based on your preferred viewer type
           showComplement={false}
-          zoom={{ linear: 50 }} // Adjust zoom level as needed
-          style={{ width: '100%', height: '400px', marginBottom: '20px' }} // Customize styles as needed
-        //   onSelection={handleSelection}
+          zoom={{ linear: 10 }} // Adjust zoom level as needed
+          style={{ width: '100%', height: '400px', marginBottom: '20px' }}  // Customize styles as needed
+          onSelection={onSelectionHandler}
         /></>;
         //   return <></>;
 
