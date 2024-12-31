@@ -99,7 +99,7 @@ const SequenceTab = React.memo(
                     }
 
                     return <>
-                        <h2>{chainName}</h2>
+                        <h2 key={`${idx}_heading`}>{chainName}</h2>
                         <SeqViz
                             key={idx}
                             name={chainName}

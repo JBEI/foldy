@@ -80,6 +80,8 @@ COPY worker/*.sh /worker/
 COPY worker/*.py /worker/
 COPY worker/docking/* /worker/docking/
 
+WORKDIR /backend/src
+
 # Make sure to use the exec form of ENTRYPOINT, rather than the shell
 # form, so that SIGTERM gets propagated to rq.
 # https://medium.com/@tasdikrahman/handling-signals-for-applications-running-in-kubernetes-dc6537f9b542

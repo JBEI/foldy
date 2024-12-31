@@ -22,7 +22,9 @@ RUN apt-get -y update && apt-get -y install git
 
 # Install backend requirements.
 COPY backend/requirements_312_WIP.txt /backend/
-RUN conda create -n worker python=3.12
+RUN conda create -n worker python=3.12 \
+    && conda install -n worker pytorch torchvision torchaudio cudatoolkit=11.3 -c pytorch -c nvidia \
+    && conda clean -a -y
 RUN /opt/conda/envs/worker/bin/pip install --no-cache-dir -r /backend/requirements_312_WIP.txt
 
 # Install special requirements.
@@ -36,6 +38,11 @@ COPY worker/*.py /worker/
 COPY worker/docking/* /worker/docking/
 
 WORKDIR /backend/src
+
+# Ensure the Conda environment is activated when the container starts.
+ENV CONDA_DEFAULT_ENV=worker
+ENV CONDA_PREFIX=/opt/conda/envs/worker
+ENV PATH="/opt/conda/envs/worker/bin:$PATH"
 
 # Make sure to use the exec form of ENTRYPOINT, rather than the shell
 # form, so that SIGTERM gets propagated to rq.

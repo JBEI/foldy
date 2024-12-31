@@ -88,10 +88,10 @@ spec:
   failedJobsHistoryLimit: 5                   # Optional. Default: 100. How many failed jobs should be kept.
   # envSourceContainerName: {container-name}    # Optional. Default: .spec.JobTargetRef.template.spec.containers[0]
   minReplicaCount: 0                          # Optional. Default: 0
-  maxReplicaCount: {{ if or (eq .RqQueueName "cpu") (eq .RqQueueName "esm") -}}
+  maxReplicaCount: {{ if (eq .RqQueueName "cpu") -}}
     10
   {{- else -}}
-    3
+    1
   {{- end }}
   rollout:
     strategy: gradual                         # Optional. Default: default. Which Rollout Strategy KEDA will use.
@@ -140,9 +140,9 @@ spec:
 
         nodeSelector:
           iam.gke.io/gke-metadata-server-enabled: "true"
-        {{- if or (eq .RqQueueName "gpu") (eq .RqQueueName "biggpu") }}
+        {{- if or (or (eq .RqQueueName "gpu") (eq .RqQueueName "biggpu")) (eq .RqQueueName "esm") }}
           cloud.google.com/gke-nodepool: spota100nodes
-        {{- else if or (eq .RqQueueName "cpu") (eq .RqQueueName "esm") }}
+        {{- else if (eq .RqQueueName "cpu") }}
           cloud.google.com/gke-nodepool: spothighmemnodes
         {{- end }}
 
@@ -159,7 +159,7 @@ spec:
           args: ["-m", "flask", "rq", "worker", {{ required "RqQueueName is required." .RqQueueName | quote }}, "--burst", "--max-jobs", "1"]
           env:
           - name: FLASK_APP
-            value: /backend/src/rq_worker_main.py
+            value: rq_worker_main.py
           - name: RUN_AF2_PATH
             value: /worker/run_alphafold.sh
           - name: DECOMPRESS_PKLS_PATH
@@ -181,7 +181,7 @@ spec:
             requests:
               cpu: 100m
               memory: 100Mi
-            {{- else if or (eq .RqQueueName "cpu") (eq .RqQueueName "esm") }}
+            {{- else if (eq .RqQueueName "cpu") }}
             requests:
               cpu: 15000m
               memory: 115Gi

@@ -27,7 +27,6 @@ import {
     getFoldPfam,
     getInvokation,
     queueJob,
-    startDmsEmbeddings,
     updateFold,
 } from "../../services/backend.service";
 import { FoldyMascot } from "../../util/foldyMascot";
@@ -40,6 +39,7 @@ import SequenceTab, { SubsequenceSelection } from "./SequenceTab";
 import * as NGL from 'ngl/dist/ngl.js';
 // const fileDownload = require("js-file-download");
 import fileDownload from "js-file-download";
+import EmbedTab from "./EmbedTab";
 
 const REFRESH_STATE_PERIOD = 5000;
 const REFRESH_STATE_MAX_ITERS = 200;
@@ -488,7 +488,7 @@ class InternalFoldView extends Component<FoldProps, FoldState> {
                     <a>Dock</a>
                 </li>
                 <li>
-                    <a>DMS</a>
+                    <a>Embed</a>
                 </li>
                 <li>
                     <a>Actions</a>
@@ -672,22 +672,8 @@ class InternalFoldView extends Component<FoldProps, FoldState> {
                     />
                 </li>
 
-                <li key="DMSli">
-                    <button
-                        type="button"
-                        className="uk-button uk-button-primary uk-margin-left uk-margin-small-bottom uk-form-small"
-                        onClick={() => startDmsEmbeddings(this.props.foldId, "esmc_300m").then(() => UIkit.notification('Started deep mutational scan.'), () => UIkit.notification('Failed to start.'))}
-                    >
-                        Start DMS Embedding (300M model)
-                    </button>
-                    <button
-                        type="button"
-                        className="uk-button uk-button-primary uk-margin-left uk-margin-small-bottom uk-form-small"
-                        onClick={() => startDmsEmbeddings(this.props.foldId, "esmc_600m").then(() => UIkit.notification('Started deep mutational scan.'), () => UIkit.notification('Failed to start.'))}
-                    >
-                        Start DMS Embedding (600M model)
-                    </button>
-
+                <li key="Embedli">
+                    <EmbedTab foldId={this.props.foldId} jobs={this.state.jobs} />
                 </li>
 
                 <li key="actionsli">
@@ -727,7 +713,7 @@ class InternalFoldView extends Component<FoldProps, FoldState> {
                 </h2>
                 <div className="uk-flex uk-flex-center uk-flex-wrap">
                     {[...(this.state.foldData?.jobs || [])].map((job: Invokation) => {
-                        if (job.type?.startsWith("dock_")) {
+                        if (job.type?.startsWith("dock_") || job.type?.startsWith("embed_")) {
                             return null;
                         }
                         return (
@@ -1168,7 +1154,7 @@ class InternalFoldView extends Component<FoldProps, FoldState> {
         }
         console.log(keys);
         for (let key of keys) {
-            console.log(`Getting ${key} from server...`);
+            UIkit.notification(`Getting ${key} from server...`);
             getFile(this.props.foldId, removeLeadingSlash(key)).then(
                 (fileBlob: Blob) => {
                     console.log(`Downloading ${key}!!!`);

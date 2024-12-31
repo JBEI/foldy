@@ -57,7 +57,7 @@ services:
       - db
       - redis
     environment:
-      - FLASK_APP=/backend/src/rq_worker_main.py
+      - FLASK_APP=rq_worker_main.py
       - RUN_AF2_PATH=/worker/run_alphafold.sh
       - DECOMPRESS_PKLS_PATH=/worker/decompress_pkls.sh
       - RUN_ANNOTATE_PATH=/worker/run_annotate.sh

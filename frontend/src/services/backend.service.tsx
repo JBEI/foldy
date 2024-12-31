@@ -115,10 +115,6 @@ export interface FileInfo {
     modified: number;
 }
 
-export interface DmsEmbeddingsInput {
-    embedding_model: string;
-}
-
 export const getJobStatus = (fold: Fold, job_type: string): string | null => {
     if (!fold.jobs) {
         return null;
@@ -376,16 +372,19 @@ export function getFile(fold_id: number, filePath: string): Promise<Blob> {
         });
 }
 
-export function startDmsEmbeddings(fold_id: number, embedding_model: string): Promise<boolean> {
+export function startEmbeddings(fold_id: number, batch_name: string, dms_starting_seq_ids: string[], extra_seq_ids: string[], embedding_model: string): Promise<boolean> {
     const requestOptions = {
         method: "POST",
         headers: jsonBodyAuthHeader(),
         body: JSON.stringify({
-            embedding_model: embedding_model
+            batch_name: batch_name,
+            embedding_model: embedding_model,
+            dms_starting_seq_ids: dms_starting_seq_ids,
+            extra_seq_ids: extra_seq_ids
         }),
     };
     return fetch(
-        `${import.meta.env.VITE_BACKEND_URL}/api/dms_embeddings/${fold_id}`,
+        `${import.meta.env.VITE_BACKEND_URL}/api/embeddings/${fold_id}`,
         requestOptions
     ).then(handleResponse);
 }

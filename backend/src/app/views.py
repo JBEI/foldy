@@ -459,22 +459,28 @@ class PfamResource(Resource):
         return pfam_annotations
 
 
-dms_embeddings_fields = ns.model(
-    "DMSEmbeddings",
+embeddings_fields = ns.model(
+    "Embeddings",
     {
+        "batch_name": fields.String(required=True),
         "embedding_model": fields.String(required=True),
+        "dms_starting_seq_ids": fields.List(fields.String(), required=False),
+        "extra_seq_ids": fields.List(fields.String(), required=False),
     },
 )
 
 
-@ns.route("/dms_embeddings/<int:fold_id>")
-class CalculateDMSEmbeddingsResource(Resource):
+@ns.route("/embeddings/<int:fold_id>")
+class CalculateEmbeddingsResource(Resource):
     @verify_has_edit_access
-    @ns.expect(dms_embeddings_fields)
+    @ns.expect(embeddings_fields)
     def post(self, fold_id):
         req = request.get_json()
 
+        batch_name = req["batch_name"]
         embedding_model = req["embedding_model"]
+        dms_starting_seq_ids = req.get("dms_starting_seq_ids", [""])
+        extra_seq_ids = req.get("extra_seq_ids", [])
 
         ALLOWED_EMBEDDING_MODELS = ["esmc_300m", "esmc_600m"]
         if embedding_model not in ALLOWED_EMBEDDING_MODELS:
@@ -484,15 +490,18 @@ class CalculateDMSEmbeddingsResource(Resource):
 
         fold = Fold.get_by_id(fold_id)
 
-        new_invokation_id = get_job_type_replacement(fold, f"dms_{embedding_model}")
+        new_invokation_id = get_job_type_replacement(fold, f"embed_{batch_name}")
 
         esm_q = rq.get_queue("esm")
         esm_q.enqueue(
             jobs.get_esm_embeddings,
             fold.id,
+            batch_name,
             embedding_model,
+            dms_starting_seq_ids,
+            extra_seq_ids,
             new_invokation_id,
-            job_timeout="6h",
+            job_timeout="12h",
             result_ttl=48 * 60 * 60,  # 2 days
         )
 
