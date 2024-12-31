@@ -35,11 +35,13 @@ import ContactTab from "./ContactTab";
 import DockTab from "./DockTab";
 import "./FoldView.scss";
 import PaeTab from "./PaeTab";
+import JobsTab from "./JobsTab";
 import SequenceTab, { SubsequenceSelection } from "./SequenceTab";
 import * as NGL from 'ngl/dist/ngl.js';
 // const fileDownload = require("js-file-download");
 import fileDownload from "js-file-download";
 import EmbedTab from "./EmbedTab";
+import EvolveTab from "./EvolveTab";
 
 const REFRESH_STATE_PERIOD = 5000;
 const REFRESH_STATE_MAX_ITERS = 200;
@@ -491,6 +493,9 @@ class InternalFoldView extends Component<FoldProps, FoldState> {
                     <a>Embed</a>
                 </li>
                 <li>
+                    <a>Evolve</a>
+                </li>
+                <li>
                     <a>Actions</a>
                 </li>
             </ul>
@@ -523,79 +528,8 @@ class InternalFoldView extends Component<FoldProps, FoldState> {
                     ) : null}
                 </li>
 
-                <li key="logsli">
-                    {this.state.jobs ? (
-                        <span>
-                            <h2>Invokations</h2>
-                            <div style={{ display: "flex", flexDirection: "row" }}>
-                                <div style={{ overflowX: "scroll", flexGrow: 1 }}>
-                                    <table
-                                        className="uk-table uk-table-hover uk-table-striped uk-table-small"
-                                    // style={{ tableLayout: "fixed" }}
-                                    >
-                                        <thead>
-                                            <tr>
-                                                <th>Type</th>
-                                                <th className=" uk-text-nowrap">State</th>
-                                                <th className=" uk-text-nowrap">Start time</th>
-                                                <th className=" uk-text-nowrap">Runtime</th>
-                                                <th className=" uk-text-nowrap">Logs</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {[...this.state.jobs].map((job: Invokation) => {
-                                                return (
-                                                    <tr key={`${job.job_id}_${job.id}`}>
-                                                        <td
-                                                            className="uk-text-nowrap "
-                                                            uk-tooltip={job.type}
-                                                        >
-                                                            {job.type}
-                                                        </td>
-                                                        <td
-                                                            className="uk-text-nowrap "
-                                                            uk-tooltip={job.state}
-                                                        >
-                                                            {job.state}
-                                                        </td>
-                                                        <td
-                                                            className="uk-text-nowrap "
-                                                            uk-tooltip={this.formatStartTime(job.starttime)}
-                                                        >
-                                                            {this.formatStartTime(job.starttime)}
-                                                        </td>
-                                                        <td
-                                                            className="uk-text-nowrap "
-                                                            uk-tooltip={this.formatRunTime(job.timedelta_sec)}
-                                                        >
-                                                            {this.formatRunTime(job.timedelta_sec)}
-                                                        </td>
-                                                        <td className="uk-text-nowrap ">
-                                                            <a href={`#logs_${job.id?.toString()}`}>View</a>
-                                                        </td>
-                                                    </tr>
-                                                );
-                                            })}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                            <span>
-                                {[...this.state.jobs].map((job: Invokation) => {
-                                    return (
-                                        <div
-                                            id={`logs_${job.id?.toString()}`}
-                                            key={job.id || "jobid should not be null"}
-                                        >
-                                            <h3>{job.type} Logs</h3>
-                                            <pre>Command: {job.command}</pre>
-                                            <pre>{job.log}</pre>
-                                        </div>
-                                    );
-                                })}
-                            </span>
-                        </span>
-                    ) : null}
+                <li key="jobsli">
+                    <JobsTab jobs={this.state.jobs} />
                 </li>
 
                 <li key="filesli">
@@ -674,6 +608,10 @@ class InternalFoldView extends Component<FoldProps, FoldState> {
 
                 <li key="Embedli">
                     <EmbedTab foldId={this.props.foldId} jobs={this.state.jobs} />
+                </li>
+
+                <li key="Evolveli">
+                    <EvolveTab foldId={this.props.foldId} jobs={this.state.jobs} files={this.state.files} />
                 </li>
 
                 <li key="actionsli">

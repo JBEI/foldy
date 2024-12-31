@@ -142,3 +142,6 @@ db_creation_resources.yaml
 # Frontend files.
 **/node_modules
 **/secrets
+
+# The embeddings... because they're huge.
+backend/src/integration_tests/testdata/000001/embed/*

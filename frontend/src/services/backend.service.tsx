@@ -389,6 +389,31 @@ export function startEmbeddings(fold_id: number, batch_name: string, dms_startin
     ).then(handleResponse);
 }
 
+export async function evolve(foldId: number, embeddingPaths: string[], activityFile: File): Promise<{
+    train_mutants: string[];
+    test_mutants: string[];
+}> {
+    // Create form data to send both JSON and file
+    const formData = new FormData();
+
+    // Add the file and other fields directly to FormData
+    formData.append('activity_file', activityFile);
+    formData.append('fold_id', foldId.toString());
+    formData.append('embedding_paths', JSON.stringify(embeddingPaths));
+
+    const requestOptions = {
+        method: "POST",
+        // Remove Content-Type header to let browser set it with boundary
+        headers: authHeader(),
+        body: formData
+    };
+
+    return fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/api/evolve`,
+        requestOptions
+    ).then(handleResponse);
+}
+
 export function postDock(newDock: DockInput): Promise<boolean> {
     const requestOptions = {
         method: "POST",

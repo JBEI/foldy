@@ -88,7 +88,7 @@ const EmbedTab: React.FC<EmbedTabProps> = ({ foldId, jobs }) => {
     };
 
     return (
-        <li key="DMSli">
+        <>
             <div className="uk-margin">
                 <label htmlFor="batch-name" className="uk-form-label">
                     Batch Name
@@ -188,7 +188,7 @@ W100C_T431G`}
                     </table>
                 </div>
             </div>
-        </li >
+        </>
     );
 };
 

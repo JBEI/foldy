@@ -151,6 +151,7 @@ def create_app(config_object="settings"):
     from app.views import ns as views_ns
     from app.login_views import ns as login_views_ns, oauth
     from app.admin_views import ns as admin_views_ns
+    from app.evolve_views import ns as evolve_views_ns
 
     api = createRestxApi()
     register_extensions(app)
@@ -163,6 +164,7 @@ def create_app(config_object="settings"):
     api.add_namespace(views_ns, "/api")
     api.add_namespace(login_views_ns, "/api")
     api.add_namespace(admin_views_ns, "/api")
+    api.add_namespace(evolve_views_ns, "/api")
 
     api.init_app(app)
 
