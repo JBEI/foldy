@@ -1,51 +1,52 @@
+// backend.service.tsx
+
+import axios, { AxiosResponse } from 'axios';
 import { authHeader, jsonBodyAuthHeader } from "../util/authHeader";
 
-async function handleFileResponse(response: Response) {
-    if (!response.ok) {
-        const text = await response.text(); // Retrieve the text from the response body
-        console.log(text); // Log the text to the console
-        return Promise.reject(text); // Reject the promise with the text as the error message
+// ----- Axios instance setup -----
+const api = axios.create({
+    baseURL: import.meta.env.VITE_BACKEND_URL,
+});
+
+// Optional: Add request/response interceptors if needed.
+api.interceptors.request.use(
+    (config) => {
+        // Insert any custom logic here. For example:
+        // config.headers = { ...config.headers, ...authHeader() };
+        return config;
+    },
+    (error) => Promise.reject(error)
+);
+
+api.interceptors.response.use(
+    (response) => response,
+    (error) => {
+        // We can centralize error handling here.
+        // For deeper customization, see `handleAxiosError` below or
+        // simply throw the error to handle in each function.
+        return Promise.reject(error);
     }
-    if (response.status !== 200) {
-        console.log("Here is the failed response:");
-        console.log(response);
-        return Promise.reject(`Request failed with error code ${response.status}`);
+);
+
+/**
+ * Helper to transform axios errors to a consistent Error message.
+ * You could also do this in interceptors if you prefer.
+ */
+function handleAxiosError(error: any): never {
+    if (error.response) {
+        console.log(error);
+        // The request was made and the server responded with a status code
+        throw new Error(error.response.data?.message || error.response.data || error.message);
+    } else if (error.request) {
+        // The request was made but no response was received
+        throw new Error("Network error: no response received");
+    } else {
+        // Something happened in setting up the request
+        throw new Error(error.message);
     }
-    return response;
 }
 
-function handleResponse(response: Response) {
-    if (!response.text) {
-        return Promise.reject(response.statusText);
-    }
-
-    return response.text().then((text) => {
-        const data = text && JSON.parse(text);
-        if (!response.ok) {
-            // In the world of public folds, we don't want to redirect on unauthorized.
-            // if ([401, 403].indexOf(response.status) !== -1) {
-            //   // auto logout if 401 Unauthorized or 403 Forbidden response returned from api
-            //   authenticationService.logout();
-            //   // location.reload(true);
-            // }
-
-            const error = (data && data.message) || response.statusText;
-            console.log(error);
-            return Promise.reject(error);
-        }
-
-        return data;
-    });
-}
-
-export function getTestValue(): Promise<any> {
-    const requestOptions = { method: "GET", headers: authHeader() };
-    return fetch(
-        `${import.meta.env.VITE_BACKEND_URL}/api/test`,
-        requestOptions
-    ).then(handleResponse);
-}
-
+// ----- Interfaces -----
 export interface DockInput {
     fold_id: number;
     ligand_name: string;
@@ -115,6 +116,11 @@ export interface FileInfo {
     modified: number;
 }
 
+export interface FoldPdb {
+    pdb_string: string;
+}
+
+// ----- Utility helpers -----
 export const getJobStatus = (fold: Fold, job_type: string): string | null => {
     if (!fold.jobs) {
         return null;
@@ -132,7 +138,6 @@ export const describeFoldState = (fold: Fold) => {
     const modelsState = getJobStatus(fold, "models");
     const decompressState = getJobStatus(fold, "decompress_pkls");
 
-    // Special case: if anything hasn't been queued, just say unstarted.
     if (
         featuresState === null ||
         modelsState === null ||
@@ -140,18 +145,12 @@ export const describeFoldState = (fold: Fold) => {
     ) {
         return "unstarted";
     }
-
-    // Another special case: before the beginning just say "queued".
     if (featuresState === "queued") {
         return "queued";
     }
-
-    // Another special case: after the end just say "finished".
     if (decompressState === "finished") {
         return "finished";
     }
-
-    // Normal case: print the state of the most recent stage.
     if (featuresState !== "finished") {
         return `features ${featuresState}`;
     }
@@ -165,35 +164,37 @@ export const foldIsFinished = (fold: Fold) => {
     return getJobStatus(fold, "models") === "finished";
 };
 
-export interface FoldPdb {
-    pdb_string: string;
-}
+// ----- API functions -----
 
-export interface FoldPkl {
-    pkl_string: string;
+// Example of a GET request returning JSON
+export function getTestValue(): Promise<any> {
+    return api
+        .get('/api/test', { headers: authHeader() })
+        .then((res) => res.data)
+        .catch(handleAxiosError);
 }
 
 export function getFolds(
     filter: string | null,
     tagString: string | null,
-    page: number | null, // 1 indexed
+    page: number | null,
     per_page: number | null
-): Promise<Array<Fold>> {
-    const requestOptions = { method: "GET", headers: authHeader() };
-
-    const searchParams = new URLSearchParams();
-    if (filter) {
-        searchParams.append("filter", filter);
-    }
-    if (tagString) {
-        searchParams.append("tag", tagString);
-    }
+): Promise<Fold[]> {
+    const params: Record<string, string> = {};
+    if (filter) params.filter = filter;
+    if (tagString) params.tag = tagString;
     if (page && per_page) {
-        searchParams.append("page", page.toString());
-        searchParams.append("per_page", per_page.toString());
+        params.page = page.toString();
+        params.per_page = per_page.toString();
     }
-    var url = `${import.meta.env.VITE_BACKEND_URL}/api/fold?${searchParams}`;
-    return fetch(url, requestOptions).then(handleResponse);
+
+    return api
+        .get('/api/fold', {
+            headers: authHeader(),
+            params,
+        })
+        .then((res) => res.data)
+        .catch(handleAxiosError);
 }
 
 export function postFolds(
@@ -202,106 +203,92 @@ export function postFolds(
     emailOnCompletion: boolean,
     skipDuplicateEntries: boolean
 ): Promise<any> {
-    const requestOptions = {
-        method: "POST",
-        headers: jsonBodyAuthHeader(),
-        body: JSON.stringify({
-            folds_data: newFolds,
-            start_fold_job: startFoldJob,
-            email_on_completion: emailOnCompletion,
-            skip_duplicate_entries: skipDuplicateEntries,
-        }),
-    };
-    return fetch(
-        `${import.meta.env.VITE_BACKEND_URL}/api/fold`,
-        requestOptions
-    ).then(handleResponse);
+    return api
+        .post(
+            '/api/fold',
+            {
+                folds_data: newFolds,
+                start_fold_job: startFoldJob,
+                email_on_completion: emailOnCompletion,
+                skip_duplicate_entries: skipDuplicateEntries,
+            },
+            { headers: jsonBodyAuthHeader() }
+        )
+        .then((res) => res.data)
+        .catch(handleAxiosError);
 }
 
 export function getFold(foldId: number): Promise<Fold> {
-    const requestOptions = { method: "GET", headers: authHeader() };
-
-    var url = `${import.meta.env.VITE_BACKEND_URL}/api/fold/${foldId}`;
-    return fetch(url, requestOptions).then(handleResponse);
+    return api
+        .get(`/api/fold/${foldId}`, { headers: authHeader() })
+        .then((res) => res.data)
+        .catch(handleAxiosError);
 }
 
 export function updateFold(
     foldId: number,
     fieldsToUpdate: Partial<Fold>
 ): Promise<boolean> {
-    const requestOptions = {
-        method: "POST",
-        headers: jsonBodyAuthHeader(),
-        body: JSON.stringify(fieldsToUpdate),
-    };
-    return fetch(
-        `${import.meta.env.VITE_BACKEND_URL}/api/fold/${foldId}`,
-        requestOptions
-    ).then(handleResponse);
+    return api
+        .post(`/api/fold/${foldId}`, fieldsToUpdate, { headers: jsonBodyAuthHeader() })
+        .then((res) => res.data)
+        .catch(handleAxiosError);
 }
 
 export function getInvokation(invokation_id: number): Promise<Invokation> {
-    const requestOptions = { method: "GET", headers: authHeader() };
-
-    var url = `${import.meta.env.VITE_BACKEND_URL}/api/invokation/${invokation_id}`;
-    return fetch(url, requestOptions).then(handleResponse);
+    return api
+        .get(`/api/invokation/${invokation_id}`, { headers: authHeader() })
+        .then((res) => res.data)
+        .catch(handleAxiosError);
 }
 
 export function getFoldPdb(
     fold_id: number,
     model_number: number
 ): Promise<FoldPdb> {
-    const requestOptions = { method: "GET", headers: authHeader() };
-
-    var url = `${import.meta.env.VITE_BACKEND_URL}/api/fold_pdb/${fold_id}/${model_number}`;
-    return fetch(url, requestOptions).then(handleResponse);
+    return api
+        .get(`/api/fold_pdb/${fold_id}/${model_number}`, { headers: authHeader() })
+        .then((res) => res.data)
+        .catch(handleAxiosError);
 }
 
 export function getFoldPkl(
     fold_id: number,
     model_number: number
 ): Promise<Blob> {
-    const requestOptions = { method: "POST", headers: authHeader() };
-
-    var url = `${import.meta.env.VITE_BACKEND_URL}/api/fold_pkl/${fold_id}/${model_number}`;
-    return fetch(url, requestOptions).then((response) => {
-        return response.blob();
-    });
+    return api
+        .post(`/api/fold_pkl/${fold_id}/${model_number}`, null, {
+            headers: authHeader(),
+            responseType: 'blob',
+        })
+        .then((res) => res.data)
+        .catch(handleAxiosError);
 }
 
 export function getDockSdf(
     fold_id: number,
     ligand_name: string
 ): Promise<Blob> {
-    const requestOptions = { method: "POST", headers: authHeader() };
-
-    var url = `${import.meta.env.VITE_BACKEND_URL}/api/dock_sdf/${fold_id}/${ligand_name}`;
-    return fetch(url, requestOptions)
-        .then(handleFileResponse)
-        .then((response) => {
-            return response.blob();
-        });
+    return api
+        .post(`/api/dock_sdf/${fold_id}/${ligand_name}`, null, {
+            headers: authHeader(),
+            responseType: 'blob',
+        })
+        .then((res) => res.data)
+        .catch(handleAxiosError);
 }
 
 export function getFoldPdbZip(
     fold_ids: number[],
     dirname: string
 ): Promise<Blob> {
-    const requestOptions = {
-        method: "POST",
-        headers: jsonBodyAuthHeader(),
-        body: JSON.stringify({
-            fold_ids: fold_ids,
-            dirname: dirname,
-        }),
-    };
-
-    var url = `${import.meta.env.VITE_BACKEND_URL}/api/fold_pdb_zip`;
-    return fetch(url, requestOptions)
-        .then(handleFileResponse)
-        .then((response) => {
-            return response.blob();
-        });
+    return api
+        .post('/api/fold_pdb_zip', { fold_ids, dirname }, {
+            headers: jsonBodyAuthHeader(),
+            responseType: 'blob',
+        })
+        .then((res) => res.data)
+        .catch(handleAxiosError);
 }
 
 export function getFoldFileZip(
@@ -309,166 +296,147 @@ export function getFoldFileZip(
     relative_fpath: string,
     output_dirname: string
 ): Promise<Blob> {
-    const requestOptions = {
-        method: "POST",
-        headers: jsonBodyAuthHeader(),
-        body: JSON.stringify({
-            fold_ids: fold_ids,
-            relative_fpath: relative_fpath,
-            output_dirname: output_dirname,
-        }),
-    };
-
-    var url = `${import.meta.env.VITE_BACKEND_URL}/api/fold_file_zip`;
-    return fetch(url, requestOptions)
-        .then(handleFileResponse)
-        .then((response) => {
-            return response.blob();
-        });
+    return api
+        .post('/api/fold_file_zip', {
+            fold_ids,
+            relative_fpath,
+            output_dirname,
+        }, {
+            headers: jsonBodyAuthHeader(),
+            responseType: 'blob',
+        })
+        .then((res) => res.data)
+        .catch(handleAxiosError);
 }
 
 export function getFoldPae(
     fold_id: number,
     model_number: number
 ): Promise<FoldPae> {
-    const requestOptions = { method: "GET", headers: authHeader() };
-
-    var url = `${import.meta.env.VITE_BACKEND_URL}/api/pae/${fold_id}/${model_number}`;
-    return fetch(url, requestOptions).then(handleResponse);
+    return api
+        .get(`/api/pae/${fold_id}/${model_number}`, { headers: authHeader() })
+        .then((res) => res.data)
+        .catch(handleAxiosError);
 }
 
 export function getFoldContactProb(
     fold_id: number,
     model_number: number
 ): Promise<FoldContactProb> {
-    const requestOptions = { method: "GET", headers: authHeader() };
-
-    var url = `${import.meta.env.VITE_BACKEND_URL}/api/contact_prob/${fold_id}/${model_number}`;
-    return fetch(url, requestOptions).then(handleResponse);
+    return api
+        .get(`/api/contact_prob/${fold_id}/${model_number}`, { headers: authHeader() })
+        .then((res) => res.data)
+        .catch(handleAxiosError);
 }
 
 export function getFoldPfam(fold_id: number): Promise<Annotations> {
-    const requestOptions = { method: "GET", headers: authHeader() };
-
-    var url = `${import.meta.env.VITE_BACKEND_URL}/api/pfam/${fold_id}`;
-    return fetch(url, requestOptions).then(handleResponse);
+    return api
+        .get(`/api/pfam/${fold_id}`, { headers: authHeader() })
+        .then((res) => res.data)
+        .catch(handleAxiosError);
 }
 
 export function getFileList(fold_id: number): Promise<FileInfo[]> {
-    const requestOptions = { method: "GET", headers: authHeader() };
-
-    var url = `${import.meta.env.VITE_BACKEND_URL}/api/file/list/${fold_id}`;
-    return fetch(url, requestOptions).then(handleResponse);
+    return api
+        .get(`/api/file/list/${fold_id}`, { headers: authHeader() })
+        .then((res) => res.data)
+        .catch(handleAxiosError);
 }
 
 export function getFile(fold_id: number, filePath: string): Promise<Blob> {
-    const requestOptions = { method: "GET", headers: authHeader() };
-
-    var url = `${import.meta.env.VITE_BACKEND_URL}/api/file/download/${fold_id}/${filePath}`;
-    return fetch(url, requestOptions)
-        .then(handleFileResponse)
-        .then((response) => {
-            return response.blob();
-        });
+    return api
+        .get(`/api/file/download/${fold_id}/${filePath}`, {
+            headers: authHeader(),
+            responseType: 'blob',
+        })
+        .then((res) => res.data)
+        .catch(handleAxiosError);
 }
 
-export function startEmbeddings(fold_id: number, batch_name: string, dms_starting_seq_ids: string[], extra_seq_ids: string[], embedding_model: string): Promise<boolean> {
-    const requestOptions = {
-        method: "POST",
-        headers: jsonBodyAuthHeader(),
-        body: JSON.stringify({
-            batch_name: batch_name,
-            embedding_model: embedding_model,
-            dms_starting_seq_ids: dms_starting_seq_ids,
-            extra_seq_ids: extra_seq_ids
-        }),
-    };
-    return fetch(
-        `${import.meta.env.VITE_BACKEND_URL}/api/embeddings/${fold_id}`,
-        requestOptions
-    ).then(handleResponse);
+export function startEmbeddings(
+    fold_id: number,
+    batch_name: string,
+    dms_starting_seq_ids: string[],
+    extra_seq_ids: string[],
+    embedding_model: string
+): Promise<boolean> {
+    return api
+        .post(
+            `/api/embeddings/${fold_id}`,
+            {
+                batch_name,
+                embedding_model,
+                dms_starting_seq_ids,
+                extra_seq_ids,
+            },
+            { headers: jsonBodyAuthHeader() }
+        )
+        .then((res) => res.data)
+        .catch(handleAxiosError);
 }
 
-export async function evolve(foldId: number, embeddingPaths: string[], activityFile: File): Promise<{
+export async function evolve(
+    foldId: number,
+    embeddingPaths: string[],
+    activityFile: File
+): Promise<{
     train_mutants: string[];
     test_mutants: string[];
 }> {
-    // Create form data to send both JSON and file
     const formData = new FormData();
-
-    // Add the file and other fields directly to FormData
     formData.append('activity_file', activityFile);
     formData.append('fold_id', foldId.toString());
     formData.append('embedding_paths', JSON.stringify(embeddingPaths));
 
-    const requestOptions = {
-        method: "POST",
-        // Remove Content-Type header to let browser set it with boundary
-        headers: authHeader(),
-        body: formData
-    };
-
-    return fetch(
-        `${import.meta.env.VITE_BACKEND_URL}/api/evolve`,
-        requestOptions
-    ).then(handleResponse);
+    return api
+        .post('/api/evolve', formData, {
+            headers: authHeader(),
+        })
+        .then((response: AxiosResponse<{
+            train_mutants: string[];
+            test_mutants: string[];
+        }>) => {
+            console.log(response.data);
+            return response.data;
+        })
+        .catch(handleAxiosError);
 }
 
 export function postDock(newDock: DockInput): Promise<boolean> {
-    const requestOptions = {
-        method: "POST",
-        headers: jsonBodyAuthHeader(),
-        body: JSON.stringify(newDock),
-    };
-    return fetch(
-        `${import.meta.env.VITE_BACKEND_URL}/api/dock`,
-        requestOptions
-    ).then(handleResponse);
+    return api
+        .post('/api/dock', newDock, { headers: jsonBodyAuthHeader() })
+        .then((res) => res.data)
+        .catch(handleAxiosError);
 }
 
 export function deleteDock(dockId: number): Promise<boolean> {
-    const requestOptions = {
-        method: "DELETE",
-        headers: jsonBodyAuthHeader(),
-    };
-    return fetch(
-        `${import.meta.env.VITE_BACKEND_URL}/api/dock/${dockId}`,
-        requestOptions
-    ).then(handleResponse);
+    return api
+        .delete(`/api/dock/${dockId}`, { headers: jsonBodyAuthHeader() })
+        .then((res) => res.data)
+        .catch(handleAxiosError);
 }
 
-// Administration functions....
+// ----- Administration functions -----
 
 export function createDbs(): Promise<any> {
-    var headers = authHeader();
-    headers.set("Content-Type", "application/json");
-    const requestOptions = {
-        method: "POST",
-        headers: headers,
-        body: JSON.stringify({}),
-    };
-    var url = `${import.meta.env.VITE_BACKEND_URL}/api/createdbs`;
-    return fetch(url, requestOptions).then(handleResponse);
+    return api
+        .post('/api/createdbs', {}, { headers: jsonBodyAuthHeader() })
+        .then((res) => res.data)
+        .catch(handleAxiosError);
 }
 
 export function upgradeDbs(): Promise<any> {
-    const requestOptions = {
-        method: "POST",
-        headers: jsonBodyAuthHeader(),
-        body: JSON.stringify({}),
-    };
-    var url = `${import.meta.env.VITE_BACKEND_URL}/api/upgradedbs`;
-    return fetch(url, requestOptions).then(handleResponse);
+    return api
+        .post('/api/upgradedbs', {}, { headers: jsonBodyAuthHeader() })
+        .then((res) => res.data)
+        .catch(handleAxiosError);
 }
 
 export function stampDbs(revision: string): Promise<any> {
-    const requestOptions = {
-        method: "POST",
-        headers: jsonBodyAuthHeader(),
-        body: JSON.stringify({ revision: revision }),
-    };
-    var url = `${import.meta.env.VITE_BACKEND_URL}/api/stampdbs`;
-    return fetch(url, requestOptions).then(handleResponse);
+    return api
+        .post('/api/stampdbs', { revision }, { headers: jsonBodyAuthHeader() })
+        .then((res) => res.data)
+        .catch(handleAxiosError);
 }
 
 export function queueJob(
@@ -476,126 +444,114 @@ export function queueJob(
     stage: string,
     emailOnCompletion: boolean
 ): Promise<any> {
-    const requestOptions = {
-        method: "POST",
-        headers: jsonBodyAuthHeader(),
-        body: JSON.stringify({
-            fold_id: foldId,
-            stage: stage,
-            email_on_completion: emailOnCompletion,
-        }),
-    };
-    return fetch(
-        `${import.meta.env.VITE_BACKEND_URL}/api/queuejob`,
-        requestOptions
-    ).then(handleResponse);
+    return api
+        .post(
+            '/api/queuejob',
+            {
+                fold_id: foldId,
+                stage,
+                email_on_completion: emailOnCompletion,
+            },
+            { headers: jsonBodyAuthHeader() }
+        )
+        .then((res) => res.data)
+        .catch(handleAxiosError);
 }
 
 export function queueTestJob(queue: string): Promise<any> {
-    const requestOptions = {
-        method: "POST",
-        headers: jsonBodyAuthHeader(),
-        body: JSON.stringify({ queue: queue }),
-    };
-    var url = `${import.meta.env.VITE_BACKEND_URL}/api/queuetestjob`;
-    return fetch(url, requestOptions).then(handleResponse);
+    return api
+        .post(
+            '/api/queuetestjob',
+            { queue },
+            { headers: jsonBodyAuthHeader() }
+        )
+        .then((res) => res.data)
+        .catch(handleAxiosError);
 }
 
 export function removeFailedJobs(queue: string): Promise<any> {
-    const requestOptions = {
-        method: "POST",
-        headers: jsonBodyAuthHeader(),
-        body: JSON.stringify({ queue: queue }),
-    };
-    return fetch(
-        `${import.meta.env.VITE_BACKEND_URL}/api/remove_failed_jobs`,
-        requestOptions
-    ).then(handleResponse);
+    return api
+        .post(
+            '/api/remove_failed_jobs',
+            { queue },
+            { headers: jsonBodyAuthHeader() }
+        )
+        .then((res) => res.data)
+        .catch(handleAxiosError);
 }
 
 export function killWorker(workerToKill: string): Promise<any> {
-    const requestOptions = {
-        method: "POST",
-        headers: jsonBodyAuthHeader(),
-        body: JSON.stringify({ worker_id: workerToKill }),
-    };
-    return fetch(
-        `${import.meta.env.VITE_BACKEND_URL}/api/kill_worker`,
-        requestOptions
-    ).then(handleResponse);
+    return api
+        .post(
+            '/api/kill_worker',
+            { worker_id: workerToKill },
+            { headers: jsonBodyAuthHeader() }
+        )
+        .then((res) => res.data)
+        .catch(handleAxiosError);
 }
 
 export function sendTestEmail(): Promise<any> {
-    const requestOptions = {
-        method: "POST",
-        headers: jsonBodyAuthHeader(),
-        body: JSON.stringify({}),
-    };
-    return fetch(
-        `${import.meta.env.VITE_BACKEND_URL}/api/sendtestemail`,
-        requestOptions
-    ).then(handleResponse);
+    return api
+        .post('/api/sendtestemail', {}, { headers: jsonBodyAuthHeader() })
+        .then((res) => res.data)
+        .catch(handleAxiosError);
 }
 
 export function addInvokationToAllJobs(
     jobType: string,
     jobState: string
 ): Promise<any> {
-    const requestOptions = {
-        method: "POST",
-        headers: jsonBodyAuthHeader(),
-        body: JSON.stringify({}),
-    };
-    return fetch(
-        `${import.meta.env.VITE_BACKEND_URL}/api/addInvokationToAllJobs/${jobType}/${jobState}`,
-        requestOptions
-    ).then(handleResponse);
+    return api
+        .post(
+            `/api/addInvokationToAllJobs/${jobType}/${jobState}`,
+            {},
+            { headers: jsonBodyAuthHeader() }
+        )
+        .then((res) => res.data)
+        .catch(handleAxiosError);
 }
 
 export function runUnrunStages(stageToRun: string): Promise<any> {
-    const requestOptions = {
-        method: "POST",
-        headers: jsonBodyAuthHeader(),
-        body: JSON.stringify({}),
-    };
-    return fetch(
-        `${import.meta.env.VITE_BACKEND_URL}/api/runUnrunStages/${stageToRun}`,
-        requestOptions
-    ).then(handleResponse);
+    return api
+        .post(
+            `/api/runUnrunStages/${stageToRun}`,
+            {},
+            { headers: jsonBodyAuthHeader() }
+        )
+        .then((res) => res.data)
+        .catch(handleAxiosError);
 }
 
 export function setAllUnsetModelPresets(): Promise<boolean> {
-    const requestOptions = {
-        method: "POST",
-        headers: jsonBodyAuthHeader(),
-        body: JSON.stringify({}),
-    };
-    return fetch(
-        `${import.meta.env.VITE_BACKEND_URL}/api/set_all_unset_model_presets`,
-        requestOptions
-    ).then(handleResponse);
+    return api
+        .post(
+            '/api/set_all_unset_model_presets',
+            {},
+            { headers: jsonBodyAuthHeader() }
+        )
+        .then((res) => res.data)
+        .catch(handleAxiosError);
 }
 
 export function killFoldsInRange(foldRange: string): Promise<any> {
-    const requestOptions = {
-        method: "POST",
-        headers: jsonBodyAuthHeader(),
-        body: JSON.stringify({}),
-    };
-    return fetch(
-        `${import.meta.env.VITE_BACKEND_URL}/api/killFolds/${foldRange}`,
-        requestOptions
-    ).then(handleResponse);
+    return api
+        .post(
+            `/api/killFolds/${foldRange}`,
+            {},
+            { headers: jsonBodyAuthHeader() }
+        )
+        .then((res) => res.data)
+        .catch(handleAxiosError);
 }
 
 export function bulkAddTag(foldRange: string, newTag: string): Promise<any> {
-    const requestOptions = {
-        method: "POST",
-        headers: jsonBodyAuthHeader(),
-        body: JSON.stringify({}),
-    };
-    return fetch(
-        `${import.meta.env.VITE_BACKEND_URL}/api/bulkAddTag/${foldRange}/${newTag}`,
-        requestOptions
-    ).then(handleResponse);
+    return api
+        .post(
+            `/api/bulkAddTag/${foldRange}/${newTag}`,
+            {},
+            { headers: jsonBodyAuthHeader() }
+        )
+        .then((res) => res.data)
+        .catch(handleAxiosError);
 }

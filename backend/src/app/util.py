@@ -22,7 +22,7 @@ from sqlalchemy.orm import joinedload
 from werkzeug.exceptions import BadRequest
 from pathlib import Path
 
-from app import jobs
+from app.jobs import other_jobs
 from app.models import Dock, Fold, Invokation, User
 from app.extensions import compress, db, rq
 
@@ -92,7 +92,7 @@ def start_stage(fold_id: int, stage, email_on_completion):
     if stage == "features":
         cpu_q = rq.get_queue("cpu")
         features_job = cpu_q.enqueue(
-            jobs.run_features,
+            other_jobs.run_features,
             fold_id,
             get_job_type_replacement(fold, "features"),
             job_timeout="12h",
@@ -105,7 +105,7 @@ def start_stage(fold_id: int, stage, email_on_completion):
         gpu_q = rq.get_queue(gpu_q_name)
         emailparrot_q = rq.get_queue("emailparrot")
         models_job = gpu_q.enqueue(
-            jobs.run_models,
+            other_jobs.run_models,
             fold_id,
             get_job_type_replacement(fold, "models"),
             job_timeout="12h",
@@ -117,7 +117,7 @@ def start_stage(fold_id: int, stage, email_on_completion):
     elif stage == "decompress_pkls":
         cpu_q = rq.get_queue("cpu")
         decompress_pkls_job = cpu_q.enqueue(
-            jobs.decompress_pkls,
+            other_jobs.decompress_pkls,
             fold_id,
             get_job_type_replacement(fold, "decompress_pkls"),
             job_timeout="12h",
@@ -128,7 +128,7 @@ def start_stage(fold_id: int, stage, email_on_completion):
     elif stage == "annotate":
         cpu_q = rq.get_queue("cpu")
         annotate_job = cpu_q.enqueue(
-            jobs.run_annotate,
+            other_jobs.run_annotate,
             fold_id,
             get_job_type_replacement(fold, "annotate"),
             job_timeout="12h",
@@ -151,14 +151,14 @@ def start_stage(fold_id: int, stage, email_on_completion):
         gpu_q = rq.get_queue(gpu_q_name)
 
         features_job = cpu_q.enqueue(
-            jobs.run_features,
+            other_jobs.run_features,
             fold_id,
             get_job_type_replacement(fold, "features"),
             job_timeout="12h",
             result_ttl=48 * 60 * 60,  # 2 days
         )
         models_job = gpu_q.enqueue(
-            jobs.run_models,
+            other_jobs.run_models,
             fold_id,
             get_job_type_replacement(fold, "models"),
             job_timeout="12h",
@@ -167,7 +167,7 @@ def start_stage(fold_id: int, stage, email_on_completion):
             retry=Retry(max=num_retries),
         )
         decompress_pkls_job = cpu_q.enqueue(
-            jobs.decompress_pkls,
+            other_jobs.decompress_pkls,
             fold_id,
             get_job_type_replacement(fold, "decompress_pkls"),
             job_timeout="12h",
@@ -175,12 +175,12 @@ def start_stage(fold_id: int, stage, email_on_completion):
             depends_on=[models_job],
         )
         annotate_job = cpu_q.enqueue(
-            jobs.run_annotate,
+            other_jobs.run_annotate,
             fold_id,
             get_job_type_replacement(fold, "annotate"),
             job_timeout="12h",
             result_ttl=48 * 60 * 60,  # 2 days
-            # Note: no dependent jobs.
+            # Note: no dependent other_jobs.
         )
         email_dependent_jobs = [
             features_job,
@@ -195,7 +195,7 @@ def start_stage(fold_id: int, stage, email_on_completion):
     if email_on_completion:
         emailparrot_q = rq.get_queue("emailparrot")
         emailparrot_q.enqueue(
-            jobs.send_email,
+            other_jobs.send_email,
             fold_id,
             fold.name,
             fold.user.email,
@@ -605,7 +605,7 @@ class FoldStorageManager:
         email_on_completion,
         skip_duplicate_entries,
     ):
-        """Adds a list of new folds to the DB and optionally starts the jobs.
+        """Adds a list of new folds to the DB and optionally starts the other_jobs.
 
         Note that the folds in folds_data should not have an ID or status."""
 

@@ -11,7 +11,7 @@ from rq.registry import FailedJobRegistry
 from sqlalchemy.sql.elements import and_
 from werkzeug.exceptions import BadRequest
 
-from app import jobs
+from app.jobs import other_jobs
 from app.models import Fold, Invokation
 from app.extensions import db, rq
 from app.authorization import verify_has_edit_access
@@ -167,22 +167,6 @@ queue_test_job_fields = ns.model(
 )
 
 
-@ns.route("/queuetestjob")
-class QueueTestJobResource(Resource):
-    @ns.expect(queue_test_job_fields)
-    @verify_has_edit_access
-    def post(self):
-        q = rq.get_queue(request.get_json()["queue"])
-        q.enqueue(
-            jobs.add,
-            1,
-            3,
-            job_timeout="6h",
-            result_ttl=48 * 60 * 60,  # 2 days
-        )
-        return True
-
-
 @ns.route("/sendtestemail")
 class SendTestEmailResource(Resource):
     @ns.expect(queue_test_job_fields)
@@ -190,7 +174,7 @@ class SendTestEmailResource(Resource):
     def post(self):
         q = rq.get_queue("emailparrot")
         q.enqueue(
-            jobs.send_email,
+            other_jobs.send_email,
             1,
             "test_prot",
             "jacoberts@gmail.com",

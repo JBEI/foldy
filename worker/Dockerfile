@@ -18,9 +18,9 @@ RUN mkdir /backend && mkdir -p /worker/docking
 
 
 # Install backend requirements.
-COPY backend/requirements_312_WIP.txt /backend/
+COPY backend/requirements.txt /backend/
 RUN conda create -n worker python=3.12
-RUN /opt/conda/envs/worker/bin/pip install --no-cache-dir -r /backend/requirements_312_WIP.txt
+RUN /opt/conda/envs/worker/bin/pip install --no-cache-dir -r /backend/requirements.txt
 
 
 # Install autodockVINA requirements.

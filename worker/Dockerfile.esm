@@ -21,16 +21,19 @@ RUN apt-get -y update && apt-get -y install git
 
 
 # Install backend requirements.
-COPY backend/requirements_312_WIP.txt /backend/
-RUN conda create -n worker python=3.12 \
-    && conda install -n worker pytorch torchvision torchaudio cudatoolkit=11.3 -c pytorch -c nvidia \
+RUN conda create -n worker python=3.12
+# // -c nvidia 
+# RUN conda install -y -n worker pytorch torchvision torchaudio cudatoolkit=11.3 -c conda-forge \ 
+#     && conda clean -a -y
+RUN conda install -y -n worker cudatoolkit=11.3 -c conda-forge \ 
     && conda clean -a -y
-RUN /opt/conda/envs/worker/bin/pip install --no-cache-dir -r /backend/requirements_312_WIP.txt
+RUN conda install -y -n worker pytorch torchvision torchaudio -c pytorch -c conda-forge \ 
+    && conda clean -a -y
+COPY backend/requirements.txt /backend/
+RUN /opt/conda/envs/worker/bin/pip install --no-cache-dir -r /backend/requirements.txt
 
 # Install special requirements.
 RUN /opt/conda/envs/worker/bin/pip install esm
-
-
 # Copy application code.
 COPY backend/ /backend/
 COPY worker/*.sh /worker/

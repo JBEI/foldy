@@ -53,14 +53,19 @@ const EvolveTab: React.FC<EvolveTabProps> = ({ foldId, jobs, files }) => {
         }
 
         try {
-            await evolve(foldId, selectedEmbeddingPaths, activityFile);
             UIkit.notification({
-                message: 'Evolution process started',
+                message: `Starting evolution...`,
+                timeout: 3000  // 3000 milliseconds = 3 seconds
+            });
+            const { train_mutants, test_mutants } = await evolve(foldId, selectedEmbeddingPaths, activityFile);
+            console.log(train_mutants, test_mutants);
+            UIkit.notification({
+                message: `Evolution process started with ${train_mutants.length} training mutants and ${test_mutants.length} test mutants`,
                 status: 'success'
             });
         } catch (error) {
             UIkit.notification({
-                message: 'Failed to start evolution process',
+                message: `Failed to start evolution process: ${error}`,
                 status: 'danger'
             });
         }

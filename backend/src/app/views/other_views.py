@@ -12,7 +12,8 @@ from flask_restx import reqparse
 from sqlalchemy.sql.elements import and_
 from werkzeug.exceptions import BadRequest
 
-from app import jobs
+from app.jobs import other_jobs
+from app.jobs import embed_jobs
 from app.models import Dock, Fold, Invokation
 from app.extensions import db, rq
 from app.util import start_stage, FoldStorageManager, get_job_type_replacement
@@ -21,7 +22,7 @@ from app.authorization import (
     verify_has_edit_access,
 )
 
-ns = Namespace("most_views", decorators=[jwt_required(fresh=True)])
+ns = Namespace("other_views", decorators=[jwt_required(fresh=True)])
 
 
 @ns.route("/test")
@@ -215,158 +216,6 @@ class InvokationLogsResource(Resource):
         return Invokation.get_by_id(invokation_id)
 
 
-fold_pdb_fields = ns.model(
-    "FoldPdb",
-    {
-        "pdb_string": fields.String(readonly=True),
-    },
-)
-
-
-# @compress.compressed()
-@ns.route("/fold_pdb/<int:fold_id>/<int:model_number>")
-class FoldResource(Resource):
-    @ns.marshal_with(fold_pdb_fields)
-    def get(self, fold_id, model_number):
-        manager = FoldStorageManager()
-        manager.setup()
-        return {"pdb_string": manager.get_fold_pdb(fold_id, model_number)}
-
-
-fold_file_zip_fields = ns.model(
-    "FoldPdbZip",
-    {
-        "fold_ids": fields.List(fields.Integer(required=True)),
-        "relative_fpath": fields.String(),
-        "output_dirname": fields.String(),
-    },
-)
-
-
-# @compress.compressed()
-@ns.route("/fold_file_zip")
-class FoldPdbZipResource(Resource):
-    @ns.expect(fold_file_zip_fields)
-    def post(self):
-        manager = FoldStorageManager()
-        manager.setup()
-
-        return send_file(
-            manager.get_fold_file_zip(
-                request.get_json()["fold_ids"],
-                request.get_json()["relative_fpath"],
-                request.get_json()["output_dirname"],
-            ),
-            mimetype="application/octet-stream",
-            download_name="fold_pdbs.zip",
-            as_attachment=True,
-        )
-
-
-@ns.route("/fold_pkl/<int:fold_id>/<int:model_number>")
-class FoldPklResource(Resource):
-    def post(self, fold_id, model_number):
-        manager = FoldStorageManager()
-        manager.setup()
-        pkl_byte_str = manager.get_fold_pkl(fold_id, model_number)
-        # TODO: Stream!
-        # https://flask.palletsprojects.com/en/1.1.x/patterns/streaming/
-        # https://www.reddit.com/r/Python/comments/dha9kw/flask_send_large_file/
-        return send_file(
-            io.BytesIO(pkl_byte_str),
-            mimetype="application/octet-stream",
-            download_name="model.pkl",
-            as_attachment=True,
-        )
-
-
-@ns.route("/dock_sdf/<int:fold_id>/<string:ligand_name>")
-class FoldPklResource(Resource):
-    def post(self, fold_id, ligand_name):
-        print(f"Finding dock for {fold_id} for {ligand_name}", flush=True)
-        dock = (
-            db.session.query(Dock)
-            .filter(
-                and_(
-                    Dock.ligand_name == ligand_name,
-                    Dock.receptor_fold_id == fold_id,
-                )
-            )
-            .first()
-        )
-
-        if not dock:
-            raise BadRequest(
-                f"Dock for fold id {fold_id} ligand name {ligand_name} not found."
-            )
-
-        manager = FoldStorageManager()
-        manager.setup()
-        sdf_str = manager.get_dock_sdf(dock)
-        return send_file(
-            io.BytesIO(sdf_str),
-            mimetype="application/octet-stream",
-            download_name=f"{ligand_name}.sdf",
-            as_attachment=True,
-        )
-
-
-@ns.route("/file/list/<int:fold_id>")
-class FoldFileResource(Resource):
-    def get(self, fold_id):
-        manager = FoldStorageManager()
-        manager.setup()
-        return manager.storage_manager.list_files(fold_id)
-
-
-# @ns.route("/file/download/<int:fold_id>/<path:subpath>")
-# class FileDownloadResource(Resource):
-#     def post(self, fold_id, subpath):
-#         # TODO: test this.
-#         print(f"Fetching {subpath}...")
-#         manager = FoldStorageManager()
-#         manager.setup()
-#         sdf_str = manager.storage_manager.get_binary(fold_id, subpath)
-#         fname = subpath.split("/")[-1]
-#         return send_file(
-#             io.BytesIO(sdf_str),
-#             mimetype="application/octet-stream",
-#             download_name=fname,
-#             as_attachment=True,
-#         )
-
-
-@ns.route("/file/download/<int:fold_id>/<path:subpath>")
-class FileDownloadResource(Resource):
-    def get(self, fold_id, subpath):
-        print(f"Fetching {subpath}...")
-        manager = FoldStorageManager()
-        manager.setup()
-
-        try:
-            blob = manager.storage_manager.get_blob(fold_id, subpath)
-        except BadRequest as e:
-            return {"message": str(e)}, 400
-
-        fname = subpath.split("/")[-1]
-
-        def generate():
-            with blob.open("rb") as f:
-                while True:
-                    chunk = f.read(8192)  # 8KB chunks
-                    if not chunk:
-                        break
-                    yield chunk
-
-        headers = {
-            "Content-Disposition": f"attachment; filename={fname}",
-            "Content-Type": "application/octet-stream",
-        }
-
-        return Response(
-            stream_with_context(generate()), headers=headers, direct_passthrough=True
-        )
-
 
 def convert_array_to_json_string(table):
     """Convert a numpy array of floats to json compatible table.
@@ -494,7 +343,7 @@ class CalculateEmbeddingsResource(Resource):
 
         esm_q = rq.get_queue("esm")
         esm_q.enqueue(
-            jobs.get_esm_embeddings,
+            embed_jobs.get_esm_embeddings,
             fold.id,
             batch_name,
             embedding_model,
@@ -549,7 +398,7 @@ class DockResource(Resource):
 
         cpu_q = rq.get_queue("cpu")
         cpu_q.enqueue(
-            jobs.run_dock,
+            other_jobs.run_dock,
             new_dock.id,
             new_invokation_id,
             job_timeout="2h",

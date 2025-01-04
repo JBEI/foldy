@@ -8,8 +8,8 @@ WORKDIR $APP_HOME
 RUN apt-get update && apt-get install vim -y
 
 # Install production dependencies.
-COPY requirements_312_WIP.txt .
-RUN pip install -r requirements_312_WIP.txt
+COPY requirements.txt .
+RUN pip install -r requirements.txt
 
 # Copy local code to the container image.
 COPY src/ ./

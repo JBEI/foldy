@@ -148,10 +148,11 @@ def create_app(config_object="settings"):
 
     jwt = JWTManager(app)
 
-    from app.views import ns as views_ns
-    from app.login_views import ns as login_views_ns, oauth
-    from app.admin_views import ns as admin_views_ns
-    from app.evolve_views import ns as evolve_views_ns
+    from app.views.login_views import ns as login_views_ns, oauth
+    from app.views.admin_views import ns as admin_views_ns
+    from app.views.file_views import ns as file_views_ns
+    from app.views.evolve_views import ns as evolve_views_ns
+    from app.views.other_views import ns as other_views_ns
 
     api = createRestxApi()
     register_extensions(app)
@@ -161,10 +162,11 @@ def create_app(config_object="settings"):
         def get(self):
             return True
 
-    api.add_namespace(views_ns, "/api")
     api.add_namespace(login_views_ns, "/api")
     api.add_namespace(admin_views_ns, "/api")
+    api.add_namespace(file_views_ns, "/api")
     api.add_namespace(evolve_views_ns, "/api")
+    api.add_namespace(other_views_ns, "/api")
 
     api.init_app(app)
 
@@ -185,6 +187,7 @@ def create_app(config_object="settings"):
     )
 
     @app.errorhandler(werkzeug.exceptions.BadRequest)
+    @app.errorhandler(ValueError)
     def handle_unexpected_error(error):
         # Found here: https://newbedev.com/python-flask-json-error-message-format-code-example
         response = {"message": str(error.description)}
