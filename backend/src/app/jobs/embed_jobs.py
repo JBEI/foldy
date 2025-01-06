@@ -1,4 +1,4 @@
-import datetime
+from datetime import datetime, UTC
 from flask import current_app
 import signal
 import subprocess
@@ -14,7 +14,7 @@ import pandas as pd
 from app.database import db
 from app.extensions import rq
 from app.models import Fold, Invokation, Dock
-from app.util import FoldStorageManager
+from app.helpers.fold_storage_manager import FoldStorageManager
 from app import email_to
 from app.models import Fold, Invokation, Dock
 from app.helpers.mutation_util import (
@@ -22,7 +22,6 @@ from app.helpers.mutation_util import (
     seq_id_to_seq,
 )
 from app.helpers.jobs_util import _live_update_tail, _psql_tail
-
 
 
 def get_esm_embeddings(
@@ -51,9 +50,7 @@ def get_esm_embeddings(
         invokation = Invokation.get_by_id(invokation_id)
 
         def add_log(msg, tail_function=_live_update_tail, **kwargs):
-            timestamp = datetime.datetime.now(datetime.timezone.utc).isoformat(
-                sep=" ", timespec="milliseconds"
-            )
+            timestamp = datetime.now(UTC).isoformat(sep=" ", timespec="milliseconds")
             timestamped_msg = f"{timestamp} - {msg}"
             logs.append(timestamped_msg)
             print(timestamped_msg)
@@ -153,13 +150,14 @@ def get_esm_embeddings(
         embedding_csv_string = csv_buffer.getvalue()
 
         # Create a FoldStorageManager and store the embeddings.
-        padded_fold_id = "%06d" % fold_id
-        embedding_path = f"{padded_fold_id}/esm/{padded_fold_id}_embeddings_{embedding_model}_{batch_name}.csv"
+        embedding_path = (
+            f"esm/{padded_fold_id}_embeddings_{embedding_model}_{batch_name}.csv"
+        )
 
         add_log(f"Saving output to {embedding_path}")
         fsm = FoldStorageManager()
         fsm.setup()
-        fsm.storage_manager.write_file(embedding_path, embedding_csv_string)
+        fsm.storage_manager.write_file(fold_id, embedding_path, embedding_csv_string)
 
         final_state = "finished"
     except Exception as e:
@@ -170,7 +168,11 @@ def get_esm_embeddings(
     finally:
         # This will get executed regardless of the exceptions raised in try
         # or except statements.
-        add_log(f"Invokation ending with final state {final_state}", tail_function=_psql_tail, state=final_state)
+        add_log(
+            f"Invokation ending with final state {final_state}",
+            tail_function=_psql_tail,
+            state=final_state,
+        )
 
         if final_state != "finished":
             print(

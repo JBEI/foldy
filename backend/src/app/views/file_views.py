@@ -5,7 +5,7 @@ from flask_restx import Namespace, Resource
 from flask_restx import fields
 from werkzeug.exceptions import BadRequest
 
-from app.util import FoldStorageManager
+from app.helpers.fold_storage_manager import FoldStorageManager
 
 ns = Namespace("file_views", decorators=[jwt_required(fresh=True)])
 

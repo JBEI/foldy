@@ -2,6 +2,7 @@
 
 Copied from https://github.com/cookiecutter-flask/cookiecutter-flask
 """
+
 from typing import Type
 from app.extensions import db
 
@@ -63,7 +64,7 @@ class PkModel(Model):
                 isinstance(record_id, (int, float)),
             )
         ):
-            return cls.query.get(int(record_id))
+            return db.session.get(cls, int(record_id))
         return None
 
 

@@ -122,6 +122,7 @@ def register_extensions(app):
     admin.add_view(FoldModelView(models.Fold, db.session))
     admin.add_view(InvokationModelView(models.Invokation, db.session))
     admin.add_view(DockModelView(models.Dock, db.session))
+    admin.add_view(VerifiedModelView(models.Evolution, db.session))
 
     admin.init_app(app)
     db.init_app(app)

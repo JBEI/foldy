@@ -2,6 +2,7 @@
 
 import axios, { AxiosResponse } from 'axios';
 import { authHeader, jsonBodyAuthHeader } from "../util/authHeader";
+import { Annotations, DockInput, FileInfo, Fold, FoldContactProb, FoldInput, FoldPae, FoldPdb, Invokation } from 'src/types/types';
 
 // ----- Axios instance setup -----
 const api = axios.create({
@@ -44,80 +45,6 @@ function handleAxiosError(error: any): never {
         // Something happened in setting up the request
         throw new Error(error.message);
     }
-}
-
-// ----- Interfaces -----
-export interface DockInput {
-    fold_id: number;
-    ligand_name: string;
-    ligand_smiles: string;
-    tool: string | null;
-    bounding_box_residue: string | null;
-    bounding_box_radius_angstrom: number | null;
-}
-
-export interface Dock extends DockInput {
-    id: number;
-    invokation_id: number | null;
-    pose_energy: number | null;
-    pose_confidences: string | null;
-}
-
-export interface FoldInput {
-    name: string;
-    tags: string[];
-    sequence: string;
-    af2_model_preset: string | null;
-    disable_relaxation: boolean | null;
-}
-
-export interface Invokation {
-    id: number;
-    type: string | null;
-    job_id: string | null;
-    state: string | null;
-    command: string | null;
-    log: string | null;
-    timedelta_sec: number | null;
-    starttime: string | null; // ISO formatted datetime string.
-}
-
-export interface Fold extends FoldInput {
-    id: number | null;
-    owner: string;
-    create_date: string; // ISO formatted datetime string.
-    public: boolean | null;
-    state: string | null;
-    jobs: Invokation[] | null;
-    docks: Dock[] | null;
-}
-
-export interface FoldPae {
-    pae: number[][];
-}
-
-export interface FoldContactProb {
-    contact_prob: number[][];
-}
-
-export interface Annotations {
-    [chainName: string]: [
-        {
-            type: string;
-            start: number;
-            end: number;
-        }
-    ];
-}
-
-export interface FileInfo {
-    key: string;
-    size: number;
-    modified: number;
-}
-
-export interface FoldPdb {
-    pdb_string: string;
 }
 
 // ----- Utility helpers -----
@@ -174,28 +101,6 @@ export function getTestValue(): Promise<any> {
         .catch(handleAxiosError);
 }
 
-export function getFolds(
-    filter: string | null,
-    tagString: string | null,
-    page: number | null,
-    per_page: number | null
-): Promise<Fold[]> {
-    const params: Record<string, string> = {};
-    if (filter) params.filter = filter;
-    if (tagString) params.tag = tagString;
-    if (page && per_page) {
-        params.page = page.toString();
-        params.per_page = per_page.toString();
-    }
-
-    return api
-        .get('/api/fold', {
-            headers: authHeader(),
-            params,
-        })
-        .then((res) => res.data)
-        .catch(handleAxiosError);
-}
 
 export function postFolds(
     newFolds: FoldInput[],
@@ -372,33 +277,6 @@ export function startEmbeddings(
             { headers: jsonBodyAuthHeader() }
         )
         .then((res) => res.data)
-        .catch(handleAxiosError);
-}
-
-export async function evolve(
-    foldId: number,
-    embeddingPaths: string[],
-    activityFile: File
-): Promise<{
-    train_mutants: string[];
-    test_mutants: string[];
-}> {
-    const formData = new FormData();
-    formData.append('activity_file', activityFile);
-    formData.append('fold_id', foldId.toString());
-    formData.append('embedding_paths', JSON.stringify(embeddingPaths));
-
-    return api
-        .post('/api/evolve', formData, {
-            headers: authHeader(),
-        })
-        .then((response: AxiosResponse<{
-            train_mutants: string[];
-            test_mutants: string[];
-        }>) => {
-            console.log(response.data);
-            return response.data;
-        })
         .catch(handleAxiosError);
 }
 

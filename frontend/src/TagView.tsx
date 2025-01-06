@@ -4,337 +4,337 @@ import { CSVLink } from "react-csv";
 import { useParams } from "react-router-dom";
 import UIkit from "uikit";
 import {
-  Dock,
-  Fold,
-  getFoldFileZip,
-  getFolds,
-  getJobStatus,
-  queueJob,
-  updateFold,
+    Dock,
+    Fold,
+    getFoldFileZip,
+    getJobStatus,
+    queueJob,
+    updateFold,
 } from "./services/backend.service";
 import { makeFoldTable } from "./util/foldTable";
 import { NewDockPrompt } from "./util/newDockPrompt";
+import { getFolds } from "./api/foldApi";
 
 function TagView(props: { setErrorText: (a: string) => void }) {
-  let { tagStringParam } = useParams();
-  const [tagString] = useState<string>(tagStringParam || "");
-  const [folds, setFolds] = useState<Fold[] | null>(null);
-  const [relativeFpathToDownload, setRelativeFpathToDownload] = useState<
-    string | null
-  >(null);
-  const [stageToStart, setStageToStart] = useState<string | null>(null);
+    let { tagStringParam } = useParams();
+    const [tagString] = useState<string>(tagStringParam || "");
+    const [folds, setFolds] = useState<Fold[] | null>(null);
+    const [relativeFpathToDownload, setRelativeFpathToDownload] = useState<
+        string | null
+    >(null);
+    const [stageToStart, setStageToStart] = useState<string | null>(null);
 
-  if (!tagStringParam) {
-    throw Error("Somehow wound up with an invalid tagstring.");
-  }
-
-  useEffect(() => {
-    getFolds(null, tagString, null, null).then(setFolds, (e) => {
-      props.setErrorText(e.toString());
-    });
-  }, [props]);
-
-  const restartWholePipelineForAnyFailedjob = () => {
-    if (!folds) {
-      return;
+    if (!tagStringParam) {
+        throw Error("Somehow wound up with an invalid tagstring.");
     }
 
-    var numFoldsChanged = 0;
-    for (const fold of folds) {
-      if (!fold.id) {
-        continue;
-      }
-
-      if (
-        getJobStatus(fold, "features") === "failed" ||
-        getJobStatus(fold, "models") === "failed" ||
-        getJobStatus(fold, "decompress_pkls") === "failed"
-      ) {
-        const stageToRun = "both";
-        queueJob(fold.id, stageToRun, false).then(
-          () => {
-            UIkit.notification(
-              `Successfully started stage ${stageToRun} for ${fold.name}.`
-            );
-          },
-          (e) => {
-            props.setErrorText(e);
-          }
-        );
-        numFoldsChanged += 1;
-      }
-    }
-
-    if (numFoldsChanged === 0) {
-      UIkit.notification("No folds needed a restart.");
-    }
-  };
-
-  const startStageForAllFolds = () => {
-    if (!folds) {
-      return;
-    }
-
-    if (!stageToStart) {
-      UIkit.notification("No stage selected.");
-      return;
-    }
-
-    var numChanged = 0;
-    for (const fold of folds) {
-      if (!fold.id) {
-        continue;
-      }
-      if (getJobStatus(fold, stageToStart) === "finished") {
-        continue;
-      }
-      ++numChanged;
-      queueJob(fold.id, stageToStart, false).then(
-        () => {
-          UIkit.notification(`Successfully started stage(s) for ${fold.name}.`);
-        },
-        (e) => {
-          props.setErrorText(e);
-        }
-      );
-    }
-    if (numChanged === 0) {
-      UIkit.notification(`All folds have finished stage ${stageToStart}.`);
-    }
-  };
-
-  const getFoldsDataForCsv = () => {
-    if (!folds) {
-      return "";
-    }
-    return folds?.map((fold) => {
-      const copy: any = structuredClone(fold);
-      delete copy["docks"];
-      delete copy["jobs"];
-      if (fold.docks) {
-        fold.docks.forEach((dock) => {
-          copy[`dock_${dock.ligand_name}_smiles`] = dock.ligand_smiles;
-          const energy = dock.pose_energy === null ? NaN : dock.pose_energy;
-          copy[`dock_${dock.ligand_name}_dg`] = energy;
-          const confidences =
-            dock.pose_confidences === null ? NaN : dock.pose_confidences;
-          copy[`dock_${dock.ligand_name}_confidences`] = confidences;
+    useEffect(() => {
+        getFolds(null, tagString, null, null).then(setFolds, (e) => {
+            props.setErrorText(e.toString());
         });
-      }
-      return copy;
-    });
-  };
+    }, [props]);
 
-  const downloadFoldPdbZip = () => {
-    if (!folds) {
-      return;
-    }
-    if (folds.some((fold) => fold.id === null)) {
-      console.error("Some fold has a null ID...");
-      return;
-    }
-    const fold_ids = folds.map((fold) => fold.id || 0);
-    const output_dirname = `${tagString}_pdbs`;
-    getFoldFileZip(fold_ids, "ranked_0.pdb", output_dirname).then(
-      (fold_pdb_blob) => {
-        fileDownload(fold_pdb_blob, `${output_dirname}.zip`);
-      },
-      (e) => {
-        props.setErrorText(e);
-      }
-    );
-  };
+    const restartWholePipelineForAnyFailedjob = () => {
+        if (!folds) {
+            return;
+        }
 
-  const downloadFoldFileZip = () => {
-    if (!folds) {
-      return;
-    }
-    if (folds.some((fold) => fold.id === null)) {
-      props.setErrorText("Some fold has a null ID... Weird.");
-      return;
-    }
-    if (!relativeFpathToDownload) {
-      props.setErrorText("No path set.");
-      return;
-    }
-    const fold_ids = folds.map((fold) => fold.id || 0);
-    const output_dirname = `${tagString}_bulk_download`;
-    getFoldFileZip(fold_ids, relativeFpathToDownload, output_dirname).then(
-      (file_blob) => {
-        fileDownload(file_blob, `${output_dirname}.zip`);
-      },
-      (e) => {
-        console.log(e);
-        props.setErrorText(e);
-      }
-    );
-  };
+        var numFoldsChanged = 0;
+        for (const fold of folds) {
+            if (!fold.id) {
+                continue;
+            }
 
-  const makeAllFoldsPublic = () => {
-    if (!folds) {
-      return;
-    }
-    UIkit.modal
-      .confirm(
-        `Are you sure you want to make all folds with tag ${tagString} public?`
-      )
-      .then(() => {
-        folds.forEach((fold) => {
-          if (!fold.id) {
+            if (
+                getJobStatus(fold, "features") === "failed" ||
+                getJobStatus(fold, "models") === "failed" ||
+                getJobStatus(fold, "decompress_pkls") === "failed"
+            ) {
+                const stageToRun = "both";
+                queueJob(fold.id, stageToRun, false).then(
+                    () => {
+                        UIkit.notification(
+                            `Successfully started stage ${stageToRun} for ${fold.name}.`
+                        );
+                    },
+                    (e) => {
+                        props.setErrorText(e);
+                    }
+                );
+                numFoldsChanged += 1;
+            }
+        }
+
+        if (numFoldsChanged === 0) {
+            UIkit.notification("No folds needed a restart.");
+        }
+    };
+
+    const startStageForAllFolds = () => {
+        if (!folds) {
+            return;
+        }
+
+        if (!stageToStart) {
+            UIkit.notification("No stage selected.");
+            return;
+        }
+
+        var numChanged = 0;
+        for (const fold of folds) {
+            if (!fold.id) {
+                continue;
+            }
+            if (getJobStatus(fold, stageToStart) === "finished") {
+                continue;
+            }
+            ++numChanged;
+            queueJob(fold.id, stageToStart, false).then(
+                () => {
+                    UIkit.notification(`Successfully started stage(s) for ${fold.name}.`);
+                },
+                (e) => {
+                    props.setErrorText(e);
+                }
+            );
+        }
+        if (numChanged === 0) {
+            UIkit.notification(`All folds have finished stage ${stageToStart}.`);
+        }
+    };
+
+    const getFoldsDataForCsv = () => {
+        if (!folds) {
+            return "";
+        }
+        return folds?.map((fold) => {
+            const copy: any = structuredClone(fold);
+            delete copy["docks"];
+            delete copy["jobs"];
+            if (fold.docks) {
+                fold.docks.forEach((dock) => {
+                    copy[`dock_${dock.ligand_name}_smiles`] = dock.ligand_smiles;
+                    const energy = dock.pose_energy === null ? NaN : dock.pose_energy;
+                    copy[`dock_${dock.ligand_name}_dg`] = energy;
+                    const confidences =
+                        dock.pose_confidences === null ? NaN : dock.pose_confidences;
+                    copy[`dock_${dock.ligand_name}_confidences`] = confidences;
+                });
+            }
+            return copy;
+        });
+    };
+
+    const downloadFoldPdbZip = () => {
+        if (!folds) {
+            return;
+        }
+        if (folds.some((fold) => fold.id === null)) {
             console.error("Some fold has a null ID...");
             return;
-          }
-          updateFold(fold.id, { public: true }).then(() => {
-            UIkit.notification(`Successfully made ${fold.name} public.`);
-          });
-        });
-      });
-  };
+        }
+        const fold_ids = folds.map((fold) => fold.id || 0);
+        const output_dirname = `${tagString}_pdbs`;
+        getFoldFileZip(fold_ids, "ranked_0.pdb", output_dirname).then(
+            (fold_pdb_blob) => {
+                fileDownload(fold_pdb_blob, `${output_dirname}.zip`);
+            },
+            (e) => {
+                props.setErrorText(e);
+            }
+        );
+    };
 
-  return (
-    <div
-      className="uk-margin-small-left uk-margin-small-right"
-      style={{
-        flexGrow: 1,
-        overflowY: "scroll",
-        paddingTop: "10px",
-        paddingBottom: "10px",
-      }}
-    >
-      <h2 className="uk-heading-line uk-margin-left uk-margin-right uk-text-center">
-        <b>Tag: {tagString}</b>
-      </h2>
-      {folds ? (
-        <div key="loadedDiv">{makeFoldTable(folds)}</div>
-      ) : (
-        <div className="uk-text-center" key="unloadedDiv">
-          {/* We're setting key so that the table doesn't spin... */}
-          <div uk-spinner="ratio: 4" key="spinner"></div>
+    const downloadFoldFileZip = () => {
+        if (!folds) {
+            return;
+        }
+        if (folds.some((fold) => fold.id === null)) {
+            props.setErrorText("Some fold has a null ID... Weird.");
+            return;
+        }
+        if (!relativeFpathToDownload) {
+            props.setErrorText("No path set.");
+            return;
+        }
+        const fold_ids = folds.map((fold) => fold.id || 0);
+        const output_dirname = `${tagString}_bulk_download`;
+        getFoldFileZip(fold_ids, relativeFpathToDownload, output_dirname).then(
+            (file_blob) => {
+                fileDownload(file_blob, `${output_dirname}.zip`);
+            },
+            (e) => {
+                console.log(e);
+                props.setErrorText(e);
+            }
+        );
+    };
+
+    const makeAllFoldsPublic = () => {
+        if (!folds) {
+            return;
+        }
+        UIkit.modal
+            .confirm(
+                `Are you sure you want to make all folds with tag ${tagString} public?`
+            )
+            .then(() => {
+                folds.forEach((fold) => {
+                    if (!fold.id) {
+                        console.error("Some fold has a null ID...");
+                        return;
+                    }
+                    updateFold(fold.id, { public: true }).then(() => {
+                        UIkit.notification(`Successfully made ${fold.name} public.`);
+                    });
+                });
+            });
+    };
+
+    return (
+        <div
+            className="uk-margin-small-left uk-margin-small-right"
+            style={{
+                flexGrow: 1,
+                overflowY: "scroll",
+                paddingTop: "10px",
+                paddingBottom: "10px",
+            }}
+        >
+            <h2 className="uk-heading-line uk-margin-left uk-margin-right uk-text-center">
+                <b>Tag: {tagString}</b>
+            </h2>
+            {folds ? (
+                <div key="loadedDiv">{makeFoldTable(folds)}</div>
+            ) : (
+                <div className="uk-text-center" key="unloadedDiv">
+                    {/* We're setting key so that the table doesn't spin... */}
+                    <div uk-spinner="ratio: 4" key="spinner"></div>
+                </div>
+            )}
+            <form>
+                <h3>Downloads</h3>
+
+                <fieldset className="uk-fieldset">
+                    <div className="uk-margin">
+                        <CSVLink
+                            data={getFoldsDataForCsv()}
+                            className="uk-button uk-button-primary uk-form-small"
+                            filename={`${tagString}_metadata`}
+                        >
+                            Download Metadata as CSV
+                        </CSVLink>
+                    </div>
+                </fieldset>
+
+                <fieldset className="uk-fieldset">
+                    <div className="uk-margin">
+                        <button
+                            type="button"
+                            className="uk-button uk-button-primary uk-form-small"
+                            onClick={() => downloadFoldPdbZip()}
+                        >
+                            Download Fold PDBs in Zip File
+                        </button>
+                    </div>
+                </fieldset>
+                <fieldset className="uk-fieldset">
+                    <div className="uk-margin">
+                        <input
+                            className="uk-input uk-form-small uk-form-width-large"
+                            type="text"
+                            id="file_to_download"
+                            placeholder="ranked_0/plddt.npy"
+                            uk-tooltip="Enter a relative filepath to download, like 'ranked_0.pdb' or 'ranked_0/contact_prob_8A.npy'."
+                            style={{ borderRadius: "500px" }}
+                            value={relativeFpathToDownload || ""}
+                            onChange={(e) => {
+                                setRelativeFpathToDownload(e.target.value);
+                            }}
+                        ></input>
+                        <button
+                            type="button"
+                            className="uk-button uk-button-primary uk-form-small"
+                            onClick={() => downloadFoldFileZip()}
+                        >
+                            Download File
+                        </button>
+                    </div>
+                </fieldset>
+
+                <h3>Visibility</h3>
+                <fieldset className="uk-fieldset">
+                    <div className="uk-margin">
+                        <button
+                            type="button"
+                            className="uk-button uk-button-primary uk-form-small"
+                            onClick={() => makeAllFoldsPublic()}
+                        >
+                            Make All Structures Public
+                        </button>
+                    </div>
+                </fieldset>
+
+                <h3>Job Management</h3>
+                <fieldset className="uk-fieldset">
+                    <div className="uk-margin">
+                        <button
+                            type="button"
+                            className="uk-button uk-button-primary uk-form-small"
+                            onClick={() => restartWholePipelineForAnyFailedjob()}
+                        >
+                            Restart Whole Pipeline For Any Failed Jobs
+                        </button>
+                    </div>
+                </fieldset>
+                <fieldset className="uk-fieldset">
+                    <div className="uk-margin">
+                        <select
+                            className="uk-select uk-form-width-medium uk-form-small"
+                            id="form-horizontal-select"
+                            style={{ borderRadius: "500px" }}
+                            value={stageToStart || ""}
+                            onChange={(e) => {
+                                setStageToStart(e.target.value);
+                            }}
+                        >
+                            <option></option>
+                            <option>both</option>
+                            <option>annotate</option>
+                            <option>write_fastas</option>
+                            <option>features</option>
+                            <option>models</option>
+                            <option>decompress_pkls</option>
+                        </select>
+                        <button
+                            type="button"
+                            className="uk-button uk-button-primary uk-form-small"
+                            onClick={startStageForAllFolds}
+                        >
+                            Start stage for all folds
+                        </button>
+                    </div>
+                </fieldset>
+            </form>
+
+            <h3>Docking</h3>
+            {folds ? (
+                <NewDockPrompt
+                    setErrorText={props.setErrorText}
+                    foldIds={folds.map((fold) => fold.id ?? -1)} // Should never happen, but null fold ids are replaced w/ invalid.
+                    existingLigands={Array.prototype.reduce(
+                        (acc, fold) => ({
+                            ...acc,
+                            [fold.id]: (fold.docks ?? []).map(
+                                (dock: Dock) => dock.ligand_name
+                            ),
+                        }),
+                        []
+                    )}
+                />
+            ) : null}
         </div>
-      )}
-      <form>
-        <h3>Downloads</h3>
-
-        <fieldset className="uk-fieldset">
-          <div className="uk-margin">
-            <CSVLink
-              data={getFoldsDataForCsv()}
-              className="uk-button uk-button-primary uk-form-small"
-              filename={`${tagString}_metadata`}
-            >
-              Download Metadata as CSV
-            </CSVLink>
-          </div>
-        </fieldset>
-
-        <fieldset className="uk-fieldset">
-          <div className="uk-margin">
-            <button
-              type="button"
-              className="uk-button uk-button-primary uk-form-small"
-              onClick={() => downloadFoldPdbZip()}
-            >
-              Download Fold PDBs in Zip File
-            </button>
-          </div>
-        </fieldset>
-        <fieldset className="uk-fieldset">
-          <div className="uk-margin">
-            <input
-              className="uk-input uk-form-small uk-form-width-large"
-              type="text"
-              id="file_to_download"
-              placeholder="ranked_0/plddt.npy"
-              uk-tooltip="Enter a relative filepath to download, like 'ranked_0.pdb' or 'ranked_0/contact_prob_8A.npy'."
-              style={{ borderRadius: "500px" }}
-              value={relativeFpathToDownload || ""}
-              onChange={(e) => {
-                setRelativeFpathToDownload(e.target.value);
-              }}
-            ></input>
-            <button
-              type="button"
-              className="uk-button uk-button-primary uk-form-small"
-              onClick={() => downloadFoldFileZip()}
-            >
-              Download File
-            </button>
-          </div>
-        </fieldset>
-
-        <h3>Visibility</h3>
-        <fieldset className="uk-fieldset">
-          <div className="uk-margin">
-            <button
-              type="button"
-              className="uk-button uk-button-primary uk-form-small"
-              onClick={() => makeAllFoldsPublic()}
-            >
-              Make All Structures Public
-            </button>
-          </div>
-        </fieldset>
-
-        <h3>Job Management</h3>
-        <fieldset className="uk-fieldset">
-          <div className="uk-margin">
-            <button
-              type="button"
-              className="uk-button uk-button-primary uk-form-small"
-              onClick={() => restartWholePipelineForAnyFailedjob()}
-            >
-              Restart Whole Pipeline For Any Failed Jobs
-            </button>
-          </div>
-        </fieldset>
-        <fieldset className="uk-fieldset">
-          <div className="uk-margin">
-            <select
-              className="uk-select uk-form-width-medium uk-form-small"
-              id="form-horizontal-select"
-              style={{ borderRadius: "500px" }}
-              value={stageToStart || ""}
-              onChange={(e) => {
-                setStageToStart(e.target.value);
-              }}
-            >
-              <option></option>
-              <option>both</option>
-              <option>annotate</option>
-              <option>write_fastas</option>
-              <option>features</option>
-              <option>models</option>
-              <option>decompress_pkls</option>
-            </select>
-            <button
-              type="button"
-              className="uk-button uk-button-primary uk-form-small"
-              onClick={startStageForAllFolds}
-            >
-              Start stage for all folds
-            </button>
-          </div>
-        </fieldset>
-      </form>
-
-      <h3>Docking</h3>
-      {folds ? (
-        <NewDockPrompt
-          setErrorText={props.setErrorText}
-          foldIds={folds.map((fold) => fold.id ?? -1)} // Should never happen, but null fold ids are replaced w/ invalid.
-          existingLigands={Array.prototype.reduce(
-            (acc, fold) => ({
-              ...acc,
-              [fold.id]: (fold.docks ?? []).map(
-                (dock: Dock) => dock.ligand_name
-              ),
-            }),
-            []
-          )}
-        />
-      ) : null}
-    </div>
-  );
+    );
 }
 
 export default TagView;

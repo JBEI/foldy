@@ -166,7 +166,7 @@ These variables will be used throughout this procedure. Once completed, execute 
 1. Initialize tables in PostgreSQL database
 
    ```bash
-   kubectl exec service/backend -- env FLASK_APP=main.py flask db upgrade
+   kubectl exec service/backend -- env FLASK_APP=main.py python -m flask db upgrade
    ```
 
 1. Fill out `db_creation_resources.yaml` with appropriate variables and download alphafold databases into a persistent volume with

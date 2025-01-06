@@ -4,9 +4,9 @@ export interface FoldInput {
     sequence: string;
     af2_model_preset: string | null;
     disable_relaxation: boolean | null;
-  }
-  
-  export interface Fold extends FoldInput {
+}
+
+export interface Fold extends FoldInput {
     id: number | null;
     owner: string;
     create_date: string; // ISO formatted datetime string
@@ -14,85 +14,98 @@ export interface FoldInput {
     state: string | null;
     jobs: Invokation[] | null;
     docks: Dock[] | null;
-  }
-  
-  export interface FoldPae {
+    evolutions: Evolution[] | null;
+}
+
+export interface FoldPdb {
+    pdb_string: string;
+}
+
+export interface FoldPae {
     pae: number[][];
-  }
-  
-  export interface FoldContactProb {
+}
+
+export interface FoldContactProb {
     contact_prob: number[][];
-  }
-  
+}
+
 
 export const getJobStatus = (fold: Fold, job_type: string): string | null => {
-  if (!fold.jobs) {
-    return null;
-  }
-  for (const job of fold.jobs) {
-    if (job.type === job_type) {
-      return job.state;
+    if (!fold.jobs) {
+        return null;
     }
-  }
-  return null;
+    for (const job of fold.jobs) {
+        if (job.type === job_type) {
+            return job.state;
+        }
+    }
+    return null;
 };
 
 
 export const describeFoldState = (fold: Fold) => {
-  const featuresState = getJobStatus(fold, "features");
-  const modelsState = getJobStatus(fold, "models");
-  const decompressState = getJobStatus(fold, "decompress_pkls");
+    const featuresState = getJobStatus(fold, "features");
+    const modelsState = getJobStatus(fold, "models");
+    const decompressState = getJobStatus(fold, "decompress_pkls");
 
-  // Special case: if anything hasn't been queued, just say unstarted.
-  if (
-    featuresState === null ||
-    modelsState === null ||
-    decompressState === null
-  ) {
-    return "unstarted";
-  }
+    // Special case: if anything hasn't been queued, just say unstarted.
+    if (
+        featuresState === null ||
+        modelsState === null ||
+        decompressState === null
+    ) {
+        return "unstarted";
+    }
 
-  // Another special case: before the beginning just say "queued".
-  if (featuresState === "queued") {
-    return "queued";
-  }
+    // Another special case: before the beginning just say "queued".
+    if (featuresState === "queued") {
+        return "queued";
+    }
 
-  // Another special case: after the end just say "finished".
-  if (decompressState === "finished") {
-    return "finished";
-  }
+    // Another special case: after the end just say "finished".
+    if (decompressState === "finished") {
+        return "finished";
+    }
 
-  // Normal case: print the state of the most recent stage.
-  if (featuresState !== "finished") {
-    return `features ${featuresState}`;
-  }
-  if (modelsState !== "finished") {
-    return `models ${modelsState}`;
-  }
-  return `decompress_pkls ${decompressState}`;
+    // Normal case: print the state of the most recent stage.
+    if (featuresState !== "finished") {
+        return `features ${featuresState}`;
+    }
+    if (modelsState !== "finished") {
+        return `models ${modelsState}`;
+    }
+    return `decompress_pkls ${decompressState}`;
 };
 
-  export const foldIsFinished = (fold: Fold): boolean => {
+export const foldIsFinished = (fold: Fold): boolean => {
     return getJobStatus(fold, "models") === "finished";
-  };
+};
 
-  export interface DockInput {
+export interface DockInput {
     fold_id: number;
     ligand_name: string;
     ligand_smiles: string;
     tool: string | null;
     bounding_box_residue: string | null;
     bounding_box_radius_angstrom: number | null;
-  }
-  
-  export interface Dock extends DockInput {
+}
+
+export interface Dock extends DockInput {
     id: number;
     invokation_id: number | null;
     pose_energy: number | null;
     pose_confidences: string | null;
-  }
+}
 
-  export interface Invokation {
+export interface Evolution {
+    id: number;
+    name: string;
+    fold_id: number;
+    embedding_files: string | null;
+    invokation_id: number | null;
+}
+
+export interface Invokation {
     id: number;
     type: string | null;
     job_id: string | null;
@@ -101,18 +114,96 @@ export const describeFoldState = (fold: Fold) => {
     log: string | null;
     timedelta_sec: number | null;
     starttime: string | null; // ISO formatted datetime string
-  }
+}
 
-  export interface Annotations {
+export interface Annotations {
     [chainName: string]: Array<{
-      type: string;
-      start: number;
-      end: number;
+        type: string;
+        start: number;
+        end: number;
     }>;
-  }
+}
 
-  export interface FileInfo {
+export interface FileInfo {
     key: string;
     size: number;
     modified: number;
-  }
+}
+
+
+
+
+
+
+///////////////////
+
+
+// // ----- Interfaces -----
+// export interface DockInput {
+//     fold_id: number;
+//     ligand_name: string;
+//     ligand_smiles: string;
+//     tool: string | null;
+//     bounding_box_residue: string | null;
+//     bounding_box_radius_angstrom: number | null;
+// }
+
+// export interface Dock extends DockInput {
+//     id: number;
+//     invokation_id: number | null;
+//     pose_energy: number | null;
+//     pose_confidences: string | null;
+// }
+
+// export interface FoldInput {
+//     name: string;
+//     tags: string[];
+//     sequence: string;
+//     af2_model_preset: string | null;
+//     disable_relaxation: boolean | null;
+// }
+
+// export interface Invokation {
+//     id: number;
+//     type: string | null;
+//     job_id: string | null;
+//     state: string | null;
+//     command: string | null;
+//     log: string | null;
+//     timedelta_sec: number | null;
+//     starttime: string | null; // ISO formatted datetime string.
+// }
+
+// export interface Fold extends FoldInput {
+//     id: number | null;
+//     owner: string;
+//     create_date: string; // ISO formatted datetime string.
+//     public: boolean | null;
+//     state: string | null;
+//     jobs: Invokation[] | null;
+//     docks: Dock[] | null;
+// }
+
+// export interface FoldPae {
+//     pae: number[][];
+// }
+
+// export interface FoldContactProb {
+//     contact_prob: number[][];
+// }
+
+// export interface Annotations {
+//     [chainName: string]: [
+//         {
+//             type: string;
+//             start: number;
+//             end: number;
+//         }
+//     ];
+// }
+
+// export interface FileInfo {
+//     key: string;
+//     size: number;
+//     modified: number;
+// }

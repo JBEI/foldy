@@ -2,7 +2,8 @@
 
 Copied from https://github.com/cookiecutter-flask/cookiecutter-flask
 """
-import datetime
+
+from datetime import datetime, UTC
 
 from sqlalchemy.ext.hybrid import hybrid_property, hybrid_method
 from sqlalchemy import func
@@ -41,7 +42,7 @@ class User(PkModel):
     # Id is created automatically.
 
     email = Column(db.String(80), unique=True, nullable=False)
-    created_at = Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
+    created_at = Column(db.DateTime, nullable=False, default=datetime.now(UTC))
     access_type = Column(db.String(80), nullable=True)
     # fold = relationship("Fold", backref="user",lazy='dynamic')
 
@@ -81,6 +82,13 @@ class Fold(PkModel):
     docks = relationship(
         "Dock",
         back_populates="receptor_fold",
+        passive_deletes=True,
+        cascade="all,delete-orphan",
+    )
+
+    evolutions = relationship(
+        "Evolution",
+        back_populates="fold",
         passive_deletes=True,
         cascade="all,delete-orphan",
     )
@@ -126,3 +134,26 @@ class Dock(PkModel):
 
     # Diffdock output - a CSV of pose confidences.
     pose_confidences = Column(db.String, nullable=True)
+
+
+class Evolution(PkModel):
+    """A single evolution of a fold."""
+
+    __tablename__ = "fold_evolution"
+
+    # Id is created automatically.
+
+    name = Column(db.String, nullable=False)
+
+    fold_id = Column(
+        db.Integer, db.ForeignKey("roles.id", ondelete="CASCADE", onupdate="CASCADE")
+    )
+    fold = relationship("Fold", back_populates="evolutions")
+
+    embedding_files = Column(db.String)  # A list of embedding file paths.
+
+    # State tracking.
+    invokation_id = Column(
+        db.Integer,
+        db.ForeignKey("invokation.id", ondelete="CASCADE", onupdate="CASCADE"),
+    )

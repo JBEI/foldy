@@ -16,7 +16,8 @@ from app.jobs import other_jobs
 from app.jobs import embed_jobs
 from app.models import Dock, Fold, Invokation
 from app.extensions import db, rq
-from app.util import start_stage, FoldStorageManager, get_job_type_replacement
+from app.util import start_stage, get_job_type_replacement
+from app.helpers.fold_storage_manager import FoldStorageManager
 from app.authorization import (
     user_jwt_grants_edit_access,
     verify_has_edit_access,
@@ -81,6 +82,17 @@ dock_fields = ns.model(
     },
 )
 
+evolution_fields = ns.model(
+    "EvolutionFields",
+    {
+        "id": fields.Integer(required=True),
+        "name": fields.String(required=True),
+        "fold_id": fields.Integer(required=True),
+        "embedding_files": fields.String(),
+        "invokation_id": fields.Integer(),
+    },
+)
+
 get_folds_fields = ns.model("GetFolds", {"filter": fields.String(required=False)})
 
 fold_fields = ns.model(
@@ -97,6 +109,7 @@ fold_fields = ns.model(
         "disable_relaxation": fields.Boolean(required=False),
         "jobs": fields.List(fields.Nested(simple_invokation_fields)),
         "docks": fields.List(fields.Nested(dock_fields)),
+        "evolutions": fields.List(fields.Nested(evolution_fields)),
     },
 )
 
@@ -144,6 +157,7 @@ class FoldsResource(Resource):
     @ns.marshal_list_with(fold_fields, skip_none=True)
     def get(self):
         args = get_folds_parser.parse_args()
+        print(args, flush=True)
 
         filter = args.get("filter", None)
         tag = args.get("tag", None)
@@ -214,7 +228,6 @@ class InvokationLogsResource(Resource):
     @ns.marshal_with(full_invokation_fields)
     def get(self, invokation_id):
         return Invokation.get_by_id(invokation_id)
-
 
 
 def convert_array_to_json_string(table):

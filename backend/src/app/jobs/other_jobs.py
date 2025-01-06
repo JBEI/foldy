@@ -14,7 +14,7 @@ import pandas as pd
 from app.database import db
 from app.extensions import rq
 from app.models import Fold, Invokation, Dock
-from app.util import FoldStorageManager
+from app.helpers.fold_storage_manager import FoldStorageManager
 from app import email_to
 from app.helpers.jobs_util import _live_update_tail, _psql_tail
 

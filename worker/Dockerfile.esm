@@ -21,7 +21,7 @@ RUN apt-get -y update && apt-get -y install git
 
 
 # Install backend requirements.
-RUN conda create -n worker python=3.12
+RUN conda create -y -n worker python=3.12
 # // -c nvidia 
 # RUN conda install -y -n worker pytorch torchvision torchaudio cudatoolkit=11.3 -c conda-forge \ 
 #     && conda clean -a -y

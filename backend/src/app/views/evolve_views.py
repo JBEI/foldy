@@ -9,121 +9,91 @@ from flask_restx import Namespace
 from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import BadRequest
 from sklearn.ensemble import RandomForestRegressor
+from pathlib import Path
 
-from app.models import Fold
-from app.util import FoldStorageManager
+from app.views.other_views import evolution_fields
+from app.authorization import verify_has_edit_access
+from app.extensions import db, rq
+from app.helpers.fold_storage_manager import FoldStorageManager
 from app.helpers.mutation_util import (
     maybe_get_seq_id_error_message,
-    process_and_validate_evolve_input_files,
-    get_train_and_test_mutant_seq_ids,
+    get_measured_and_unmeasured_mutant_seq_ids,
 )
+from app.models import Fold, Evolution
+from app.util import get_job_type_replacement
+from app.jobs import evolve_jobs
 
 ns = Namespace("evolve_views", decorators=[jwt_required(fresh=True)])
 
 upload_parser = ns.parser()
+upload_parser.add_argument("name", type=str, location="form", required=True)
+upload_parser.add_argument("fold_id", type=str, location="form", required=True)
 upload_parser.add_argument(
     "activity_file", type=FileStorage, location="files", required=True
 )
-upload_parser.add_argument("fold_id", type=str, location="form", required=True)
 upload_parser.add_argument("embedding_paths", type=str, location="form", required=True)
 
 
 @ns.route("/evolve")
 class EvolveResource(Resource):
+    @ns.marshal_with(evolution_fields)
+    def get(self, evolution_id: int):
+        evolution = Evolution.query.get(evolution_id)
+        return evolution
+
+    @verify_has_edit_access
     @ns.expect(upload_parser)
+    @ns.marshal_with(evolution_fields)
     # @ns.consumes('multipart/form-data')
     def post(self):
         args = upload_parser.parse_args()
 
         # Get form data
+        name = args["name"]
         fold_id = int(args["fold_id"])
         embedding_paths = json.loads(args["embedding_paths"])
         activity_file = args["activity_file"]
+        evolve_directory = Path("evolve") / name
 
-        fold = Fold.get_by_id(fold_id)
+        # 0. Check if an evolve job with this name already exists.
+        fold = Fold.query.get(fold_id)
         if not fold:
-            raise BadRequest(f"Fold {fold_id} not found")
-        wt_aa_seq = fold.sequence
+            raise BadRequest(f"Fold not found {fold_id}")
+        existing_evolve = Evolution.query.filter(
+            Evolution.name == name, Evolution.fold_id == fold_id
+        ).first()
+        if existing_evolve:
+            # Delete existing evolve job.
+            existing_evolve.delete()
 
-        # Get activity file from request
-        if "activity_file" not in request.files:
-            return {"error": "No activity file provided"}, 400
-        activity_file = request.files["activity_file"]
-
-        # Read activity data from uploaded Excel file
-        raw_activity_df = pd.read_excel(activity_file)
-        # Initialize storage manager
+        # 1. Upload the activity file to the storage manager.
+        # Reset file pointer to start
+        activity_file.seek(0)
         fsm = FoldStorageManager()
         fsm.setup()
-
-        # Read and merge all embedding CSVs
-        embedding_dfs = []
-        chunk_size = 10000  # Adjust based on memory constraints
-
-        for path in embedding_paths:
-            # Get the CSV content as a string
-            csv_blob = fsm.storage_manager.get_blob(fold_id, path)
-
-            with csv_blob.open("r") as csv_f:
-                # Create chunks iterator
-                chunks = pd.read_csv(csv_f, chunksize=chunk_size)
-
-                # Process each chunk
-                path_dfs = []
-                for chunk in chunks:
-                    path_dfs.append(chunk)
-
-                # Combine chunks for this path
-                if path_dfs:
-                    embedding_dfs.append(pd.concat(path_dfs, ignore_index=True))
-
-        # Combine all embeddings
-        raw_embedding_df = pd.concat(embedding_dfs, ignore_index=True)
-
-        activity_df, embedding_df = process_and_validate_evolve_input_files(
-            raw_activity_df, raw_embedding_df
+        fsm.storage_manager.write_file(
+            fold_id=fold_id,
+            file_path=str(
+                evolve_directory / "activity.xlsx"
+            ),  # or whatever path/extension you wan_t
+            contents=activity_file.read(),
+            binary=True,
         )
 
-        train_mutants, test_mutants = get_train_and_test_mutant_seq_ids(
-            activity_df, embedding_df
+        # 2. Create an invokation record for the evolve job.
+        new_invokation_id = get_job_type_replacement(fold, f"evolve_{name}")
+
+        # 3. Create a new Evolution record.
+        evolve_record = Evolution.create(
+            name=name,
+            fold_id=fold_id,
+            embedding_files=",".join(embedding_paths),
+            invokation_id=new_invokation_id,
         )
 
-        # Convert JSON strings to lists and stack them into a 2D numpy array
-        X_train = np.vstack(
-            [json.loads(x) for x in embedding_df.loc[activity_df.index].embedding]
+        # 4. Start the job.
+        job = rq.get_queue("cpu").enqueue(
+            evolve_jobs.run_evolvepro,
+            evolve_record.id,
         )
-        y_train = activity_df.activity.to_numpy()
-
-        # print(X_train, flush=True)
-        # print(type(X_train), flush=True)
-        # print(type(X_train.iloc[0]), flush=True)
-
-        model = RandomForestRegressor(
-            n_estimators=100,
-            criterion="friedman_mse",
-            max_depth=None,
-            min_samples_split=2,
-            min_samples_leaf=1,
-            min_weight_fraction_leaf=0.0,
-            max_features=1.0,
-            max_leaf_nodes=None,
-            min_impurity_decrease=0.0,
-            bootstrap=True,
-            oob_score=False,
-            n_jobs=None,
-            random_state=1,
-            verbose=0,
-            warm_start=False,
-            ccp_alpha=0.0,
-            max_samples=None,
-        )
-        model.fit(X_train, y_train)
-
-        # # make predictions on train data
-        # y_pred_train = model.predict(X_train)
-        # y_std_train = np.zeros(len(y_pred_train))
-
-        # # make predictions on test data
-        # y_pred_test = model.predict(X_test)
-
-        return {"train_mutants": train_mutants, "test_mutants": test_mutants}
+        return evolve_record

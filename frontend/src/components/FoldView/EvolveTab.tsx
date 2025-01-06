@@ -1,20 +1,22 @@
 // EmbeddingTab.tsx
 
 import React, { useState, ChangeEvent } from 'react';
-import { Invokation, startEmbeddings, evolve } from "../../services/backend.service";
 // If UIkit has no TypeScript definitions, you can declare it as any
 import UIkit from 'uikit';
-import { FileInfo } from '../../services/backend.service';
+import { FileInfo, Evolution, Invokation } from 'src/types/types';
+import { evolve } from '../../api/evolveApi';
 
 // Define the props interface
 interface EvolveTabProps {
     foldId: number;
     jobs: Invokation[] | null;
     files: FileInfo[] | null;
+    evolutions: Evolution[] | null;
 }
 
 // Define the EmbeddingTab functional component
-const EvolveTab: React.FC<EvolveTabProps> = ({ foldId, jobs, files }) => {
+const EvolveTab: React.FC<EvolveTabProps> = ({ foldId, jobs, files, evolutions }) => {
+    const [evolutionName, setEvolutionName] = useState<string>('');
     const [selectedEmbeddingPaths, setSelectedEmbeddingPaths] = useState<string[]>([]);
     const [activityFile, setActivityFile] = useState<File | null>(null);
 
@@ -55,12 +57,12 @@ const EvolveTab: React.FC<EvolveTabProps> = ({ foldId, jobs, files }) => {
         try {
             UIkit.notification({
                 message: `Starting evolution...`,
-                timeout: 3000  // 3000 milliseconds = 3 seconds
+                timeout: 2000 // milliseconds
             });
-            const { train_mutants, test_mutants } = await evolve(foldId, selectedEmbeddingPaths, activityFile);
-            console.log(train_mutants, test_mutants);
+            const foldEvolution = await evolve(evolutionName, foldId, selectedEmbeddingPaths, activityFile);
+            console.log(foldEvolution);
             UIkit.notification({
-                message: `Evolution process started with ${train_mutants.length} training mutants and ${test_mutants.length} test mutants`,
+                message: `Evolution process started with id ${foldEvolution.id} and name ${foldEvolution.name}`,
                 status: 'success'
             });
         } catch (error) {
@@ -71,8 +73,40 @@ const EvolveTab: React.FC<EvolveTabProps> = ({ foldId, jobs, files }) => {
         }
     };
 
+    // Function to get status from jobs array
+    const getEvolutionStatus = (evolution: Evolution): string => {
+        const job = jobs?.find(job => job.id === evolution.invokation_id);
+        return job?.state || 'Unknown';
+    };
+
     return (
         <div className="uk-margin">
+            <h3>Evolution Runs</h3>
+            <table className="uk-table uk-table-striped">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {evolutions?.map((evolution) => (
+                        <tr key={evolution.id}>
+                            <td>{evolution.name}</td>
+                            <td>{getEvolutionStatus(evolution)}</td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+            <hr />
+            <h3>Start New Evolution Run</h3>
+            <label className="uk-form-label">Name</label>
+            <input
+                type="text"
+                className="uk-input"
+                value={evolutionName}
+                onChange={(e) => setEvolutionName(e.target.value)}
+            />
             <label className="uk-form-label">Select Embedding Files</label>
             <select
                 className="uk-select"

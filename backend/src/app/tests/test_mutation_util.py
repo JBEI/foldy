@@ -1,7 +1,7 @@
 # backend/src/app/tests/test_mutation_util.py
 
 import pytest
-from src.app.helpers.mutation_util import (
+from app.helpers.mutation_util import (
     get_seq_ids_for_deep_mutational_scan,
     seq_id_to_seq,
 )
@@ -97,24 +97,20 @@ def test_two_extra_seq_ids(wt_seq):
     }, "Expected the two original seqs to pop out."
 
 
-def test_extra_seq_ids_canonicalizes_ids(wt_seq):
+def test_extra_seq_ids_fails_if_not_canonical(wt_seq):
     """Test that extra_seq_ids get canonicalized."""
     starting_seq_ids = []
     extra_seq_ids = ["D3T_A1T"]
-    result = get_seq_ids_for_deep_mutational_scan(
-        wt_seq, starting_seq_ids, extra_seq_ids
-    )
-    assert result == ["A1T_D3T"]
+    with pytest.raises(ValueError, match="Loci are not sorted"):
+        get_seq_ids_for_deep_mutational_scan(wt_seq, starting_seq_ids, extra_seq_ids)
 
 
 def test_bad_starting_seq_ids_causes_error(wt_seq):
     """Test that extra_seq_ids get canonicalized."""
     starting_seq_ids = []
     extra_seq_ids = ["D3T_A1T"]
-    result = get_seq_ids_for_deep_mutational_scan(
-        wt_seq, starting_seq_ids, extra_seq_ids
-    )
-    assert result == ["A1T_D3T"]
+    with pytest.raises(ValueError, match="Loci are not sorted"):
+        get_seq_ids_for_deep_mutational_scan(wt_seq, starting_seq_ids, extra_seq_ids)
 
 
 def test_seq_id_to_seq_one_mut():

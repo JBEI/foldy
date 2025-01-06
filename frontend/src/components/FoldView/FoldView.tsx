@@ -13,11 +13,6 @@ import {
 import { useParams } from "react-router-dom";
 import UIkit from "uikit";
 import {
-    Annotations,
-    FileInfo,
-    Fold,
-    FoldPdb,
-    Invokation,
     deleteDock,
     getDockSdf,
     getFile,
@@ -42,6 +37,7 @@ import * as NGL from 'ngl/dist/ngl.js';
 import fileDownload from "js-file-download";
 import EmbedTab from "./EmbedTab";
 import EvolveTab from "./EvolveTab";
+import { Annotations, FileInfo, Fold, FoldPdb, Invokation } from "src/types/types";
 
 const REFRESH_STATE_PERIOD = 5000;
 const REFRESH_STATE_MAX_ITERS = 200;
@@ -219,46 +215,69 @@ class InternalFoldView extends Component<FoldProps, FoldState> {
             console.log(`Got new fold with tags ${new_fold_data.tags}`);
             this.setState({ foldData: new_fold_data });
             if (this.state.foldData?.jobs) {
-                Promise.all(
-                    this.state.foldData.jobs.map((inv) => getInvokation(inv.id))
-                ).then(
-                    (fullInvs) => {
-                        this.setState({ jobs: fullInvs });
-                    },
-                    (e) => {
-                        this.props.setErrorText(e.toString());
-                    }
+                // Get current state of jobs as a map
+                const currentJobStates = new Map(
+                    this.state.jobs?.map(job => [job.id, job]) || []
                 );
+
+                // For each job in foldData, determine if we need to refresh it
+                const jobsToRefresh = this.state.foldData.jobs
+                    .filter(foldJob => {
+                        const currentJob = currentJobStates.get(foldJob.id);
+                        return foldJob.state === "running" ||
+                            currentJob?.state === "running" ||
+                            (currentJob && currentJob.state !== foldJob.state);
+                    })
+                    .map(job => job.id);
+
+                // Create final job list
+                const finalJobs = [...this.state.foldData.jobs].map(foldJob => {
+                    // Use existing job data if we have it and don't need to refresh
+                    if (!jobsToRefresh.includes(foldJob.id)) {
+                        return currentJobStates.get(foldJob.id) || foldJob;
+                    }
+                    return foldJob;
+                });
+
+                // Only fetch jobs that need refreshing
+                if (jobsToRefresh.length > 0) {
+                    Promise.all(
+                        jobsToRefresh.map(jobId => getInvokation(jobId))
+                    ).then(
+                        (refreshedJobs) => {
+                            // Update the jobs that were refreshed
+                            refreshedJobs.forEach(refreshedJob => {
+                                const index = finalJobs.findIndex(j => j.id === refreshedJob.id);
+                                if (index !== -1) {
+                                    finalJobs[index] = refreshedJob;
+                                }
+                            });
+                            this.setState({ jobs: finalJobs });
+                        },
+                        (e) => {
+                            this.props.setErrorText(e.toString());
+                        }
+                    );
+                } else {
+                    // If no jobs need refreshing, just update state
+                    this.setState({ jobs: finalJobs });
+                }
             }
         });
     };
 
     componentDidMount() {
         this.interval = setInterval(() => {
-            getFold(this.props.foldId).then((new_fold_data) => {
-                if (
-                    this.state.numRefreshes > REFRESH_STATE_MAX_ITERS &&
-                    this.interval
-                ) {
-                    clearInterval(this.interval);
-                }
-                if (this.state.foldData?.jobs) {
-                    Promise.all(
-                        this.state.foldData.jobs.map((inv) => getInvokation(inv.id))
-                    ).then(
-                        (fullInvs) => {
-                            this.setState({ jobs: fullInvs });
-                        },
-                        (e) => {
-                            this.props.setErrorText(e.toString());
-                        }
-                    );
-                }
-                this.setState({
-                    foldData: new_fold_data,
-                    numRefreshes: this.state.numRefreshes + 1,
-                });
+            if (
+                this.state.numRefreshes > REFRESH_STATE_MAX_ITERS &&
+                this.interval
+            ) {
+                clearInterval(this.interval);
+            }
+            this.setState({
+                numRefreshes: this.state.numRefreshes + 1,
             });
+            this.refreshFoldDataFromBackend();
         }, REFRESH_STATE_PERIOD);
 
         // ReactSequenceViewer requires jQuery, and who are we to deny them?
@@ -611,7 +630,7 @@ class InternalFoldView extends Component<FoldProps, FoldState> {
                 </li>
 
                 <li key="Evolveli">
-                    <EvolveTab foldId={this.props.foldId} jobs={this.state.jobs} files={this.state.files} />
+                    <EvolveTab foldId={this.props.foldId} jobs={this.state.jobs} files={this.state.files} evolutions={this.state.foldData?.evolutions || null} />
                 </li>
 
                 <li key="actionsli">
@@ -651,7 +670,7 @@ class InternalFoldView extends Component<FoldProps, FoldState> {
                 </h2>
                 <div className="uk-flex uk-flex-center uk-flex-wrap">
                     {[...(this.state.foldData?.jobs || [])].map((job: Invokation) => {
-                        if (job.type?.startsWith("dock_") || job.type?.startsWith("embed_")) {
+                        if (job.type?.startsWith("dock_") || job.type?.startsWith("embed_") || job.type?.startsWith("evolve_")) {
                             return null;
                         }
                         return (

@@ -1,9 +1,10 @@
 // EmbeddingTab.tsx
 
 import React, { useState, ChangeEvent } from 'react';
-import { Invokation, startEmbeddings } from "../../services/backend.service";
+import { startEmbeddings } from "../../services/backend.service";
 // If UIkit has no TypeScript definitions, you can declare it as any
 import UIkit from 'uikit';
+import { Invokation } from 'src/types/types';
 
 // Define the props interface
 interface EmbedTabProps {

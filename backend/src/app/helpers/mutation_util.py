@@ -38,6 +38,8 @@ def maybe_get_seq_id_error_message(wt_aa_seq, seq_id):
     * loci are sorted
     * alleles are valid
     """
+    if type(seq_id) != str:
+        return f"seq_id must be a string, got {seq_id} with type {type(seq_id)}"
     if seq_id == "":
         return None
     allele_list = seq_id.split("_")
@@ -189,7 +191,7 @@ def process_and_validate_evolve_input_files(
             f"Embedding file must contain a 'embedding' column, got {embedding_df.columns}"
         )
 
-    activity_df.replace({"seq_id": {"WT": ""}}, inplace=True)
+    activity_df.replace({"seq_id": {"WT": "", np.nan: ""}}, inplace=True)
     for seq_id in activity_df.seq_id:
         seq_id_error_msg = maybe_get_seq_id_error_message(wt_aa_seq, seq_id)
         if seq_id_error_msg:
