@@ -1,5 +1,5 @@
 import React from "react";
-import { Invokation } from "../../services/backend.service";
+import { Invokation } from "../../types/types";
 
 interface JobsTabProps {
     jobs: Invokation[] | null;

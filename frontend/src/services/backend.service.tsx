@@ -34,6 +34,7 @@ api.interceptors.response.use(
  * You could also do this in interceptors if you prefer.
  */
 function handleAxiosError(error: any): never {
+    console.log(`HANDLING ERROR: ${error}`);
     if (error.response) {
         console.log(error);
         // The request was made and the server responded with a status code
@@ -61,9 +62,14 @@ export const getJobStatus = (fold: Fold, job_type: string): string | null => {
 };
 
 export const describeFoldState = (fold: Fold) => {
+    const boltzState = getJobStatus(fold, "boltz");
     const featuresState = getJobStatus(fold, "features");
     const modelsState = getJobStatus(fold, "models");
     const decompressState = getJobStatus(fold, "decompress_pkls");
+
+    if (boltzState) {
+        return boltzState;
+    }
 
     if (
         featuresState === null ||
@@ -237,23 +243,6 @@ export function getFoldContactProb(
 export function getFoldPfam(fold_id: number): Promise<Annotations> {
     return api
         .get(`/api/pfam/${fold_id}`, { headers: authHeader() })
-        .then((res) => res.data)
-        .catch(handleAxiosError);
-}
-
-export function getFileList(fold_id: number): Promise<FileInfo[]> {
-    return api
-        .get(`/api/file/list/${fold_id}`, { headers: authHeader() })
-        .then((res) => res.data)
-        .catch(handleAxiosError);
-}
-
-export function getFile(fold_id: number, filePath: string): Promise<Blob> {
-    return api
-        .get(`/api/file/download/${fold_id}/${filePath}`, {
-            headers: authHeader(),
-            responseType: 'blob',
-        })
         .then((res) => res.data)
         .catch(handleAxiosError);
 }

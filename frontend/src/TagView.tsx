@@ -23,6 +23,7 @@ function TagView(props: { setErrorText: (a: string) => void }) {
         string | null
     >(null);
     const [stageToStart, setStageToStart] = useState<string | null>(null);
+    const [showJobManagement, setShowJobManagement] = useState(true);
 
     if (!tagStringParam) {
         throw Error("Somehow wound up with an invalid tagstring.");
@@ -34,7 +35,7 @@ function TagView(props: { setErrorText: (a: string) => void }) {
         });
     }, [props]);
 
-    const restartWholePipelineForAnyFailedjob = () => {
+    const restartWholePipelineForAnyFailedJob = () => {
         if (!folds) {
             return;
         }
@@ -192,149 +193,152 @@ function TagView(props: { setErrorText: (a: string) => void }) {
     };
 
     return (
-        <div
-            className="uk-margin-small-left uk-margin-small-right"
-            style={{
-                flexGrow: 1,
-                overflowY: "scroll",
-                paddingTop: "10px",
-                paddingBottom: "10px",
-            }}
-        >
-            <h2 className="uk-heading-line uk-margin-left uk-margin-right uk-text-center">
-                <b>Tag: {tagString}</b>
+        <div style={{ padding: "20px" }}>
+            {/* Tag Header */}
+            <h2 style={{ textAlign: "center", marginBottom: "20px" }}>
+                Tag: <b>{tagString}</b>
             </h2>
+
+            {/* Folds Table */}
             {folds ? (
                 <div key="loadedDiv">{makeFoldTable(folds)}</div>
             ) : (
                 <div className="uk-text-center" key="unloadedDiv">
-                    {/* We're setting key so that the table doesn't spin... */}
                     <div uk-spinner="ratio: 4" key="spinner"></div>
                 </div>
             )}
-            <form>
+
+            {/* Downloads Section */}
+            <section style={sectionStyle} className="uk-width-1-3">
                 <h3>Downloads</h3>
-
-                <fieldset className="uk-fieldset">
-                    <div className="uk-margin">
-                        <CSVLink
-                            data={getFoldsDataForCsv()}
-                            className="uk-button uk-button-primary uk-form-small"
-                            filename={`${tagString}_metadata`}
-                        >
-                            Download Metadata as CSV
-                        </CSVLink>
-                    </div>
-                </fieldset>
-
-                <fieldset className="uk-fieldset">
-                    <div className="uk-margin">
-                        <button
-                            type="button"
-                            className="uk-button uk-button-primary uk-form-small"
-                            onClick={() => downloadFoldPdbZip()}
-                        >
-                            Download Fold PDBs in Zip File
-                        </button>
-                    </div>
-                </fieldset>
-                <fieldset className="uk-fieldset">
-                    <div className="uk-margin">
+                <div style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "10px",
+                }}>
+                    <CSVLink
+                        data={folds ? folds : []}
+                        className="uk-button uk-button-primary"
+                        filename={`${tagString}_metadata.csv`}
+                    >
+                        Download Metadata as CSV
+                    </CSVLink>
+                    <button
+                        className="uk-button uk-button-primary"
+                        onClick={downloadFoldPdbZip}
+                    >
+                        Download Fold PDBs in ZIP
+                    </button>
+                    <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                         <input
-                            className="uk-input uk-form-small uk-form-width-large"
                             type="text"
-                            id="file_to_download"
                             placeholder="ranked_0/plddt.npy"
-                            uk-tooltip="Enter a relative filepath to download, like 'ranked_0.pdb' or 'ranked_0/contact_prob_8A.npy'."
-                            style={{ borderRadius: "500px" }}
                             value={relativeFpathToDownload || ""}
-                            onChange={(e) => {
-                                setRelativeFpathToDownload(e.target.value);
-                            }}
-                        ></input>
+                            onChange={(e) => setRelativeFpathToDownload(e.target.value)}
+                            style={inputStyle}
+                        />
                         <button
-                            type="button"
-                            className="uk-button uk-button-primary uk-form-small"
-                            onClick={() => downloadFoldFileZip()}
+                            className="uk-button uk-button-primary"
+                            onClick={downloadFoldFileZip}
                         >
                             Download File
                         </button>
                     </div>
-                </fieldset>
+                </div>
+            </section>
 
+            {/* Visibility Section */}
+            <section style={sectionStyle} className="uk-width-1-3">
                 <h3>Visibility</h3>
-                <fieldset className="uk-fieldset">
-                    <div className="uk-margin">
-                        <button
-                            type="button"
-                            className="uk-button uk-button-primary uk-form-small"
-                            onClick={() => makeAllFoldsPublic()}
-                        >
-                            Make All Structures Public
-                        </button>
-                    </div>
-                </fieldset>
+                <button
+                    className="uk-button uk-button-primary"
+                    onClick={makeAllFoldsPublic}
+                >
+                    Make All Structures Public
+                </button>
+            </section>
 
-                <h3>Job Management</h3>
-                <fieldset className="uk-fieldset">
-                    <div className="uk-margin">
+            {/* Job Management Section */}
+            <section style={sectionStyle} className="uk-width-1-3">
+                <div
+                    style={{ display: "flex", justifyContent: "space-between", cursor: "pointer" }}
+                    onClick={() => setShowJobManagement(!showJobManagement)}
+                >
+                    <h3>Job Management</h3>
+                    <span>{showJobManagement ? "▲" : "▼"}</span>
+                </div>
+                {showJobManagement && (
+                    <div>
                         <button
-                            type="button"
-                            className="uk-button uk-button-primary uk-form-small"
-                            onClick={() => restartWholePipelineForAnyFailedjob()}
+                            className="uk-button uk-button-primary"
+                            onClick={() => restartWholePipelineForAnyFailedJob()}
                         >
-                            Restart Whole Pipeline For Any Failed Jobs
+                            Restart Whole Pipeline for Failed Jobs
                         </button>
+                        <div style={{ display: "flex", alignItems: "center", gap: "10px" }} className="uk-margin-small-top">
+                            <select
+                                value={stageToStart || ""}
+                                onChange={(e) => setStageToStart(e.target.value)}
+                                style={inputStyle}
+                            >
+                                <option value="">Select a Stage...</option>
+                                <option value="both">Both</option>
+                                <option value="annotate">Annotate</option>
+                                <option value="write_fastas">Write FASTAs</option>
+                                <option value="features">Features</option>
+                                <option value="models">Models</option>
+                                <option value="decompress_pkls">Decompress PKLs</option>
+                            </select>
+                            <button
+                                className="uk-button uk-button-primary"
+                                onClick={startStageForAllFolds}
+                            >
+                                Start Stage for All Folds
+                            </button>
+                        </div>
                     </div>
-                </fieldset>
-                <fieldset className="uk-fieldset">
-                    <div className="uk-margin">
-                        <select
-                            className="uk-select uk-form-width-medium uk-form-small"
-                            id="form-horizontal-select"
-                            style={{ borderRadius: "500px" }}
-                            value={stageToStart || ""}
-                            onChange={(e) => {
-                                setStageToStart(e.target.value);
-                            }}
-                        >
-                            <option></option>
-                            <option>both</option>
-                            <option>annotate</option>
-                            <option>write_fastas</option>
-                            <option>features</option>
-                            <option>models</option>
-                            <option>decompress_pkls</option>
-                        </select>
-                        <button
-                            type="button"
-                            className="uk-button uk-button-primary uk-form-small"
-                            onClick={startStageForAllFolds}
-                        >
-                            Start stage for all folds
-                        </button>
-                    </div>
-                </fieldset>
-            </form>
+                )}
+            </section>
 
-            <h3>Docking</h3>
-            {folds ? (
-                <NewDockPrompt
-                    setErrorText={props.setErrorText}
-                    foldIds={folds.map((fold) => fold.id ?? -1)} // Should never happen, but null fold ids are replaced w/ invalid.
-                    existingLigands={Array.prototype.reduce(
-                        (acc, fold) => ({
-                            ...acc,
-                            [fold.id]: (fold.docks ?? []).map(
-                                (dock: Dock) => dock.ligand_name
-                            ),
-                        }),
-                        []
-                    )}
-                />
-            ) : null}
+            {/* Docking Section */}
+            <section style={sectionStyle} className="uk-width-1-3">
+                <h3>Docking</h3>
+                {folds && (
+                    <NewDockPrompt
+                        setErrorText={props.setErrorText}
+                        foldIds={folds.map((fold) => fold.id ?? -1)}
+                        existingLigands={{
+                            ...(folds.reduce((acc, fold) => {
+                                acc[fold.id] = fold.docks?.map((dock) => dock.ligand_name) || [];
+                                return acc;
+                            }, {} as Record<number, string[]>)),
+                        }}
+                    />
+                )}
+            </section>
         </div>
     );
 }
+
+const sectionStyle = {
+    backgroundColor: "#ffffff",
+    borderRadius: "8px",
+    padding: "15px",
+    marginBottom: "20px",
+    boxShadow: "0 2px 6px rgba(0,0,0,0.1)",
+};
+
+const buttonContainerStyle = {
+    display: "flex",
+    flexDirection: "column",
+    gap: "10px",
+};
+
+const inputStyle = {
+    padding: "8px",
+    borderRadius: "5px",
+    border: "1px solid #ccc",
+    flex: 1,
+};
 
 export default TagView;

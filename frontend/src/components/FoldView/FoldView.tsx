@@ -15,8 +15,6 @@ import UIkit from "uikit";
 import {
     deleteDock,
     getDockSdf,
-    getFile,
-    getFileList,
     getFold,
     getFoldPdb,
     getFoldPfam,
@@ -33,11 +31,12 @@ import PaeTab from "./PaeTab";
 import JobsTab from "./JobsTab";
 import SequenceTab, { SubsequenceSelection } from "./SequenceTab";
 import * as NGL from 'ngl/dist/ngl.js';
-// const fileDownload = require("js-file-download");
 import fileDownload from "js-file-download";
 import EmbedTab from "./EmbedTab";
 import EvolveTab from "./EvolveTab";
 import { Annotations, FileInfo, Fold, FoldPdb, Invokation } from "src/types/types";
+import { removeLeadingSlash } from "../../api/commonApi";
+import { getFile, getFileList } from "../../api/fileApi";
 
 const REFRESH_STATE_PERIOD = 5000;
 const REFRESH_STATE_MAX_ITERS = 200;
@@ -481,14 +480,10 @@ class InternalFoldView extends Component<FoldProps, FoldState> {
                 className="uk-tab"
                 data-uk-tab="connect: #switcher; swiping: false"
                 id="tab"
+                style={{
+                    marginBottom: "0px",
+                }}
             >
-                {/* {
-    this.state.showSplitScreen ?
-    null :
-    <li className={displayStructure ? undefined : 'uk-disabled'}>
-      <a>Structure</a>
-    </li>
-  } */}
                 <li>
                     <a>Inputs</a>
                 </li>
@@ -534,7 +529,6 @@ class InternalFoldView extends Component<FoldProps, FoldState> {
                             foldDisableRelaxation={this.state.foldData?.disable_relaxation}
                             sequence={this.state.foldData.sequence}
                             colorScheme={this.state.colorScheme}
-                            pfamColors={this.state.pfamColors}
                             setPublic={this.setPublic}
                             setDisableRelaxation={this.setDisableRelaxation}
                             setFoldName={this.setFoldName}
@@ -626,11 +620,22 @@ class InternalFoldView extends Component<FoldProps, FoldState> {
                 </li>
 
                 <li key="Embedli">
-                    <EmbedTab foldId={this.props.foldId} jobs={this.state.jobs} />
+                    <EmbedTab
+                        foldId={this.props.foldId}
+                        jobs={this.state.jobs}
+                        embeddings={this.state.foldData?.embeddings || null}
+                        setErrorText={this.props.setErrorText}
+                    />
                 </li>
 
                 <li key="Evolveli">
-                    <EvolveTab foldId={this.props.foldId} jobs={this.state.jobs} files={this.state.files} evolutions={this.state.foldData?.evolutions || null} />
+                    <EvolveTab
+                        foldId={this.props.foldId}
+                        jobs={this.state.jobs}
+                        files={this.state.files}
+                        evolutions={this.state.foldData?.evolutions || null}
+                        setErrorText={this.props.setErrorText}
+                    />
                 </li>
 
                 <li key="actionsli">
@@ -670,7 +675,10 @@ class InternalFoldView extends Component<FoldProps, FoldState> {
                 </h2>
                 <div className="uk-flex uk-flex-center uk-flex-wrap">
                     {[...(this.state.foldData?.jobs || [])].map((job: Invokation) => {
-                        if (job.type?.startsWith("dock_") || job.type?.startsWith("embed_") || job.type?.startsWith("evolve_")) {
+                        // If it's (dock, embedding, evolve) and it's not running or queued, don't show it.
+                        if (
+                            (job.type?.startsWith("dock_") || job.type?.startsWith("embed_") || job.type?.startsWith("evolve_")) &&
+                            (job.state !== 'running' && job.state !== 'queued')) {
                             return null;
                         }
                         return (
@@ -812,12 +820,12 @@ class InternalFoldView extends Component<FoldProps, FoldState> {
     };
 
     actionToStageName = [
-        ["Rerun whole pipeline", "both"],
         ["Rewrite fasta files", "write_fastas"],
-        ["Rerun MSA computation", "features"],
-        ["Rerun Structure Prediction", "models"],
-        ["Rerun Decompress Pickles job", "decompress_pkls"],
         ["Rerun PFAM Sequence Annotation", "annotate"],
+        ["Rerun whole pipeline", "both"],
+        ["AlphaFold2: Rerun MSA computation", "features"],
+        ["AlphaFold2: Rerun Structure Prediction", "models"],
+        ["AlphaFold2: Rerun Decompress Pickles job", "decompress_pkls"],
         ["Send notification email", "email"],
     ];
 
@@ -1106,16 +1114,17 @@ class InternalFoldView extends Component<FoldProps, FoldState> {
     };
 
     downloadFile = (keys: string[]) => {
-        function removeLeadingSlash(val: string) {
-            return val.startsWith("/") ? val.substring(1) : val;
-        }
         console.log(keys);
         for (let key of keys) {
             UIkit.notification(`Getting ${key} from server...`);
             getFile(this.props.foldId, removeLeadingSlash(key)).then(
                 (fileBlob: Blob) => {
-                    console.log(`Downloading ${key}!!!`);
-                    const newFname = key.split("/")[-1];  // .slice(-1);
+                    const newFname = key.split("/").pop();
+                    if (!newFname) {
+                        this.props.setErrorText(`No file name found for ${key}`);
+                        return;
+                    }
+                    console.log(`Downloading ${key} with file name ${newFname}!!!`);
                     fileDownload(fileBlob, newFname);
                 },
                 (e) => {

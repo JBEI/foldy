@@ -1,10 +1,10 @@
-FROM nvidia/cuda:11.3.1-devel-ubuntu20.04
+FROM nvidia/cuda:12.2.0-devel-ubuntu20.04
 
 WORKDIR /
 
 # Install basic utilities and dependencies.
 RUN apt-get -y update && apt-get -y install \
-    tree vim curl wget bzip2 && \
+    tree vim curl wget bzip2 git && \
     rm -rf /var/lib/apt/lists/*
 
 # Install Miniconda.
@@ -16,18 +16,17 @@ RUN wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -
 # Add Conda to PATH.
 ENV PATH="/opt/conda/bin:$PATH"
 
-# TODO: move this with the installs above.
-RUN apt-get -y update && apt-get -y install git
-
 
 # Install backend requirements.
 RUN conda create -y -n worker python=3.12
 # // -c nvidia 
 # RUN conda install -y -n worker pytorch torchvision torchaudio cudatoolkit=11.3 -c conda-forge \ 
 #     && conda clean -a -y
-RUN conda install -y -n worker cudatoolkit=11.3 -c conda-forge \ 
-    && conda clean -a -y
-RUN conda install -y -n worker pytorch torchvision torchaudio -c pytorch -c conda-forge \ 
+# RUN conda install -y -n worker cudatoolkit=11.3 -c conda-forge \ 
+#     && conda clean -a -y
+# RUN conda install -y -n worker pytorch torchvision torchaudio -c pytorch -c conda-forge \ 
+#     && conda clean -a -y
+RUN conda install -y -n worker cudatoolkit=11.8 pytorch-cuda=12.1 pytorch torchvision torchaudio -c pytorch -c nvidia -c conda-forge \ 
     && conda clean -a -y
 COPY backend/requirements.txt /backend/
 RUN /opt/conda/envs/worker/bin/pip install --no-cache-dir -r /backend/requirements.txt

@@ -13,20 +13,20 @@ import joblib
 
 from app.models import Fold, Evolution, Invokation
 from app.helpers.fold_storage_manager import FoldStorageManager
-from app.helpers.mutation_util import (
+from app.helpers.sequence_util import (
     get_measured_and_unmeasured_mutant_seq_ids,
     get_loci_set,
     process_and_validate_evolve_input_files,
 )
-from app.helpers.jobs_util import _live_update_tail, _psql_tail
+from app.helpers.jobs_util import (
+    _live_update_tail,
+    _psql_tail,
+    try_run_job_with_logging,
+)
 
 
 def run_evolvepro(evolve_id: int):
     """Run the evolvepro workflow."""
-    final_state = "failed"
-    start_time = time.time()
-    logs = []
-
     evolve = Evolution.get_by_id(evolve_id)
     if not evolve:
         raise BadRequest(f"Evolution {evolve_id} not found")
@@ -37,24 +37,8 @@ def run_evolvepro(evolve_id: int):
     if not invokation:
         raise BadRequest(f"Invokation {evolve.invokation_id} not found")
 
-    def add_log(msg, tail_function=_live_update_tail, **kwargs):
-        timestamp = datetime.now(UTC).isoformat(sep=" ", timespec="milliseconds")
-        timestamped_msg = f"{timestamp} - {msg}"
-        logs.append(timestamped_msg)
-        print(timestamped_msg)
-        invokation.update(
-            log=tail_function("\n".join(logs)),
-            timedelta=timedelta(seconds=time.time() - start_time),
-            **kwargs,
-        )
-
-    try:
-        add_log(
-            "Starting evolvepro execution...",
-            state="running",
-            starttime=datetime.fromtimestamp(start_time),
-            command="EvolvePro",
-        )
+    def run_evolvepro_with_logger(add_log):
+        """Helper function to run evolvepro with a logger."""
         wt_aa_seq = fold.sequence
 
         fsm = FoldStorageManager()
@@ -193,29 +177,8 @@ def run_evolvepro(evolve_id: int):
         )
         fsm.storage_manager.write_file(
             evolve.fold_id,
-            str(evolve_directory / "predicted_activity_df.csv"),
+            str(evolve_directory / "predicted_activity.csv"),
             predicted_activity_csv_str,
         )
 
-        # 7. Updated Evolution record with model and visualizations.
-        final_state = "finished"
-    except Exception as e:
-        # Capture the full traceback
-        full_traceback = traceback.format_exc()
-
-        add_log(f"Job failed with exception:\n\n{e} {full_traceback}")
-    finally:
-        # This will get executed regardless of the exceptions raised in try
-        # or except statements.
-        add_log(
-            f"Invokation ending with final state {final_state}",
-            tail_function=_psql_tail,
-            state=final_state,
-        )
-
-        if final_state != "finished":
-            print(
-                f'Job finished in state {final_state} with logs:\n\n{_psql_tail("\n".join(logs))}',
-                flush=True,
-            )
-            assert False, _psql_tail("\n".join(logs))
+    try_run_job_with_logging(run_evolvepro_with_logger, invokation)

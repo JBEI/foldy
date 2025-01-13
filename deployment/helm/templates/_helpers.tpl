@@ -140,7 +140,7 @@ spec:
 
         nodeSelector:
           iam.gke.io/gke-metadata-server-enabled: "true"
-        {{- if or (or (eq .RqQueueName "gpu") (eq .RqQueueName "biggpu")) (eq .RqQueueName "esm") }}
+        {{- if or (or (or (eq .RqQueueName "gpu") (eq .RqQueueName "biggpu")) (eq .RqQueueName "esm")) (eq .RqQueueName "boltz")) }}
           cloud.google.com/gke-nodepool: spota100nodes
         {{- else if (eq .RqQueueName "cpu") }}
           cloud.google.com/gke-nodepool: spothighmemnodes

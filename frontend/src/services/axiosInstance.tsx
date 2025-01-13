@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { authenticationService } from './authenticationService';
+import { authenticationService } from './authentication.service';
 
 // Create an Axios instance with default configurations
 const axiosInstance = axios.create({
@@ -28,27 +28,47 @@ axiosInstance.interceptors.request.use((config) => {
         config.headers.Authorization = `Bearer ${token}`;
     }
 
+    console.log(`In axiosInstance, interceptor, token: ${token}`);
+
     return config;
 });
 
 // Global error handling
 axiosInstance.interceptors.response.use(
     (response) => response,
-    (error) => {
+    async (error) => {  // Make async to handle Blob reading
         if (error.response?.status === 401) {
+            console.log(`IN AXIOS, interceptor, calling logout`);
             authenticationService.logout();
         }
 
         if (error.response) {
-            // The request was made and the server responded with a status code
             console.error('Response error:', error.response);
-            throw new Error(error.response.data?.message || error.response.data || error.message);
+            const data = error.response.data;
+
+            // Handle Blob error responses
+            if (data instanceof Blob) {
+                try {
+                    const text = await data.text();
+                    try {
+                        // Try to parse as JSON
+                        const jsonData = JSON.parse(text);
+                        throw new Error(jsonData.message || text);
+                    } catch {
+                        // If not JSON, use text directly
+                        throw new Error(text);
+                    }
+                } catch (blobError) {
+                    throw new Error(`Failed to read error response: ${blobError}`);
+                }
+            }
+
+            // Handle regular JSON responses
+            throw new Error(data?.message || data || error.message);
         } else if (error.request) {
-            // The request was made but no response was received
             console.error('Request error:', error.request);
             throw new Error("Network error: no response received");
         } else {
-            // Something happened in setting up the request
             console.error('Setup error:', error.message);
             throw new Error(error.message);
         }

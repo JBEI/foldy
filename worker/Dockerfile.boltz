@@ -1,0 +1,54 @@
+# FROM worker/Dockerfile.common:latest
+FROM nvidia/cuda:12.2.0-devel-ubuntu20.04
+
+WORKDIR /
+
+# Install basic utilities and dependencies.
+RUN apt-get -y update && apt-get -y install \
+    tree vim curl wget bzip2 git aria2 rsync && \
+    rm -rf /var/lib/apt/lists/*
+
+# Install Miniconda.
+RUN wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O /tmp/miniconda.sh && \
+    bash /tmp/miniconda.sh -b -p /opt/conda && \
+    rm /tmp/miniconda.sh && \
+    /opt/conda/bin/conda init bash
+
+# Add Conda to PATH.
+ENV PATH="/opt/conda/bin:$PATH"
+
+# Install backend requirements.
+RUN conda create -y -n worker python=3.12
+RUN conda install -y -n worker cudatoolkit=11.8 pytorch-cuda=12.1 pytorch torchvision torchaudio -c pytorch -c nvidia -c conda-forge \ 
+    && conda clean -a -y
+    
+COPY backend/requirements.txt /backend/
+RUN /opt/conda/envs/worker/bin/pip install --no-cache-dir -r /backend/requirements.txt
+
+# Install special requirements.
+RUN /opt/conda/envs/worker/bin/python -m pip install boltz==0.4.1 huggingface_hub[cli,hf_transfer]
+
+# Download the huggingface models...
+RUN HF_HUB_ENABLE_HF_TRANSFER=1 /opt/conda/envs/worker/bin/huggingface-cli download \
+  --resume-download \
+  --cache-dir /hf-cache/ \
+  boltz-community/boltz-1 boltz1_conf.ckpt ccd.pkl
+
+# Copy application code.
+COPY backend/ /backend/
+COPY worker/*.sh /worker/
+COPY worker/*.py /worker/
+COPY worker/docking/* /worker/docking/
+
+WORKDIR /backend/src
+
+# Ensure the Conda environment is activated when the container starts.
+ENV CONDA_DEFAULT_ENV=worker
+ENV CONDA_PREFIX=/opt/conda/envs/worker
+ENV PATH="/opt/conda/envs/worker/bin:$PATH"
+
+# Make sure to use the exec form of ENTRYPOINT, rather than the shell
+# form, so that SIGTERM gets propagated to rq.
+# https://medium.com/@tasdikrahman/handling-signals-for-applications-running-in-kubernetes-dc6537f9b542
+# https://docs.docker.com/engine/reference/builder/#entrypoint
+ENTRYPOINT ["/opt/conda/envs/worker/bin/flask"]

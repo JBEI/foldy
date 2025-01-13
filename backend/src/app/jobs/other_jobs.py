@@ -1,4 +1,4 @@
-import datetime
+from datetime import datetime, timedelta
 from flask import current_app
 import signal
 import subprocess
@@ -16,7 +16,7 @@ from app.extensions import rq
 from app.models import Fold, Invokation, Dock
 from app.helpers.fold_storage_manager import FoldStorageManager
 from app import email_to
-from app.helpers.jobs_util import _live_update_tail, _psql_tail
+from app.helpers.jobs_util import _tail, _live_update_tail, _psql_tail
 
 
 def start_generic_script(invokation_id, process_args):
@@ -30,7 +30,7 @@ def start_generic_script(invokation_id, process_args):
         invokation.update(
             state="running",
             log="Ongoing...",
-            starttime=datetime.datetime.fromtimestamp(start_time),
+            starttime=datetime.fromtimestamp(start_time),
             command=f"{process_args}",
         )
 
@@ -100,7 +100,7 @@ def start_generic_script(invokation_id, process_args):
         invokation.update(
             state=final_state,
             log=_psql_tail("".join(stdout)),
-            timedelta=datetime.timedelta(seconds=time.time() - start_time),
+            timedelta=timedelta(seconds=time.time() - start_time),
         )
         assert (
             final_state == "finished"

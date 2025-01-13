@@ -122,8 +122,8 @@ def register_extensions(app):
     admin.add_view(FoldModelView(models.Fold, db.session))
     admin.add_view(InvokationModelView(models.Invokation, db.session))
     admin.add_view(DockModelView(models.Dock, db.session))
+    admin.add_view(VerifiedModelView(models.Embedding, db.session))
     admin.add_view(VerifiedModelView(models.Evolution, db.session))
-
     admin.init_app(app)
     db.init_app(app)
     migrate.init_app(app, db)
@@ -152,6 +152,7 @@ def create_app(config_object="settings"):
     from app.views.login_views import ns as login_views_ns, oauth
     from app.views.admin_views import ns as admin_views_ns
     from app.views.file_views import ns as file_views_ns
+    from app.views.embed_views import ns as embed_views_ns
     from app.views.evolve_views import ns as evolve_views_ns
     from app.views.other_views import ns as other_views_ns
 
@@ -163,9 +164,23 @@ def create_app(config_object="settings"):
         def get(self):
             return True
 
+    @app.errorhandler(ValueError)
+    @app.errorhandler(BadRequest)
+    @api.errorhandler(BadRequest)
+    @api.errorhandler(ValueError)
+    def handle_unexpected_error(error):
+        # Found here: https://newbedev.com/python-flask-json-error-message-format-code-example
+        if hasattr(error, "description"):
+            message = str(error.description)
+        else:
+            message = str(error)
+
+        return {"message": message}, 400
+
     api.add_namespace(login_views_ns, "/api")
     api.add_namespace(admin_views_ns, "/api")
     api.add_namespace(file_views_ns, "/api")
+    api.add_namespace(embed_views_ns, "/api")
     api.add_namespace(evolve_views_ns, "/api")
     api.add_namespace(other_views_ns, "/api")
 
@@ -186,13 +201,6 @@ def create_app(config_object="settings"):
         rq_dashboard.blueprint,
         url_prefix="/rq",
     )
-
-    @app.errorhandler(werkzeug.exceptions.BadRequest)
-    @app.errorhandler(ValueError)
-    def handle_unexpected_error(error):
-        # Found here: https://newbedev.com/python-flask-json-error-message-format-code-example
-        response = {"message": str(error.description)}
-        return jsonify(response), 400
 
     # Add prometheus wsgi middleware to route /metrics requests
     app.wsgi_app = DispatcherMiddleware(app.wsgi_app, {"/metrics": make_wsgi_app()})

@@ -147,3 +147,4 @@ db_creation_resources.yaml
 backend/src/integration_tests/testdata/000001/embed/*
 backend/src/notebooks/test_evolve.ipynb
 backend/src/integration_tests/testdata/*/evolve/*
+.boltz/

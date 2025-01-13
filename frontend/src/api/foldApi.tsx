@@ -1,5 +1,6 @@
 import axiosInstance from '../services/axiosInstance';
 import { Fold, FoldInput } from '../types/types';
+import { authenticationService } from "../services/authentication.service";
 
 export const getFolds = async (
     filter: string | null,
@@ -12,6 +13,8 @@ export const getFolds = async (
     if (tagString) params.tag = tagString;
     if (page !== null) params.page = page;
     if (per_page !== null) params.per_page = per_page;
+
+    console.log(`In getFolds, jwt string: ${authenticationService.currentJwtStringValue}`);
 
     const response = await axiosInstance.get<Fold[]>('/api/fold', { params });
     return response.data;

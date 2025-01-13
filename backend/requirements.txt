@@ -39,7 +39,7 @@ Flask-Cors
 Flask-JWT-Extended
 Flask-Migrate
 flask-restx
- -e git+https://github.com/Jacoberts/Flask-RQ2.git@3fed0bbd0af19d101f725718c9ace698bdcdcf2f#egg=Flask_RQ2
+-e git+https://github.com/Jacoberts/Flask-RQ2.git@3fed0bbd0af19d101f725718c9ace698bdcdcf2f#egg=Flask_RQ2
 Flask-SQLAlchemy
 google-api-core
 google-auth
@@ -103,6 +103,7 @@ rq
 rq-dashboard
 rq-scheduler
 rsa
+scipy
 scikit-learn
 scramp
 seaborn

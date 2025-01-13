@@ -1,9 +1,17 @@
 import re
+import random
 from collections import defaultdict
+from dnachisel import biotools
+from re import fullmatch
+
+from werkzeug.exceptions import BadRequest
+
 
 import numpy as np
 
-VALID_AMINO_ACIDS = "ACDEFGHIKLMNOPQRSTUVWY"
+VALID_AMINO_ACIDS = "ACDEFGHIKLMNPQRSTVWY"
+# We are tolerant of selenocysteine and other non-standard amino acids.
+EXPANSIVE_VALID_AMINO_ACIDS = "ACDEFGHIKLMNOPQRSTUVWY"
 
 
 def get_locus_from_allele_id(allele_id):
@@ -12,17 +20,24 @@ def get_locus_from_allele_id(allele_id):
 
 
 def get_loci_set(seq_id):
-    if seq_id == "":
+    if seq_id == "WT":
         return set()
     return {get_locus_from_allele_id(allele) for allele in seq_id.split("_")}
 
 
 def maybe_get_allele_id_error_message(wt_aa_seq, allele_id):
     """Returns an error message if allele id is invalid, otherwise None."""
-    fn = re.compile(r"([ACDEFGHIKLMNOPQRSTUVWY])(\d+)[ACDEFGHIKLMNOPQRSTUVWY]")
+    fn = re.compile(r"([A-Z])(\d+)([A-Z])")
     m = fn.match(allele_id)
     if not m:
         return f"Allele is improperly formatted {allele_id}"
+
+    # Check amino acids.
+    if not m.groups()[0] in EXPANSIVE_VALID_AMINO_ACIDS:
+        return f'Invalid allele "{allele_id}": first character must be a valid amino acid, got "{m.groups()[0]}"'
+    if not m.groups()[2] in EXPANSIVE_VALID_AMINO_ACIDS:
+        return f'Invalid allele "{allele_id}": third character must be a valid amino acid, got "{m.groups()[2]}"'
+
     allele_idx = int(m.groups()[1]) - 1
     if allele_idx < 0 or allele_idx >= len(wt_aa_seq):
         return f"Allele is out of bounds (got {allele_idx+1} but protein only has {len(wt_aa_seq)} AAs)."
@@ -40,7 +55,7 @@ def maybe_get_seq_id_error_message(wt_aa_seq, seq_id):
     """
     if type(seq_id) != str:
         return f"seq_id must be a string, got {seq_id} with type {type(seq_id)}"
-    if seq_id == "":
+    if seq_id == "WT":
         return None
     allele_list = seq_id.split("_")
     for allele in allele_list:
@@ -74,21 +89,25 @@ def get_seq_ids_for_deep_mutational_scan(
                consider all possible mutations besides WT
     """
 
-    seq_id_set = set()
-
     def assert_valid_seq_id(seq_id):
         seq_id_error_msg = maybe_get_seq_id_error_message(wt_aa_seq, seq_id)
         if seq_id_error_msg:
-            raise ValueError(f"Invalid seq_id {seq_id}: {seq_id_error_msg}")
+            raise ValueError(f"Invalid seq_id '{seq_id}': {seq_id_error_msg}")
 
     def allele_is_at_locus(allele_id, locus):
         """Returns true if the allele (1-based) is at that locus (1-based)."""
         return int(allele_id[1:-1]) == locus
 
+    def seq_id_to_allele_list(seq_id):
+        """Converts the seq_id to an allele set (eg: "G3W_A12T"->{"G3W", "A12T"})."""
+        if seq_id == "WT":
+            return []
+        return seq_id.split("_")
+
     def allele_set_to_seq_id(allele_set):
         """Converts the allele set to a standard ID (eg: {A12T, G3W}->"G3W_A12T")."""
-        if allele_set == {""}:
-            return ""
+        if allele_set == {""} or len(allele_set) == 0:
+            return "WT"
         allele_list = sorted(
             list(allele_set), key=lambda allele: (int(allele[1:-1]), allele[-1])
         )
@@ -100,8 +119,10 @@ def get_seq_ids_for_deep_mutational_scan(
     for extra_seq_id in extra_seq_ids:
         assert_valid_seq_id(extra_seq_id)
 
+    seq_id_set = set()
+
     for starting_seq_id in dms_starting_seq_ids:
-        starting_seq_allele_list = starting_seq_id.split("_") if starting_seq_id else []
+        starting_seq_allele_list = seq_id_to_allele_list(starting_seq_id)
 
         # Make sure to normalize the starting seq id before including in set.
         seq_id_set.add(allele_set_to_seq_id(starting_seq_allele_list))
@@ -143,7 +164,7 @@ def get_seq_ids_for_deep_mutational_scan(
                         )
 
     for extra_seq_id in extra_seq_ids:
-        extra_seq_allele_list = extra_seq_id.split("_") if extra_seq_id else []
+        extra_seq_allele_list = seq_id_to_allele_list(extra_seq_id)
 
         # Make sure to normalize the starting seq id before including in set.
         seq_id_set.add(allele_set_to_seq_id(extra_seq_allele_list))
@@ -153,16 +174,17 @@ def get_seq_ids_for_deep_mutational_scan(
 
 def seq_id_to_seq(wt_aa_seq, seq_id):
     """Convert the seq ID into a sequence."""
-    if seq_id == "":
+    if seq_id == "WT":
         return wt_aa_seq
     seq = wt_aa_seq
     for allele in seq_id.split("_"):
+        assert len(allele) >= 3, f'Invalid seq_id, too short: "{seq_id}"'
         wt_allele = allele[0]
         idx = int(allele[1:-1]) - 1
         mut_allele = allele[-1]
         assert (
             seq[idx] == wt_allele
-        ), f"Invalid seq_id {seq_id} specifically {allele}: wt allele is {seq[idx]}"
+        ), f"Invalid seq_id '{seq_id}' specifically '{allele}': wt allele is {seq[idx]}"
         seq = seq[:idx] + mut_allele + seq[idx + 1 :]
     return seq
 
@@ -191,13 +213,13 @@ def process_and_validate_evolve_input_files(
             f"Embedding file must contain a 'embedding' column, got {embedding_df.columns}"
         )
 
-    activity_df.replace({"seq_id": {"WT": "", np.nan: ""}}, inplace=True)
+    # activity_df.replace({"seq_id": {np.nan: ""}}, inplace=True)  # "WT": "",
     for seq_id in activity_df.seq_id:
         seq_id_error_msg = maybe_get_seq_id_error_message(wt_aa_seq, seq_id)
         if seq_id_error_msg:
-            raise ValueError(f"Invalid seq_id {seq_id}: {seq_id_error_msg}")
+            raise ValueError(f"Invalid seq_id '{seq_id}': {seq_id_error_msg}")
 
-    embedding_df.fillna({"seq_id": ""}, inplace=True)
+    # embedding_df.fillna({"seq_id": ""}, inplace=True)
 
     return activity_df, embedding_df
 
@@ -250,7 +272,7 @@ def get_cross_validation_holdout_sets(
     # Number of mutants with a mutation at each locus.
     loci_mutant_counts = defaultdict(int)
     for seq_id in seq_ids:
-        if seq_id == "":
+        if seq_id == "WT":
             continue
         for allele in seq_id.split("_"):
             locus = get_locus_from_allele_id(allele)
@@ -269,7 +291,7 @@ def get_cross_validation_holdout_sets(
     for holdout_locus in viable_loci:
         holdout_list = []
         for seq_id in seq_ids:
-            if seq_id == "":
+            if seq_id == "WT":
                 # WT is never in the holdout set.
                 continue
             if any(
@@ -279,6 +301,174 @@ def get_cross_validation_holdout_sets(
                 holdout_list.append(seq_id)
         holdout_lists.append(holdout_list)
     return holdout_lists, viable_loci
+
+
+def determine_quartile(value, quartiles):
+    """
+    Determine which quartile a value falls into, based on precomputed quartiles.
+
+    Args:
+        value (float): The value to classify.
+        quartiles (list): List of quartile cutoff values [Q1, Q2, Q3].
+
+    Returns:
+        int: The quartile index (0, 1, 2, or 3).
+    """
+    return min(np.digitize(value, quartiles, right=False) - 1, len(quartiles) - 2)
+
+
+def get_cross_validation_holdout_sets_with_stratification(
+    seq_ids,
+    target_values,
+    N,
+    min_data_per_quartile=1,
+    max_data_per_quartile=None,
+    max_num_iterations=1000,
+    max_loci_to_consider_each_round=50,
+    max_holdout_set_attempts=10,
+    num_bins=4,
+):
+    """
+    Generates stratified cross-validation holdout sets based on loci and quartiles of target values.
+
+    Args:
+        seq_ids (list of str): List of sequence IDs.
+        target_values (list of float): Target values corresponding to each sequence ID.
+        N (int): Number of holdout sets to generate.
+        min_data_per_quartile (int): Minimum number of data points per quartile in each holdout set.
+        max_data_per_quartile (int, optional): Maximum number of data points per quartile in each holdout set.
+        max_num_iterations (int): Maximum iterations to try building a valid holdout set.
+        max_loci_to_consider_each_round (int): Maximum loci to consider in each rejection sampling round.
+        max_holdout_set_attempts (int): Maximum attempts to build a valid holdout set, allowing for failures like generating a duplicate set, or starting with some inviable loci.
+    Returns:
+        list of sets: Generated holdout sets.
+
+    Raises:
+        ValueError: If unable to generate holdout sets within constraints.
+    """
+    # Compute quartiles of the target values
+    # quartiles = np.percentile(target_values, [25, 50, 75])
+    # print(f"quartiles: {quartiles}", flush=True)
+    # Compute equal-width bins of the target values
+    min_value, max_value = min(target_values), max(target_values)
+    bin_edges = np.linspace(min_value, max_value, num_bins + 1)
+
+    # Create loci_mutant_counts as a dict from locus to quartile counts
+    loci_mutant_counts = defaultdict(lambda: [0] * num_bins)  # List for quartiles
+    for seq_id, target_value in zip(seq_ids, target_values):
+        if seq_id == "WT":
+            continue  # Skip WT
+        for allele in seq_id.split("_"):
+            locus = get_locus_from_allele_id(allele)
+            quartile = determine_quartile(target_value, bin_edges)
+            loci_mutant_counts[locus][quartile] += 1
+
+    def get_quartile_counts(holdout_set):
+        return [
+            sum(loci_mutant_counts[locus][quartile] for locus in holdout_set)
+            for quartile in range(num_bins)
+        ]
+
+    def try_build_holdout_set():
+        """Try to build a holdout set. Raise ValueError if we fail."""
+        holdout_set = set()
+        iterations = 0
+        while iterations < max_num_iterations:
+            iterations += 1
+
+            # Identify the quartile with the fewest data points
+            holdout_quartile_counts = get_quartile_counts(holdout_set)
+            min_quartile = holdout_quartile_counts.index(min(holdout_quartile_counts))
+            # Filter loci with nonzero counts in min_quartile
+            candidate_loci = [
+                locus
+                for locus, counts in loci_mutant_counts.items()
+                if counts[min_quartile] > 0 and locus not in holdout_set
+            ]
+            if not candidate_loci:
+                # No viable loci to sample, raise an error
+                raise ValueError(
+                    f"Cannot satisfy stratification requirements. Try relaxing constraints."
+                )
+
+            # Randomly sample a locus
+            sampled_locus = None
+            for _ in range(max_loci_to_consider_each_round):
+                sampled_locus = random.choice(candidate_loci)
+
+                tentative_holdout_set = holdout_set.union({sampled_locus})
+                tentative_holdout_quartile_counts = get_quartile_counts(
+                    tentative_holdout_set
+                )
+
+                if all(
+                    count <= (max_data_per_quartile or float("inf"))
+                    for count in tentative_holdout_quartile_counts
+                ):
+                    # Commit this locus to the holdout set
+                    holdout_set = tentative_holdout_set
+                    break  # Exit the rejection sampling loop
+
+            # We've finished one attempt. Check if we've met the stratification
+            # criteria. If not, we dump it and try again.
+            if all(
+                min_data_per_quartile
+                <= count
+                <= (max_data_per_quartile or float("inf"))
+                for count in get_quartile_counts(holdout_set)
+            ):
+                break
+
+        if iterations >= max_num_iterations:
+            raise ValueError(
+                "Exceeded maximum number of iterations while building holdout sets."
+            )
+
+        return holdout_set
+
+    # Generate N holdout sets.
+    holdout_sets = []
+    for _ in range(N):
+        holdout_set = None
+        # We are willing to try max_num_iterations times to build a valid holdout set.
+        # Failures can happen because we happened to choose inviable loci to start,
+        # or because of bad luck in sampling.
+        for holdout_set_attempt in range(max_holdout_set_attempts):
+            try:
+                holdout_set = try_build_holdout_set()
+                if holdout_set in holdout_sets:
+                    print(
+                        f"Discarding holdout set {holdout_set} because it is a duplicate"
+                    )
+                    holdout_set = None
+                else:
+                    break
+            except ValueError as e:
+                print(
+                    f"Failed to build holdout set {holdout_set_attempt} time: {e}",
+                    flush=True,
+                )
+        assert (
+            holdout_set
+        ), f"Failed to build holdout set after {max_holdout_set_attempts} attempts"
+        holdout_sets.append(holdout_set)
+
+    # Convert holdout sets which contain loci to sets of seq_ids
+    holdout_sets_seq_ids = [
+        {
+            seq_id
+            for seq_id in seq_ids
+            if any(
+                [
+                    get_locus_from_allele_id(allele) in holdout_set
+                    for allele in seq_id.split("_")
+                ]
+            )
+        }
+        for holdout_set in holdout_sets
+    ]
+
+    return holdout_sets_seq_ids, holdout_sets
 
 
 def get_cv_splits(seq_id_list, holdout_sets, n_splits=5):
@@ -294,3 +484,44 @@ def get_cv_splits(seq_id_list, holdout_sets, n_splits=5):
                 train_indices.append(ii)
         splits.append((train_indices, test_indices))
     return splits
+
+
+def back_translate(aa_seq):
+    # Ignore selenocysteine...
+    # https://www.frontiersin.org/articles/10.3389/fmolb.2020.00002/full
+    aa_without_u = aa_seq.replace("U", "C")
+    return biotools.reverse_translate(aa_without_u, table="Bacterial")
+    # randomize_codons=True,
+
+
+def validate_aa_sequence(fold_name, sequence, af2_model_preset):
+    """Raise BadRequest if the sequence contains invalid AAs."""
+    if not fullmatch(r"[a-zA-Z0-9\-_ ]+", fold_name):
+        raise BadRequest(f'Fold name has invalid characters: "{fold_name}"')
+
+    if ":" in sequence or ";" in sequence:
+        if af2_model_preset not in ["multimer", "boltz"]:
+            raise BadRequest(
+                f'This sequence looks like a multimer. Multimers are only supported when using "AF2" and using the AF2 model preset "multimer" (see Advanced Options).'
+            )
+        chains = []
+        for chain in sequence.split(";"):
+            if len(chain.split(":")) != 2:
+                raise BadRequest(
+                    f'Each chain (separated by ";") must have a single ":".'
+                )
+            chains.append(chain.split(":"))
+    else:
+        chains = [("1", sequence)]
+
+    if len(chains) != len(set([c[0] for c in chains])):
+        raise BadRequest("A chain name is duplicated.")
+
+    for chain_name, chain_seq in chains:
+        if not fullmatch(r"[a-zA-Z0-9_\-]+", chain_name):
+            raise BadRequest(f'Invalid chain name "{chain_name}"')
+        for ii, aa in enumerate(chain_seq):
+            if aa not in VALID_AMINO_ACIDS:
+                raise BadRequest(
+                    f'Invalid amino acid "{aa}" at index {ii+1} in chain {chain_name}. Valid amino acids are {"".join(VALID_AMINO_ACIDS)}.'
+                )

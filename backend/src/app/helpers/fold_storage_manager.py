@@ -1,5 +1,4 @@
-import datetime
-from datetime import timezone, UTC
+from datetime import timezone, UTC, datetime
 import io
 import logging
 import json
@@ -9,6 +8,7 @@ from re import fullmatch
 import tempfile
 import zipfile
 import os
+import shutil
 
 from dnachisel import biotools
 from flask import current_app
@@ -20,10 +20,11 @@ from rq.job import Retry
 from sqlalchemy.sql.elements import or_
 from sqlalchemy.orm import joinedload
 from werkzeug.exceptions import BadRequest
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 from app.models import Dock, Fold, Invokation, User
 from app.extensions import compress, db, rq
+from app.helpers.sequence_util import back_translate
 
 
 class StorageAccessor:
@@ -38,6 +39,9 @@ class StorageAccessor:
         raise NotImplementedError
 
     def get_blob(self, fold_id, file_path):
+        raise NotImplementedError
+
+    def upload_folder(self, fold_id, local_absolute_folder_path, relative_folder_path):
         raise NotImplementedError
 
 
@@ -157,6 +161,27 @@ class LocalStorageAccessor(StorageAccessor):
 
         return blob
 
+    def upload_folder(self, fold_id, local_absolute_folder_path, relative_folder_path):
+        """Uploads a whole folder, like cp -r."""
+        padded_fold_id = f"{fold_id:06d}"
+        local_absolute_folder_path = Path(local_absolute_folder_path)
+
+        for root, _, files in os.walk(local_absolute_folder_path):
+            for file in files:
+                local_file_path = os.path.join(root, file)
+                relative_file_path = os.path.relpath(
+                    local_file_path, local_absolute_folder_path
+                )
+
+                out_file_path = (
+                    self.local_directory
+                    / padded_fold_id
+                    / relative_folder_path
+                    / relative_file_path
+                )
+                out_file_path.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy(local_file_path, out_file_path)
+
 
 class GcloudStorageAccessor(StorageAccessor):
     def __init__(self):
@@ -212,7 +237,7 @@ class GcloudStorageAccessor(StorageAccessor):
                 "key": removeprefix(blob.name, prefix),
                 "size": blob.size,
                 "modified": (
-                    blob.updated - datetime.datetime.fromtimestamp(0, tz=timezone.utc)
+                    blob.updated - datetime.fromtimestamp(0, tz=timezone.utc)
                 ).total_seconds()
                 * 1000.0,
             }
@@ -265,6 +290,7 @@ class GcloudStorageAccessor(StorageAccessor):
     def get_blob(self, fold_id, relative_path):
         """Gets a Blob object from GCS based on fold_id and relative_path."""
         padded_fold_id = f"{fold_id:06d}"
+        relative_path = relative_path.lstrip("/")
         if self.bucket_prefix:
             gcloud_path = f"{self.bucket_prefix}/{padded_fold_id}/{relative_path}"
         else:
@@ -277,6 +303,29 @@ class GcloudStorageAccessor(StorageAccessor):
             raise BadRequest(f"File not found at path {gcloud_path}.")
 
         return blob
+
+    def upload_folder(self, fold_id, local_absolute_folder_path, relative_folder_path):
+        """Uploads a whole folder, like cp -r."""
+        padded_fold_id = f"{fold_id:06d}"
+        local_absolute_folder_path = Path(local_absolute_folder_path)
+
+        for root, _, files in os.walk(local_absolute_folder_path):
+            for file in files:
+                local_file_path = os.path.join(root, file)
+                relative_file_path = os.path.relpath(
+                    local_file_path, local_absolute_folder_path
+                )
+
+                if self.bucket_prefix:
+                    gcloud_path = f"{self.bucket_prefix}/{padded_fold_id}/{relative_folder_path}/{relative_file_path}"
+                else:
+                    gcloud_path = (
+                        f"{padded_fold_id}/{relative_folder_path}/{relative_file_path}"
+                    )
+
+                print(f"Uploaded {local_path} to {gcloud_path}", flush=True)
+                blob = bucket.blob(gcloud_path)
+                blob.upload_from_filename(local_path)
 
 
 class FoldStorageManager:
@@ -375,38 +424,6 @@ class FoldStorageManager:
             folds.append(fold)
         return folds
 
-    def validate_sequence(self, fold_name, sequence, af2_model_preset):
-        """Raise BadRequest if the sequence contains invalid AAs."""
-        if not fullmatch(r"[a-zA-Z0-9\-_ ]+", fold_name):
-            raise BadRequest(f'Fold name has invalid characters: "{fold_name}"')
-
-        if ":" in sequence or ";" in sequence:
-            if af2_model_preset != "multimer":
-                raise BadRequest(
-                    f'This sequence looks like a multimer. Multimers are only supported when using "AF2" and using the AF2 model preset "multimer" (see Advanced Options).'
-                )
-            chains = []
-            for chain in sequence.split(";"):
-                if len(chain.split(":")) != 2:
-                    raise BadRequest(
-                        f'Each chain (separated by ";") must have a single ":".'
-                    )
-                chains.append(chain.split(":"))
-        else:
-            chains = [("1", sequence)]
-
-        if len(chains) != len(set([c[0] for c in chains])):
-            raise BadRequest("A chain name is duplicated.")
-
-        for chain_name, chain_seq in chains:
-            if not fullmatch(r"[a-zA-Z0-9_\-]+", chain_name):
-                raise BadRequest(f'Invalid chain name "{chain_name}"')
-            for ii, aa in enumerate(chain_seq):
-                if aa not in VALID_AMINO_ACIDS:
-                    raise BadRequest(
-                        f'Invalid amino acid "{aa}" at index {ii+1} in chain {chain_name}. Valid amino acids are {"".join(VALID_AMINO_ACIDS)}.'
-                    )
-
     def write_fastas(self, id, sequence):
         """Raises an exception if writing fails."""
         padded_fold_id = "%06d" % id
@@ -415,7 +432,7 @@ class FoldStorageManager:
 
         if ":" in sequence or ";" in sequence:
             monomers = [m.split(":") for m in sequence.split(";")]
-            aa_fasta_entries = [f"> {m[0]}\n{m[1]}" for m in monomers]
+            aa_fasta_entries = [f"> {m[0]}|protein\n{m[1]}" for m in monomers]
             aa_contents = "\n\n".join(aa_fasta_entries)
 
             dna_contents = "\n\n".join(
@@ -427,113 +444,6 @@ class FoldStorageManager:
 
         self.storage_manager.write_file(id, aa_blob_path, aa_contents)
         self.storage_manager.write_file(id, dna_blob_path, dna_contents)
-
-    def make_new_folds(
-        self,
-        user_email,
-        folds_data,
-        start_fold_job,
-        email_on_completion,
-        skip_duplicate_entries,
-    ):
-        """Adds a list of new folds to the DB and optionally starts the other_jobs.
-
-        Note that the folds in folds_data should not have an ID or status."""
-
-        # Validate some general params.
-        user = db.session.query(User).filter_by(email=user_email).first()
-        if not user:
-            raise BadRequest("Somehow the user is empty...")
-
-        # Validate all the folds and create models.
-        try:
-            new_fold_models = []
-            for fold_data in folds_data:
-                if "id" in fold_data:
-                    raise BadRequest("New fold should not specify an ID.")
-                if "state" in fold_data:
-                    raise BadRequest("New fold should not specify a state.")
-                if "tags" in fold_data:
-                    tags = fold_data["tags"]
-                    for tag in tags:
-                        if not re.match(r"^[a-zA-Z0-9_-]+$", tag):
-                            raise BadRequest(
-                                f"Invalid tag: {tag} contains a character which is not a letter, number, hyphen, or underscore."
-                            )
-
-                tagstring = ",".join([t.strip() for t in fold_data.get("tags", [])])
-                af2_model_preset = (
-                    fold_data.get("af2_model_preset", None) or "monomer_ptm"
-                )
-
-                self.validate_sequence(
-                    fold_data["name"], fold_data["sequence"], af2_model_preset
-                )
-
-                existing_entry = (
-                    db.session.query(Fold)
-                    .filter(Fold.name == fold_data["name"])
-                    .first()
-                )
-                if existing_entry:
-                    if not skip_duplicate_entries:
-                        raise BadRequest(
-                            f'Someone has already submitted a fold named {fold_data["name"]} ({existing_entry.id}).'
-                        )
-
-                    if existing_entry.sequence == fold_data["sequence"]:
-                        # Sweet, so the entry already exists, we can just skip it.
-                        continue
-                    else:
-                        raise BadRequest(
-                            f'Fold {fold_data["name"]} already exists ({existing_entry.id}) and its sequence does not match this new request.'
-                        )
-
-                new_fold_model = Fold(
-                    name=fold_data["name"],
-                    user_id=user.id,
-                    tagstring=tagstring,
-                    sequence=fold_data["sequence"],
-                    af2_model_preset=af2_model_preset,
-                    disable_relaxation=fold_data["disable_relaxation"],
-                )
-                new_fold_models.append(new_fold_model)
-
-            # Bulk add!
-            db.session.bulk_save_objects(
-                new_fold_models, return_defaults=True, preserve_order=True
-            )
-            db.session.commit()
-        except Exception as e:
-            print(e, flush=True)
-            raise BadRequest(e)
-
-        for model in new_fold_models:
-            try:
-                self.write_fastas(model.id, model.sequence)
-            except Exception as e:  # TODO: make this exception more specific.
-                print(
-                    f"Bad news, a gcloud write failed for model {model.id}. "
-                    + "This should be infrequent, so we will allow the feature "
-                    + f"computation to start and debug based on its logs when this happens. {repr(e)}",
-                    flush=True,
-                )
-                print(e, flush=True)
-
-        # Note that some of these may not have a fastq successfully written to
-        # gcloud, but we forge ahead and debug when that occurs.
-        fold_ids = [m.id for m in new_fold_models]
-
-        if start_fold_job:
-            for fold_id in fold_ids:
-                try:
-                    start_stage(fold_id, "both", email_on_completion)
-                except Exception as e:
-                    print(e, flush=True)
-                    raise BadRequest(e)
-
-        db.session.commit()
-        return True
 
     def get_fold_pdb(self, fold_id, ranked_model_number):
         return self.storage_manager.get_binary(

@@ -93,6 +93,13 @@ class Fold(PkModel):
         cascade="all,delete-orphan",
     )
 
+    embeddings = relationship(
+        "Embedding",
+        back_populates="fold",
+        passive_deletes=True,
+        cascade="all,delete-orphan",
+    )
+
     sequence = Column(db.Text)
     af2_model_preset = Column(db.String, nullable=True)
     disable_relaxation = Column(db.Boolean, nullable=True)
@@ -134,6 +141,29 @@ class Dock(PkModel):
 
     # Diffdock output - a CSV of pose confidences.
     pose_confidences = Column(db.String, nullable=True)
+
+
+class Embedding(PkModel):
+    """An embedding run."""
+
+    __tablename__ = "embeddings"
+
+    name = Column(db.String, nullable=False)
+
+    fold_id = Column(
+        db.Integer, db.ForeignKey("roles.id", ondelete="CASCADE", onupdate="CASCADE")
+    )
+    fold = relationship("Fold", back_populates="embeddings")
+
+    embedding_model = Column(db.String, nullable=False)
+    extra_seq_ids = Column(db.String)
+    dms_starting_seq_ids = Column(db.String)
+
+    # State tracking.
+    invokation_id = Column(
+        db.Integer,
+        db.ForeignKey("invokation.id", ondelete="CASCADE", onupdate="CASCADE"),
+    )
 
 
 class Evolution(PkModel):

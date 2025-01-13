@@ -15,7 +15,7 @@ from app.views.other_views import evolution_fields
 from app.authorization import verify_has_edit_access
 from app.extensions import db, rq
 from app.helpers.fold_storage_manager import FoldStorageManager
-from app.helpers.mutation_util import (
+from app.helpers.sequence_util import (
     maybe_get_seq_id_error_message,
     get_measured_and_unmeasured_mutant_seq_ids,
 )

@@ -16,7 +16,7 @@ from app.jobs import other_jobs
 from app.jobs import embed_jobs
 from app.models import Dock, Fold, Invokation
 from app.extensions import db, rq
-from app.util import start_stage, get_job_type_replacement
+from app.util import start_stage, get_job_type_replacement, make_new_folds
 from app.helpers.fold_storage_manager import FoldStorageManager
 from app.authorization import (
     user_jwt_grants_edit_access,
@@ -82,6 +82,19 @@ dock_fields = ns.model(
     },
 )
 
+embedding_fields = ns.model(
+    "EmbeddingFields",
+    {
+        "id": fields.Integer(required=True),
+        "name": fields.String(required=True),
+        "fold_id": fields.Integer(required=True),
+        "embedding_model": fields.String(),
+        "extra_seq_ids": fields.String(),
+        "dms_starting_seq_ids": fields.String(),
+        "invokation_id": fields.Integer(),
+    },
+)
+
 evolution_fields = ns.model(
     "EvolutionFields",
     {
@@ -109,6 +122,7 @@ fold_fields = ns.model(
         "disable_relaxation": fields.Boolean(required=False),
         "jobs": fields.List(fields.Nested(simple_invokation_fields)),
         "docks": fields.List(fields.Nested(dock_fields)),
+        "embeddings": fields.List(fields.Nested(embedding_fields)),
         "evolutions": fields.List(fields.Nested(evolution_fields)),
     },
 )
@@ -177,15 +191,16 @@ class FoldsResource(Resource):
     @verify_has_edit_access
     def post(self):
         """Returns True if queueing is successful."""
-        manager = FoldStorageManager()
-        manager.setup()
+        fsm = FoldStorageManager()
+        fsm.setup()
 
         folds_data = request.get_json()["folds_data"]
         start_fold_job = request.get_json()["start_fold_job"]
         email_on_completion = request.get_json().get("email_on_completion", False)
         skip_duplicate_entries = request.get_json().get("skip_duplicate_entries", False)
 
-        return manager.make_new_folds(
+        return make_new_folds(
+            fsm,
             get_jwt_identity(),
             folds_data,
             start_fold_job,
@@ -319,55 +334,6 @@ class PfamResource(Resource):
         pfam_annotations = manager.get_pfam(fold_id)
 
         return pfam_annotations
-
-
-embeddings_fields = ns.model(
-    "Embeddings",
-    {
-        "batch_name": fields.String(required=True),
-        "embedding_model": fields.String(required=True),
-        "dms_starting_seq_ids": fields.List(fields.String(), required=False),
-        "extra_seq_ids": fields.List(fields.String(), required=False),
-    },
-)
-
-
-@ns.route("/embeddings/<int:fold_id>")
-class CalculateEmbeddingsResource(Resource):
-    @verify_has_edit_access
-    @ns.expect(embeddings_fields)
-    def post(self, fold_id):
-        req = request.get_json()
-
-        batch_name = req["batch_name"]
-        embedding_model = req["embedding_model"]
-        dms_starting_seq_ids = req.get("dms_starting_seq_ids", [""])
-        extra_seq_ids = req.get("extra_seq_ids", [])
-
-        ALLOWED_EMBEDDING_MODELS = ["esmc_300m", "esmc_600m"]
-        if embedding_model not in ALLOWED_EMBEDDING_MODELS:
-            raise BadRequest(
-                f"Invalid embedding model {embedding_model}: must be one of {ALLOWED_EMBEDDING_MODELS}"
-            )
-
-        fold = Fold.get_by_id(fold_id)
-
-        new_invokation_id = get_job_type_replacement(fold, f"embed_{batch_name}")
-
-        esm_q = rq.get_queue("esm")
-        esm_q.enqueue(
-            embed_jobs.get_esm_embeddings,
-            fold.id,
-            batch_name,
-            embedding_model,
-            dms_starting_seq_ids,
-            extra_seq_ids,
-            new_invokation_id,
-            job_timeout="12h",
-            result_ttl=48 * 60 * 60,  # 2 days
-        )
-
-        return True
 
 
 @ns.route("/dock")

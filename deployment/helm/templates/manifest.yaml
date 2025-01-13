@@ -308,6 +308,9 @@ spec:
 {{ include "foldy.createWorkerPool" (deepCopy . | merge (dict "RqQueueName" "esm") | merge (dict "ImageName" "worker_esm")) }}
 
 ---
+{{ include "foldy.createWorkerPool" (deepCopy . | merge (dict "RqQueueName" "boltz") | merge (dict "ImageName" "worker_boltz")) }}
+
+---
 {{ include "foldy.createWorkerPool" (deepCopy . | merge (dict "RqQueueName" "emailparrot") | merge (dict "ImageName" "worker")) }}
 
 ---

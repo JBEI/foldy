@@ -75,6 +75,34 @@ services:
     restart: always
     entrypoint: /opt/conda/envs/worker/bin/python -m flask rq worker cpu esm
 
+  worker_boltz:
+    build:
+      context: .
+      dockerfile: worker/Dockerfile.boltz
+    platform: linux/amd64
+    depends_on:
+      - db
+      - redis
+    environment:
+      - FLASK_APP=rq_worker_main.py
+      - ENV=development
+      - DEBUG=True
+      - FRONTEND_URL=http://localhost:3000
+      - DATABASE_URL=postgresql+psycopg2://user:password@db:5432/postgres
+      - RQ_REDIS_URL=redis://redis:6379/0
+      - FOLDY_STORAGE_TYPE=Local
+      - FOLDY_LOCAL_STORAGE_DIR=/backend/src/integration_tests/testdata
+    networks:
+      - default
+    volumes:
+      - ./backend/src/rq_worker_main.py:/backend/src/rq_worker_main.py
+      - ./backend/src/app:/backend/src/app
+      - ./backend/src/integration_tests:/backend/src/integration_tests
+      - ./backend/src/migrations:/backend/src/migrations
+      - ./.boltz:/.boltz
+    restart: always
+    entrypoint: /opt/conda/envs/worker/bin/python -m flask rq worker boltz
+
   db:
     environment:
       POSTGRES_USER: user
