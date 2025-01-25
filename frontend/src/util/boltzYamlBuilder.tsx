@@ -24,6 +24,10 @@ interface BoltzFormModel {
         sequence?: string;
         smiles?: string;
         ccd?: string;
+        modifications?: Array<{
+            position: number;
+            ccd: string;
+        }>;
     }>;
 }
 
@@ -82,6 +86,25 @@ const simpleSchema = {
                     ccd: {
                         type: "string",
                         title: "CCD code (for ligand)",
+                    },
+                    modifications: {
+                        type: "array",
+                        title: "Modifications",
+                        items: {
+                            type: "object",
+                            required: ["position", "ccd"],
+                            properties: {
+                                position: {
+                                    type: "number",
+                                    title: "Position",
+                                    minimum: 1,
+                                },
+                                ccd: {
+                                    type: "string",
+                                    title: "CCD Code",
+                                },
+                            },
+                        },
                     },
                 },
             },
@@ -205,6 +228,7 @@ function fromBoltzObjectToModel(boltzObj: any): BoltzFormModel {
             sequence: data.sequence || "",
             smiles: data.smiles || "",
             ccd: data.ccd || "",
+            modifications: data.modifications || [],
         });
     });
 
@@ -228,6 +252,15 @@ function toBoltzYaml(model: BoltzFormModel): string {
                 .split(",")
                 .map((x) => x.trim())
                 .filter(Boolean);
+
+            const baseData: any = {
+                id: idArray,
+            };
+
+            // Add modifications if present and non-empty
+            if (seq.modifications?.length) {
+                baseData.modifications = seq.modifications;
+            }
 
             if (seq.entity_type === "ligand") {
                 const ligandData: any = {
@@ -274,20 +307,25 @@ function toBoltzYaml(model: BoltzFormModel): string {
 }
 
 /** 
- * A small helper that conditionally shows fields:
- *  - For 'protein': only show 'sequence'
- *  - For 'ligand':  only show 'smiles', 'ccd'
- *  - For 'dna'/'rna': show nothing extra
+ * A small helper that conditionally shows fields based on entity type
  */
 const EntityTypeConditionalFields = connectField((props: { value: BoltzFormModel['sequences'][number] }) => {
     if (!props.value) return null;
 
     const entityType = props.value.entity_type;
-    // const parent = useField([], {})[0]; // Get parent field context
-    // const index = parseInt((props.name || '').split('.')[1] || '0', 10);
 
     if (entityType === "protein" || entityType === "dna" || entityType === "rna") {
-        return <AutoField name="sequence" />;
+        return (
+            <>
+                <AutoField name="sequence" />
+                <ListField name="modifications">
+                    <ListItemField name="$">
+                        <AutoField name="position" />
+                        <AutoField name="ccd" />
+                    </ListItemField>
+                </ListField>
+            </>
+        );
     } else if (entityType === "ligand") {
         const hasSmiles = Boolean(props.value.smiles?.trim());
         const hasCcd = Boolean(props.value.ccd?.trim());
