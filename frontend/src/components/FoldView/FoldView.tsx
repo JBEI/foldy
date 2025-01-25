@@ -15,12 +15,10 @@ import UIkit from "uikit";
 import {
     deleteDock,
     getDockSdf,
-    getFold,
     getFoldPdb,
     getFoldPfam,
     getInvokation,
     queueJob,
-    updateFold,
 } from "../../services/backend.service";
 import { FoldyMascot } from "../../util/foldyMascot";
 import { VariousColorSchemes, getColorsForAnnotations } from "../../util/plots";
@@ -34,9 +32,10 @@ import * as NGL from 'ngl/dist/ngl.js';
 import fileDownload from "js-file-download";
 import EmbedTab from "./EmbedTab";
 import EvolveTab from "./EvolveTab";
-import { Annotations, FileInfo, Fold, FoldPdb, Invokation } from "src/types/types";
+import { Annotations, FileInfo, Fold, FoldPdb, Invokation } from "../../types/types";
 import { removeLeadingSlash } from "../../api/commonApi";
 import { getFile, getFileList } from "../../api/fileApi";
+import { getFold, updateFold } from "../../api/foldApi";
 
 const REFRESH_STATE_PERIOD = 5000;
 const REFRESH_STATE_MAX_ITERS = 200;
@@ -527,11 +526,13 @@ class InternalFoldView extends Component<FoldProps, FoldState> {
                             foldPublic={this.state.foldData?.public}
                             foldModelPreset={this.state.foldData?.af2_model_preset}
                             foldDisableRelaxation={this.state.foldData?.disable_relaxation}
+                            yaml_config={this.state.foldData.yaml_config}
                             sequence={this.state.foldData.sequence}
                             colorScheme={this.state.colorScheme}
                             setPublic={this.setPublic}
                             setDisableRelaxation={this.setDisableRelaxation}
                             setFoldName={this.setFoldName}
+                            setYamlConfig={this.setYamlConfig}
                             addTag={this.addTag}
                             deleteTag={this.deleteTag}
                             handleTagClick={this.handleTagClick}
@@ -821,8 +822,8 @@ class InternalFoldView extends Component<FoldProps, FoldState> {
 
     actionToStageName = [
         ["Rewrite fasta files", "write_fastas"],
-        ["Rerun PFAM Sequence Annotation", "annotate"],
-        ["Rerun whole pipeline", "both"],
+        ["Rerun Sequence Annotation", "annotate"],
+        ["Refold", "both"],
         ["AlphaFold2: Rerun MSA computation", "features"],
         ["AlphaFold2: Rerun Structure Prediction", "models"],
         ["AlphaFold2: Rerun Decompress Pickles job", "decompress_pkls"],
@@ -1052,6 +1053,17 @@ class InternalFoldView extends Component<FoldProps, FoldState> {
                         );
                     });
             });
+    };
+
+    setYamlConfig = async (yaml: string) => {
+        await updateFold(this.props.foldId, { yaml_config: yaml }).then(
+            () => {
+                this.refreshFoldDataFromBackend();
+            },
+            (e) => {
+                this.props.setErrorText(e);
+            }
+        );
     };
 
     addTag = (tagToAdd: string) => {

@@ -136,11 +136,15 @@ spec:
         volumes:
           - name: foldydbs
             persistentVolumeClaim:
-             claimName: foldydbs
+              claimName: foldydbs
+          - name: dshm
+            emptyDir:
+              medium: Memory
+              sizeLimit: 10Gi  
 
         nodeSelector:
           iam.gke.io/gke-metadata-server-enabled: "true"
-        {{- if or (or (or (eq .RqQueueName "gpu") (eq .RqQueueName "biggpu")) (eq .RqQueueName "esm")) (eq .RqQueueName "boltz")) }}
+        {{- if or (or (or (eq .RqQueueName "gpu") (eq .RqQueueName "biggpu")) (eq .RqQueueName "esm")) (eq .RqQueueName "boltz") }}
           cloud.google.com/gke-nodepool: spota100nodes
         {{- else if (eq .RqQueueName "cpu") }}
           cloud.google.com/gke-nodepool: spothighmemnodes
@@ -176,6 +180,8 @@ spec:
           volumeMounts:
           - mountPath: "/foldydbs"
             name: foldydbs
+          - mountPath: /dev/shm
+            name: dshm  # for example
           resources:
             {{- if eq .RqQueueName "emailparrot" }}
             requests:

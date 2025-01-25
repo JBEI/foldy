@@ -44,7 +44,9 @@ class User(PkModel):
     email = Column(db.String(80), unique=True, nullable=False)
     created_at = Column(db.DateTime, nullable=False, default=datetime.now(UTC))
     access_type = Column(db.String(80), nullable=True)
-    # fold = relationship("Fold", backref="user",lazy='dynamic')
+    attributes = Column(db.JSON, nullable=True, default=dict)  # Add this line
+
+    folds = relationship("Fold", back_populates="user")
 
     def __init__(self, email, access_type):
         """Create a new user."""
@@ -67,7 +69,7 @@ class Fold(PkModel):
 
     name = Column(db.String(80), unique=True, nullable=False)
     user_id = reference_col("users", nullable=True)
-    user = relationship("User", backref="folds")
+    user = relationship("User", back_populates="folds")
     tagstring = Column(db.String(80), nullable=True)
     create_date = Column("create_date", db.DateTime, default=func.now())
     public = Column(db.Boolean, nullable=True)
@@ -100,6 +102,10 @@ class Fold(PkModel):
         cascade="all,delete-orphan",
     )
 
+    # New, good, Boltz input.
+    yaml_config = Column(db.String, nullable=True)
+
+    # Old AF2 inputs.
     sequence = Column(db.Text)
     af2_model_preset = Column(db.String, nullable=True)
     disable_relaxation = Column(db.Boolean, nullable=True)

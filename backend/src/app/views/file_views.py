@@ -155,8 +155,13 @@ class FileDownloadResource(Resource):
         headers = {
             "Content-Disposition": f"attachment; filename={fname}",
             "Content-Type": "application/octet-stream",
+            "Content-Length": str(blob.size),  # Add content length if available
+            "Cache-Control": "no-cache",  # Prevent caching issues
         }
 
         return Response(
-            stream_with_context(generate()), headers=headers, direct_passthrough=True
+            stream_with_context(generate()),
+            headers=headers,
+            direct_passthrough=True,
+            # timeout=300,  # 5 minutes
         )

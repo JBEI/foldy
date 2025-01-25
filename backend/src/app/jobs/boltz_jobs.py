@@ -78,7 +78,7 @@ def run_boltz(fold_id, invokation_id):
 
         # Create a foldstoragemanager.
         padded_fold_id = "%06d" % fold_id
-        fasta_relative_path = f"{padded_fold_id}.fasta"
+        # fasta_relative_path = f"{padded_fold_id}.fasta"
 
         # Make a temporary directory for running Boltz.
         with TemporaryDirectory() as temp_dir:
@@ -87,12 +87,16 @@ def run_boltz(fold_id, invokation_id):
             # Download the fasta file to the temporary directory.
             fsm = FoldStorageManager()
             fsm.setup()
-            binary_fasta_str = fsm.storage_manager.get_binary(
-                fold_id, fasta_relative_path
-            )
-            fasta_file_path = Path(temp_dir) / fasta_relative_path
-            fasta_file_path.write_bytes(binary_fasta_str)
-            add_log(f'Fasta file contents: {binary_fasta_str.decode("utf-8")}')
+            # binary_fasta_str = fsm.storage_manager.get_binary(
+            #     fold_id, fasta_relative_path
+            # )
+            # fasta_file_path = Path(temp_dir) / fasta_relative_path
+            # fasta_file_path.write_bytes(binary_fasta_str)
+            yaml_file_str = fold.yaml_config
+            yaml_file_path = Path(temp_dir) / "input.yml"
+            yaml_file_path.write_text(yaml_file_str)
+            fsm.storage_manager.write_file(fold_id, "boltz_input.yaml", yaml_file_str)
+            add_log(f"YAML file contents: {yaml_file_str}")
 
             # Run Boltz.
             gpu_available = get_torch_cuda_is_available_and_add_logs(add_log)
@@ -100,14 +104,14 @@ def run_boltz(fold_id, invokation_id):
             boltz_command = [
                 "/opt/conda/envs/worker/bin/boltz",
                 "predict",
-                str(fasta_file_path),
+                str(yaml_file_path),
                 "--out_dir",
                 str(temp_dir),
                 "--use_msa_server",
                 "--accelerator",
                 accelerator,
                 "--cache",
-                "/.boltz",
+                "/hf-cache/",
             ]
             add_log(
                 f"Running boltz with command: {boltz_command}",

@@ -1,6 +1,15 @@
 import axiosInstance from '../services/axiosInstance';
 import { Fold, FoldInput } from '../types/types';
 import { authenticationService } from "../services/authentication.service";
+import { BoltzYamlHelper } from '../util/boltzYamlHelper';
+
+// Add this helper function
+function enhanceFoldWithYamlHelper(fold: Fold): Fold {
+    if (fold.yaml_config && !fold.yaml_helper) {
+        fold.yaml_helper = new BoltzYamlHelper(fold.yaml_config);
+    }
+    return fold;
+}
 
 export const getFolds = async (
     filter: string | null,
@@ -14,15 +23,13 @@ export const getFolds = async (
     if (page !== null) params.page = page;
     if (per_page !== null) params.per_page = per_page;
 
-    console.log(`In getFolds, jwt string: ${authenticationService.currentJwtStringValue}`);
-
     const response = await axiosInstance.get<Fold[]>('/api/fold', { params });
-    return response.data;
+    return response.data.map(enhanceFoldWithYamlHelper);
 };
 
 export const getFold = async (foldId: number): Promise<Fold> => {
-    const response = await axiosInstance.get<Fold>(`/api/fold/${foldId}`);
-    return response.data;
+    const response = await axiosInstance.get<Fold>(`/api/fold/${foldId}`).then((res) => enhanceFoldWithYamlHelper(res.data));
+    return response;
 };
 
 export const postFolds = async (

@@ -4,6 +4,7 @@ import os
 from flask import Flask, jsonify
 from flask.helpers import make_response
 from flask_admin.contrib.sqla import ModelView
+from flask_admin.form.fields import JSONField
 from flask_jwt_extended.view_decorators import (
     jwt_required,
     verify_jwt_in_request,
@@ -51,8 +52,7 @@ def register_extensions(app):
             return user_jwt_grants_edit_access(get_jwt()["user_claims"])
 
     class UserModelView(VerifiedModelView):
-        column_list = ["email", "created_at", "access_type", "num_folds"]
-        # column_editable_list = ["email", "created_at", "access_type"]
+        column_list = ["email", "created_at", "access_type", "num_folds", "attributes"]
         column_editable_list = ["created_at", "access_type"]
         column_sortable_list = ["email", "created_at", "access_type"]
         column_searchable_list = ["email", "access_type"]

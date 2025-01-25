@@ -1,8 +1,8 @@
 // backend.service.tsx
 
-import axios, { AxiosResponse } from 'axios';
+import axios from 'axios';
 import { authHeader, jsonBodyAuthHeader } from "../util/authHeader";
-import { Annotations, DockInput, FileInfo, Fold, FoldContactProb, FoldInput, FoldPae, FoldPdb, Invokation } from 'src/types/types';
+import { Annotations, DockInput, Fold, FoldContactProb, FoldPae, FoldPdb, Invokation } from 'src/types/types';
 
 // ----- Axios instance setup -----
 const api = axios.create({
@@ -98,53 +98,6 @@ export const foldIsFinished = (fold: Fold) => {
 };
 
 // ----- API functions -----
-
-// Example of a GET request returning JSON
-export function getTestValue(): Promise<any> {
-    return api
-        .get('/api/test', { headers: authHeader() })
-        .then((res) => res.data)
-        .catch(handleAxiosError);
-}
-
-
-export function postFolds(
-    newFolds: FoldInput[],
-    startFoldJob: boolean,
-    emailOnCompletion: boolean,
-    skipDuplicateEntries: boolean
-): Promise<any> {
-    return api
-        .post(
-            '/api/fold',
-            {
-                folds_data: newFolds,
-                start_fold_job: startFoldJob,
-                email_on_completion: emailOnCompletion,
-                skip_duplicate_entries: skipDuplicateEntries,
-            },
-            { headers: jsonBodyAuthHeader() }
-        )
-        .then((res) => res.data)
-        .catch(handleAxiosError);
-}
-
-export function getFold(foldId: number): Promise<Fold> {
-    return api
-        .get(`/api/fold/${foldId}`, { headers: authHeader() })
-        .then((res) => res.data)
-        .catch(handleAxiosError);
-}
-
-export function updateFold(
-    foldId: number,
-    fieldsToUpdate: Partial<Fold>
-): Promise<boolean> {
-    return api
-        .post(`/api/fold/${foldId}`, fieldsToUpdate, { headers: jsonBodyAuthHeader() })
-        .then((res) => res.data)
-        .catch(handleAxiosError);
-}
 
 export function getInvokation(invokation_id: number): Promise<Invokation> {
     return api

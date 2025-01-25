@@ -2,8 +2,8 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { EditableTagList } from "../../util/editableTagList";
 import UIkit from "uikit";
-import { postFolds } from "../../services/backend.service";
 import { FoldInput } from "../../types/types";
+import { postFolds } from "../../api/foldApi";
 
 const VALID_AMINO_ACIDS = [
     "A",
@@ -120,15 +120,18 @@ function NewFold(props: {
         const newFold = {
             name: name,
             sequence: sequence,
+            yaml_config,
             tags: tags,
             af2_model_preset: model,
             disable_relaxation: disableRelaxation,
         };
         postFolds(
             [newFold],
-            startFoldJob,
-            emailOnCompletion,
-            skipDuplicateEntries
+            {
+                startFoldJob,
+                emailOnCompletion,
+                skipDuplicateEntries
+            }
         ).then(
             (e) => {
                 setIsActivelySubmitting(false);

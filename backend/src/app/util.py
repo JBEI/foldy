@@ -29,19 +29,6 @@ from app.helpers.fold_storage_manager import FoldStorageManager
 from app.helpers.sequence_util import back_translate, validate_aa_sequence
 
 
-def get_gpu_queue_name(sequence: str) -> str:
-    """Choose a GPU name.
-
-    Inputs:
-      sequence: string of amino acids
-
-    Returns: tuple of (queue to use for fold, number of retries)
-    """
-    if len(sequence) > 900:
-        return ("biggpu", 1)
-    return ("gpu", 3)
-
-
 def get_job_type_replacement(fold: Fold, job_type: str):
     for job in fold.jobs:
         if job.type == job_type:
@@ -77,8 +64,7 @@ def start_stage(fold_id: int, stage, email_on_completion):
         email_dependent_jobs = [features_job]
 
     elif stage == "models":
-        (gpu_q_name, num_retries) = get_gpu_queue_name(fold.sequence)
-        gpu_q = rq.get_queue(gpu_q_name)
+        gpu_q = rq.get_queue("biggpu")
         emailparrot_q = rq.get_queue("emailparrot")
         models_job = gpu_q.enqueue(
             other_jobs.run_models,
@@ -86,7 +72,7 @@ def start_stage(fold_id: int, stage, email_on_completion):
             get_job_type_replacement(fold, "models"),
             job_timeout="12h",
             result_ttl=48 * 60 * 60,  # 2 days,
-            retry=Retry(max=num_retries),
+            retry=Retry(max=3),
         )
         email_dependent_jobs = [models_job]
 
@@ -115,7 +101,7 @@ def start_stage(fold_id: int, stage, email_on_completion):
     elif stage == "write_fastas":
         fsu = FoldStorageManager()
         fsu.setup()
-        fsu.write_fastas(fold_id, fold.sequence)
+        fsu.write_fastas(fold_id, fold.yaml_config)
         email_dependent_jobs = []
 
     elif stage == "email":
@@ -123,8 +109,7 @@ def start_stage(fold_id: int, stage, email_on_completion):
 
     elif stage == "both":
         cpu_q = rq.get_queue("cpu")
-        (gpu_q_name, num_retries) = get_gpu_queue_name(fold.sequence)
-        gpu_q = rq.get_queue(gpu_q_name)
+        gpu_q = rq.get_queue("biggpu")
         boltz_q = rq.get_queue("boltz")
 
         fold_jobs = []
@@ -152,7 +137,7 @@ def start_stage(fold_id: int, stage, email_on_completion):
                 job_timeout="12h",
                 result_ttl=48 * 60 * 60,  # 2 days
                 depends_on=[features_job],
-                retry=Retry(max=num_retries),
+                retry=Retry(max=3),
             )
             decompress_pkls_job = cpu_q.enqueue(
                 other_jobs.decompress_pkls,
@@ -222,11 +207,15 @@ def make_new_folds(
                         )
 
             tagstring = ",".join([t.strip() for t in fold_data.get("tags", [])])
-            af2_model_preset = fold_data.get("af2_model_preset", None) or "monomer_ptm"
 
-            validate_aa_sequence(
-                fold_data["name"], fold_data["sequence"], af2_model_preset
-            )
+            # New Boltz input.
+            yaml_config = fold_data.get("yaml_config")
+
+            # Old AF2 handling.
+            af2_model_preset = fold_data.get("af2_model_preset", None) or "monomer_ptm"
+            # validate_aa_sequence(
+            #     fold_data["name"], fold_data["sequence"], af2_model_preset
+            # )
 
             existing_entry = (
                 db.session.query(Fold).filter(Fold.name == fold_data["name"]).first()
@@ -250,6 +239,7 @@ def make_new_folds(
                 user_id=user.id,
                 tagstring=tagstring,
                 sequence=fold_data["sequence"],
+                yaml_config=yaml_config,
                 af2_model_preset=af2_model_preset,
                 disable_relaxation=fold_data["disable_relaxation"],
             )
@@ -266,7 +256,7 @@ def make_new_folds(
 
     for model in new_fold_models:
         try:
-            fsm.write_fastas(model.id, model.sequence)
+            fsm.write_fastas(model.id, model.yaml_config)
         except Exception as e:  # TODO: make this exception more specific.
             print(
                 f"Bad news, a gcloud write failed for model {model.id}. "

@@ -1,7 +1,14 @@
+import { BoltzYamlHelper } from "../util/boltzYamlHelper";
+
 export interface FoldInput {
     name: string;
     tags: string[];
-    sequence: string;
+
+    yaml_config: string | null;
+    yaml_helper: BoltzYamlHelper | null;
+
+    // Old inputs.
+    sequence: string | null;
     af2_model_preset: string | null;
     disable_relaxation: boolean | null;
 }

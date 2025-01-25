@@ -15,7 +15,10 @@ import { GoogleOAuthProvider } from "@react-oauth/google";
 import UIkit from "uikit";
 import About from "./components/AboutView/About";
 import DashboardView from "./components/DashboardView";
-import NewFold from "./components/NewFoldView/NewFold";
+import NewBoltzFoldView from "./components/NewFoldView/NewBoltzFoldView";
+// import NewFold from "./components/NewFoldView/NewFold2Uniforms";
+// import NewFold from "./components/NewFoldView/NewFoldView";
+// import NewFold from "./components/NewFoldView/NewFold";
 import SudoPage from "./components/SudoPageView/SudoPage";
 import {
     authenticationService,
@@ -310,7 +313,7 @@ function RoutedApp({ token, setToken }: {
                     <Route
                         path="/newFold"
                         element={
-                            <NewFold
+                            <NewBoltzFoldView
                                 setErrorText={setErrorText}
                                 userType={
                                     fullDecodedToken ? fullDecodedToken.user_claims.type : null

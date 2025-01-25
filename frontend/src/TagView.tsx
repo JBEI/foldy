@@ -4,16 +4,14 @@ import { CSVLink } from "react-csv";
 import { useParams } from "react-router-dom";
 import UIkit from "uikit";
 import {
-    Dock,
-    Fold,
     getFoldFileZip,
     getJobStatus,
     queueJob,
-    updateFold,
 } from "./services/backend.service";
 import { makeFoldTable } from "./util/foldTable";
 import { NewDockPrompt } from "./util/newDockPrompt";
-import { getFolds } from "./api/foldApi";
+import { getFolds, updateFold } from "./api/foldApi";
+import { Dock, Fold } from "./types/types";
 
 function TagView(props: { setErrorText: (a: string) => void }) {
     let { tagStringParam } = useParams();
@@ -113,7 +111,7 @@ function TagView(props: { setErrorText: (a: string) => void }) {
             delete copy["docks"];
             delete copy["jobs"];
             if (fold.docks) {
-                fold.docks.forEach((dock) => {
+                fold.docks.forEach((dock: Dock) => {
                     copy[`dock_${dock.ligand_name}_smiles`] = dock.ligand_smiles;
                     const energy = dock.pose_energy === null ? NaN : dock.pose_energy;
                     copy[`dock_${dock.ligand_name}_dg`] = energy;
@@ -309,7 +307,7 @@ function TagView(props: { setErrorText: (a: string) => void }) {
                         foldIds={folds.map((fold) => fold.id ?? -1)}
                         existingLigands={{
                             ...(folds.reduce((acc, fold) => {
-                                acc[fold.id] = fold.docks?.map((dock) => dock.ligand_name) || [];
+                                acc[fold.id] = fold.docks?.map((dock: Dock) => dock.ligand_name) || [];
                                 return acc;
                             }, {} as Record<number, string[]>)),
                         }}

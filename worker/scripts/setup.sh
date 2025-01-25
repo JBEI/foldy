@@ -17,10 +17,9 @@ bash /tmp/miniconda.sh -b -p /opt/conda
 rm /tmp/miniconda.sh
 /opt/conda/bin/conda init bash
 
-# Add Conda to PATH.
-export PATH="/opt/conda/bin:$PATH"
-
 # Install backend requirements.
-conda create -y -n worker python=3.12
-conda install -y -n worker cudatoolkit=11.8 pytorch-cuda=12.1 pytorch torchvision torchaudio -c pytorch -c nvidia -c conda-forge
-conda clean -a -y
+/opt/conda/bin/conda create -y -n worker python=3.12
+/opt/conda/bin/conda install -y -n worker cudatoolkit=11.8 pytorch-cuda=12.1 pytorch torchvision torchaudio -c pytorch -c nvidia -c conda-forge
+/opt/conda/bin/conda clean -a -y
+
+/opt/conda/envs/worker/bin/pip install --no-cache-dir -r /backend/requirements.txt

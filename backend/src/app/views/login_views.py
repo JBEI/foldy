@@ -120,7 +120,12 @@ class AuthorizeResource(Resource):
             identity=email,
             fresh=True,
             additional_claims={
-                "user_claims": {"name": name, "email": email, "type": user.access_type}
+                "user_claims": {
+                    "name": name,
+                    "email": email,
+                    "type": user.access_type,
+                    "attributes": user.attributes or {},  # Add this line
+                }
             },
         )
 

@@ -24,6 +24,7 @@ def get_normsize_gauge(queue_name):
 
 size_cpu_g = get_size_gauge("cpu")
 size_esm_g = get_size_gauge("esm")
+size_boltz_g = get_size_gauge("boltz")
 size_gpu_g = get_size_gauge("gpu")
 size_biggpu_g = get_size_gauge("biggpu")
 size_emailparrot_g = get_size_gauge("emailparrot")
@@ -31,6 +32,7 @@ size_failed_g = get_size_gauge("failed")
 
 normsize_cpu_g = get_normsize_gauge("cpu")
 normsize_esm_g = get_normsize_gauge("esm")
+normsize_boltz_g = get_normsize_gauge("boltz")
 normsize_gpu_g = get_normsize_gauge("gpu")
 normsize_biggpu_g = get_normsize_gauge("biggpu")
 normsize_emailparrot_g = get_normsize_gauge("emailparrot")

@@ -1,13 +1,15 @@
 import re
 import random
 from collections import defaultdict
-from dnachisel import biotools
 from re import fullmatch
+import json
 
+from dnachisel import biotools
+import numpy as np
+import pandas as pd
+from sklearn.ensemble import RandomForestRegressor
 from werkzeug.exceptions import BadRequest
 
-
-import numpy as np
 
 VALID_AMINO_ACIDS = "ACDEFGHIKLMNPQRSTVWY"
 # We are tolerant of selenocysteine and other non-standard amino acids.
@@ -242,6 +244,101 @@ def get_measured_and_unmeasured_mutant_seq_ids(activity_df, embedding_df):
     measured_mutants = list(activity_mutants.intersection(embedding_mutants))
     unmeasured_mutants = list(embedding_mutants - activity_mutants)
     return measured_mutants, unmeasured_mutants
+
+
+def train_and_predict_activities(
+    activity_df: pd.DataFrame,
+    embedding_df: pd.DataFrame,
+) -> tuple[list, list, RandomForestRegressor, pd.DataFrame]:
+    """Train a Random Forest model on measured mutants and predict activities for all mutants.
+
+    Args:
+        activity_df: DataFrame containing measured activities with mutant seq_ids as index
+        embedding_df: DataFrame containing embeddings for all mutants (measured + unmeasured)
+
+    Returns:
+        Tuple containing:
+        - measured_mutants: list of measured mutant seq_ids
+        - unmeasured_mutants: list of unmeasured mutant seq_ids
+        - model: trained RandomForestRegressor model
+        - predicted_activity_df: DataFrame containing predictions for all mutants with columns:
+          * seq_id: mutant identifier
+          * predicted_activity: model predictions
+          * relevant_measured_mutants: space-separated list of measured mutants sharing loci
+          * actual_activity: measured activity (if available)
+    """
+    # Get measured and unmeasured mutant sets
+    measured_mutants, unmeasured_mutants = get_measured_and_unmeasured_mutant_seq_ids(
+        activity_df, embedding_df
+    )
+
+    # Prepare training data
+    X_train = np.vstack(
+        [json.loads(x) for x in embedding_df.loc[activity_df.index].embedding]
+    )
+    y_train = activity_df.activity.to_numpy()
+
+    model = RandomForestRegressor(
+        n_estimators=100,
+        criterion="friedman_mse",
+        max_depth=None,
+        min_samples_split=2,
+        min_samples_leaf=1,
+        min_weight_fraction_leaf=0.0,
+        max_features=1.0,
+        max_leaf_nodes=None,
+        min_impurity_decrease=0.0,
+        bootstrap=True,
+        oob_score=False,
+        n_jobs=None,
+        random_state=1,
+        verbose=0,
+        warm_start=False,
+        ccp_alpha=0.0,
+        max_samples=None,
+    )
+    model.fit(X_train, y_train)
+
+    # Prepare prediction data for all mutants
+    all_mutants_embedding_array = np.vstack(
+        [
+            json.loads(x)
+            for x in embedding_df.loc[measured_mutants + unmeasured_mutants].embedding
+        ]
+    )
+
+    # Make predictions
+    y_all_pred = model.predict(all_mutants_embedding_array)
+
+    # Create results DataFrame
+    predicted_activity_df = pd.DataFrame(
+        {
+            "seq_id": measured_mutants + unmeasured_mutants,
+            "predicted_activity": y_all_pred,
+        }
+    )
+    predicted_activity_df.index = predicted_activity_df.seq_id
+
+    # Add relevant measured mutants
+    predicted_activity_df["relevant_measured_mutants"] = (
+        predicted_activity_df.seq_id.apply(
+            lambda seq_id: " ".join(
+                [m for m in measured_mutants if get_loci_set(m) & get_loci_set(seq_id)]
+            )
+        )
+    )
+
+    # Add actual activities where available
+    predicted_activity_df["actual_activity"] = predicted_activity_df.join(
+        activity_df.groupby(level=0).activity.mean(), how="left"
+    ).activity
+
+    return (
+        measured_mutants,
+        unmeasured_mutants,
+        model,
+        predicted_activity_df.sort_values("predicted_activity", ascending=False),
+    )
 
 
 def get_cross_validation_holdout_sets(

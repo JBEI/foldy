@@ -33,7 +33,8 @@ fastapi
 flametree
 Flask
 Flask==2.3.3
-Flask-Admin
+# Flask-Admin>=1.6.1,<2.0.0
+flask-admin==v2.0.0a3
 Flask-Compress
 Flask-Cors
 Flask-JWT-Extended
@@ -127,5 +128,5 @@ websocket-client
 WebTest
 Werkzeug
 wrapt
-WTForms
+WTForms>=3.0.0,<4.0.0
 zipp

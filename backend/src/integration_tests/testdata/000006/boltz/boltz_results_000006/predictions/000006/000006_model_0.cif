@@ -1,0 +1,188 @@
+data_model
+_entry.id model
+_struct.entry_id model
+_struct.pdbx_model_details .
+_struct.pdbx_structure_determination_methodology computational
+_struct.title .
+_audit_conform.dict_location https://raw.githubusercontent.com/ihmwg/ModelCIF/d18ba38/base/mmcif_ma-core.dic
+_audit_conform.dict_name mmcif_ma.dic
+_audit_conform.dict_version 1.4.6
+#
+loop_
+_chem_comp.id
+_chem_comp.type
+_chem_comp.name
+_chem_comp.formula
+_chem_comp.formula_weight
+_chem_comp.ma_provenance
+GLY 'L-peptide linking' . . . 'CCD Core'
+#
+#
+loop_
+_entity.id
+_entity.type
+_entity.src_method
+_entity.pdbx_description
+_entity.formula_weight
+_entity.pdbx_number_of_molecules
+_entity.details
+1 polymer man . . 1 .
+#
+#
+loop_
+_entity_poly.entity_id
+_entity_poly.type
+_entity_poly.nstd_linkage
+_entity_poly.nstd_monomer
+_entity_poly.pdbx_strand_id
+_entity_poly.pdbx_seq_one_letter_code
+_entity_poly.pdbx_seq_one_letter_code_can
+1 polypeptide(L) no no A (GLY)(GLY)(GLY)(GLY)(GLY) XXXXX
+#
+#
+loop_
+_entity_poly_seq.entity_id
+_entity_poly_seq.num
+_entity_poly_seq.mon_id
+_entity_poly_seq.hetero
+1 1 GLY .
+1 2 GLY .
+1 3 GLY .
+1 4 GLY .
+1 5 GLY .
+#
+#
+loop_
+_struct_asym.id
+_struct_asym.entity_id
+_struct_asym.details
+A 1 'Model subunit A'
+#
+#
+loop_
+_pdbx_poly_seq_scheme.asym_id
+_pdbx_poly_seq_scheme.entity_id
+_pdbx_poly_seq_scheme.seq_id
+_pdbx_poly_seq_scheme.mon_id
+_pdbx_poly_seq_scheme.pdb_seq_num
+_pdbx_poly_seq_scheme.auth_seq_num
+_pdbx_poly_seq_scheme.pdb_mon_id
+_pdbx_poly_seq_scheme.auth_mon_id
+_pdbx_poly_seq_scheme.pdb_strand_id
+_pdbx_poly_seq_scheme.pdb_ins_code
+A 1 1 GLY 1 1 GLY GLY A .
+A 1 2 GLY 2 2 GLY GLY A .
+A 1 3 GLY 3 3 GLY GLY A .
+A 1 4 GLY 4 4 GLY GLY A .
+A 1 5 GLY 5 5 GLY GLY A .
+#
+#
+loop_
+_ma_data.id
+_ma_data.name
+_ma_data.content_type
+_ma_data.content_type_other_details
+1 . target .
+2 Model 'model coordinates' .
+#
+#
+loop_
+_ma_target_entity.entity_id
+_ma_target_entity.data_id
+_ma_target_entity.origin
+1 1 designed
+#
+#
+loop_
+_ma_target_entity_instance.asym_id
+_ma_target_entity_instance.entity_id
+_ma_target_entity_instance.details
+A 1 'Model subunit A'
+#
+#
+loop_
+_ma_model_list.ordinal_id
+_ma_model_list.model_id
+_ma_model_list.model_group_id
+_ma_model_list.model_name
+_ma_model_list.model_group_name
+_ma_model_list.data_id
+_ma_model_list.model_type
+_ma_model_list.model_type_other_details
+1 1 1 Model 'All models' 2 'Ab initio model' .
+#
+#
+loop_
+_atom_site.group_PDB
+_atom_site.id
+_atom_site.type_symbol
+_atom_site.label_atom_id
+_atom_site.label_alt_id
+_atom_site.label_comp_id
+_atom_site.label_seq_id
+_atom_site.auth_seq_id
+_atom_site.pdbx_PDB_ins_code
+_atom_site.label_asym_id
+_atom_site.Cartn_x
+_atom_site.Cartn_y
+_atom_site.Cartn_z
+_atom_site.occupancy
+_atom_site.label_entity_id
+_atom_site.auth_asym_id
+_atom_site.auth_comp_id
+_atom_site.B_iso_or_equiv
+_atom_site.pdbx_PDB_model_num
+ATOM 1 N N . GLY 1 1 ? A -4.76970 -2.75954 7.36730 1 1 A GLY 95.710 1
+ATOM 2 C CA . GLY 1 1 ? A -4.41779 -3.07297 6.11780 1 1 A GLY 95.710 1
+ATOM 3 C C . GLY 1 1 ? A -3.64245 -2.26185 5.20460 1 1 A GLY 95.710 1
+ATOM 4 O O . GLY 1 1 ? A -3.28906 -1.18709 5.41451 1 1 A GLY 95.710 1
+ATOM 5 N N . GLY 2 2 ? A -3.30067 -2.55857 4.19785 1 1 A GLY 95.130 1
+ATOM 6 C CA . GLY 2 2 ? A -2.46082 -1.99631 3.24178 1 1 A GLY 95.130 1
+ATOM 7 C C . GLY 2 2 ? A -2.41831 -2.36048 1.84150 1 1 A GLY 95.130 1
+ATOM 8 O O . GLY 2 2 ? A -2.94432 -3.30095 1.45532 1 1 A GLY 95.130 1
+ATOM 9 N N . GLY 3 3 ? A -1.86334 -1.86052 0.86153 1 1 A GLY 95.500 1
+ATOM 10 C CA . GLY 3 3 ? A -1.68400 -2.15058 -0.50310 1 1 A GLY 95.500 1
+ATOM 11 C C . GLY 3 3 ? A -0.83588 -1.28948 -1.35793 1 1 A GLY 95.500 1
+ATOM 12 O O . GLY 3 3 ? A -0.45369 -0.25180 -1.00283 1 1 A GLY 95.500 1
+ATOM 13 N N . GLY 4 4 ? A -0.44301 -1.47841 -2.52329 1 1 A GLY 95.900 1
+ATOM 14 C CA . GLY 4 4 ? A 0.46819 -0.79699 -3.39206 1 1 A GLY 95.900 1
+ATOM 15 C C . GLY 4 4 ? A 0.61993 -1.21371 -4.77873 1 1 A GLY 95.900 1
+ATOM 16 O O . GLY 4 4 ? A 0.32915 -2.25499 -5.14518 1 1 A GLY 95.900 1
+ATOM 17 N N . GLY 5 5 ? A 1.08117 -0.56918 -5.56417 1 1 A GLY 93.730 1
+ATOM 18 C CA . GLY 5 5 ? A 1.33546 -0.74233 -6.86235 1 1 A GLY 93.730 1
+ATOM 19 C C . GLY 5 5 ? A 1.86666 -0.08702 -7.91730 1 1 A GLY 93.730 1
+ATOM 20 O O . GLY 5 5 ? A 2.48556 0.73683 -8.24638 1 1 A GLY 93.730 1
+#
+#
+loop_
+_atom_type.symbol
+C
+N
+O
+#
+#
+loop_
+_ma_qa_metric.id
+_ma_qa_metric.name
+_ma_qa_metric.description
+_ma_qa_metric.type
+_ma_qa_metric.mode
+_ma_qa_metric.type_other_details
+_ma_qa_metric.software_group_id
+1 pLDDT 'Predicted lddt' pLDDT local . .
+#
+#
+loop_
+_ma_qa_metric_local.ordinal_id
+_ma_qa_metric_local.model_id
+_ma_qa_metric_local.label_asym_id
+_ma_qa_metric_local.label_seq_id
+_ma_qa_metric_local.label_comp_id
+_ma_qa_metric_local.metric_id
+_ma_qa_metric_local.metric_value
+1 1 A 1 GLY 1 0.957
+2 1 A 2 GLY 1 0.951
+3 1 A 3 GLY 1 0.955
+4 1 A 4 GLY 1 0.959
+5 1 A 5 GLY 1 0.937
+#

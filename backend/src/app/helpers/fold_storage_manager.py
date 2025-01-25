@@ -25,6 +25,7 @@ from pathlib import Path, PurePosixPath
 from app.models import Dock, Fold, Invokation, User
 from app.extensions import compress, db, rq
 from app.helpers.sequence_util import back_translate
+from app.helpers.boltz_yaml_helper import BoltzYamlHelper
 
 
 class StorageAccessor:
@@ -77,6 +78,15 @@ class LocalBlob:
             bool: True if the file exists, False otherwise.
         """
         return os.path.exists(self.file_path)
+
+    def size(self):
+        """
+        Returns the size of the file in bytes.
+
+        Returns:
+            int: Size of the file in bytes.
+        """
+        return os.path.getsize(self.file_path)
 
 
 class LocalStorageAccessor(StorageAccessor):
@@ -309,6 +319,8 @@ class GcloudStorageAccessor(StorageAccessor):
         padded_fold_id = f"{fold_id:06d}"
         local_absolute_folder_path = Path(local_absolute_folder_path)
 
+        bucket = self.client.bucket(self.bucket_name)
+
         for root, _, files in os.walk(local_absolute_folder_path):
             for file in files:
                 local_file_path = os.path.join(root, file)
@@ -323,9 +335,9 @@ class GcloudStorageAccessor(StorageAccessor):
                         f"{padded_fold_id}/{relative_folder_path}/{relative_file_path}"
                     )
 
-                print(f"Uploaded {local_path} to {gcloud_path}", flush=True)
+                print(f"Uploaded {local_file_path} to {gcloud_path}", flush=True)
                 blob = bucket.blob(gcloud_path)
-                blob.upload_from_filename(local_path)
+                blob.upload_from_filename(local_file_path)
 
 
 class FoldStorageManager:
@@ -397,6 +409,7 @@ class FoldStorageManager:
                     or_(
                         Fold.name.ilike(formatted_term),
                         Fold.sequence.ilike(formatted_term),
+                        Fold.yaml_config.ilike(formatted_term),
                         User.email.ilike(formatted_term),
                         Fold.tagstring.op("~")(get_tag_regex(term)),
                     )
@@ -424,23 +437,35 @@ class FoldStorageManager:
             folds.append(fold)
         return folds
 
-    def write_fastas(self, id, sequence):
+    def write_fastas(self, id, yaml_config_str):
         """Raises an exception if writing fails."""
+        config = BoltzYamlHelper(yaml_config_str)
+
         padded_fold_id = "%06d" % id
         aa_blob_path = f"{padded_fold_id}.fasta"
         dna_blob_path = f"{padded_fold_id}_dna.fasta"
 
-        if ":" in sequence or ";" in sequence:
-            monomers = [m.split(":") for m in sequence.split(";")]
-            aa_fasta_entries = [f"> {m[0]}|protein\n{m[1]}" for m in monomers]
-            aa_contents = "\n\n".join(aa_fasta_entries)
+        aa_fasta_entries = [
+            f"> {id}\n{aa_seq}" for id, aa_seq in config.get_protein_sequences()
+        ]
+        aa_contents = "\n\n".join(aa_fasta_entries)
+        dna_fasta_entries = [
+            f"> {id}\n{back_translate(aa_seq)}"
+            for id, aa_seq in config.get_protein_sequences()
+        ]
+        dna_contents = "\n\n".join(dna_fasta_entries)
 
-            dna_contents = "\n\n".join(
-                [f"> {m[0]}\n{back_translate(m[1])}" for m in monomers]
-            )
-        else:
-            aa_contents = f"> {padded_fold_id}\n{sequence}"
-            dna_contents = f"> {padded_fold_id}\n{back_translate(sequence)}"
+        # if ":" in sequence or ";" in sequence:
+        #     monomers = [m.split(":") for m in sequence.split(";")]
+        #     aa_fasta_entries = [f"> {m[0]}|protein\n{m[1]}" for m in monomers]
+        #     aa_contents = "\n\n".join(aa_fasta_entries)
+
+        #     dna_contents = "\n\n".join(
+        #         [f"> {m[0]}\n{back_translate(m[1])}" for m in monomers]
+        #     )
+        # else:
+        #     aa_contents = f"> {padded_fold_id}\n{sequence}"
+        #     dna_contents = f"> {padded_fold_id}\n{back_translate(sequence)}"
 
         self.storage_manager.write_file(id, aa_blob_path, aa_contents)
         self.storage_manager.write_file(id, dna_blob_path, dna_contents)

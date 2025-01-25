@@ -30,9 +30,19 @@ def try_run_job_with_logging(f, invokation):
     start_time = time.time()
     logs = []
 
+    def sanitize_log(log_str):
+        """Remove or replace problematic characters from log strings."""
+        # Remove NUL characters
+        sanitized = log_str.replace("\x00", "")
+
+        # Optionally replace other problematic characters
+        sanitized = "".join(char if ord(char) >= 32 else " " for char in sanitized)
+
+        return sanitized
+
     def add_log(msg, tail_function=_live_update_tail, **kwargs):
         timestamp = datetime.now(UTC).isoformat(sep=" ", timespec="milliseconds")
-        timestamped_msg = f"{timestamp} - {msg}"
+        timestamped_msg = f"{timestamp} - {sanitize_log(msg)}"
         logs.append(timestamped_msg)
         print(timestamped_msg)
         invokation.update(

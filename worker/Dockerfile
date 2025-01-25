@@ -1,43 +1,45 @@
 FROM nvidia/cuda:12.2.0-devel-ubuntu20.04
 
-WORKDIR /
+COPY backend/requirements.txt /backend/
+COPY worker/scripts/setup.sh /scripts/setup.sh
+RUN /scripts/setup.sh
 
-# Set the environment variable for non-interactive installation
-ENV DEBIAN_FRONTEND=noninteractive
 
-# Preconfigure the time zone to avoid interactive prompts
-RUN ln -fs /usr/share/zoneinfo/Etc/UTC /etc/localtime && \
-    echo "Etc/UTC" > /etc/timezone
-
-# Install basic utilities and dependencies.
-RUN apt-get -y update && \
-  apt-get -y install tree vim curl wget bzip2 git aria2 rsync && \
-  rm -rf /var/lib/apt/lists/*
-
-# Install Miniconda.
-RUN wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O /tmp/miniconda.sh && \
-    bash /tmp/miniconda.sh -b -p /opt/conda && \
-    rm /tmp/miniconda.sh && \
-    /opt/conda/bin/conda init bash
-
-# Add Conda to PATH.
 ENV PATH="/opt/conda/bin:$PATH"
 
-# Install backend requirements.
-RUN conda create -y -n worker python=3.12
-RUN conda install -y -n worker cudatoolkit=11.8 pytorch-cuda=12.1 pytorch torchvision torchaudio -c pytorch -c nvidia -c conda-forge \ 
-    && conda clean -a -y
-    
-COPY backend/requirements.txt /backend/
-RUN /opt/conda/envs/worker/bin/pip install --no-cache-dir -r /backend/requirements.txt
+# Note that we are using an old version of google cloud CLI...
+RUN conda install -y python=3.9
+
+# RUN rm /etc/apt/sources.list.d/cuda.list
+# RUN apt-key del 7fa2af80
+# RUN apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/7fa2af80.pub
+# Install curl for this script, and aria2 and rsync for AF DB downloading.
+RUN curl -O https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-cli-401.0.0-linux-x86_64.tar.gz && \
+  tar -xf google-cloud-cli-401.0.0-linux-x86_64.tar.gz && \
+  ./google-cloud-sdk/install.sh -q && \
+  . /google-cloud-sdk/path.bash.inc
+
+RUN mkdir -p /backend && mkdir -p /worker/docking
+
 
 # Install autodockVINA requirements.
 WORKDIR /worker/docking
 COPY worker/docking/requirements.txt ./
-RUN conda create -y -n dock python=3.12 conda
-RUN /opt/conda/envs/dock/bin/conda install -y -c conda-forge openbabel numpy tqdm seaborn vina biopython && \
-  /opt/conda/envs/dock/bin/conda clean -afy
-# RUN /opt/conda/envs/dock/bin/pip install --no-input --no-cache-dir -r requirements.txt
+
+# Combine conda operations into a single RUN command to reduce layers
+# Use mamba instead of conda for faster resolution
+# Pin specific versions to avoid resolution issues
+RUN conda install -n base -c conda-forge mamba && \
+    mamba create -n dock python=3.7 && \
+    mamba install -n dock -c conda-forge -c defaults \
+        openbabel=3.1.1 \
+        numpy=1.21 \
+        tqdm \
+        seaborn \
+        vina \
+        biopython && \
+    mamba clean -afy && \
+    conda clean -afy
 RUN wget https://ccsb.scripps.edu/adfr/download/1038/ADFRsuite_x86_64Linux_1.0.tar.gz
 RUN tar zxvf ADFRsuite_x86_64Linux_1.0.tar.gz && \
   cd ADFRsuite_x86_64Linux_1.0 && \

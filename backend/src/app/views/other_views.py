@@ -117,13 +117,15 @@ fold_fields = ns.model(
         "tags": fields.List(fields.String()),
         "create_date": fields.DateTime(readonly=True, required=False),
         "public": fields.Boolean(required=False),
-        "sequence": fields.String(),
-        "af2_model_preset": fields.String(required=False),
+        "yaml_config": fields.String(required=False),
         "disable_relaxation": fields.Boolean(required=False),
         "jobs": fields.List(fields.Nested(simple_invokation_fields)),
         "docks": fields.List(fields.Nested(dock_fields)),
         "embeddings": fields.List(fields.Nested(embedding_fields)),
         "evolutions": fields.List(fields.Nested(evolution_fields)),
+        # Old AF2 inputs.
+        "sequence": fields.String(required=False),
+        "af2_model_preset": fields.String(required=False),
     },
 )
 

@@ -17,6 +17,7 @@ from app.helpers.sequence_util import (
     get_measured_and_unmeasured_mutant_seq_ids,
     get_loci_set,
     process_and_validate_evolve_input_files,
+    train_and_predict_activities,
 )
 from app.helpers.jobs_util import (
     _live_update_tail,
@@ -84,80 +85,16 @@ def run_evolvepro(evolve_id: int):
         activity_df, embedding_df = process_and_validate_evolve_input_files(
             fold.sequence, raw_activity_df, raw_embedding_df
         )
-
-        measured_mutants, unmeasured_mutants = (
-            get_measured_and_unmeasured_mutant_seq_ids(activity_df, embedding_df)
-        )
         add_log(
-            f"{len(measured_mutants)} measured mutants and {len(unmeasured_mutants)} unmeasured mutants"
+            f"Found {activity_df.shape[0]} activity measurements among {activity_df.seq_id.unique().shape[0]} mutants"
         )
 
-        # 4. Fit the random forest model.
-        add_log("Fitting the random forest model")
-        X_train = np.vstack(
-            [json.loads(x) for x in embedding_df.loc[activity_df.index].embedding]
+        (measured_mutants, unmeasured_mutants, model, predicted_activity_df) = (
+            train_and_predict_activities(activity_df, embedding_df)
         )
-        y_train = activity_df.activity.to_numpy()
-        model = RandomForestRegressor(
-            n_estimators=100,
-            criterion="friedman_mse",
-            max_depth=None,
-            min_samples_split=2,
-            min_samples_leaf=1,
-            min_weight_fraction_leaf=0.0,
-            max_features=1.0,
-            max_leaf_nodes=None,
-            min_impurity_decrease=0.0,
-            bootstrap=True,
-            oob_score=False,
-            n_jobs=None,
-            random_state=1,
-            verbose=0,
-            warm_start=False,
-            ccp_alpha=0.0,
-            max_samples=None,
-        )
-        model.fit(X_train, y_train)
-        add_log("Model fit complete")
 
-        # 5. Predict activities for unmeasured mutants.
-        add_log("Predicting activities for all mutants")
-        all_mutants_embedding_array = np.vstack(
-            # [json.loads(x) for x in embedding_df.loc[unmeasured_mutants].embedding]
-            [
-                json.loads(x)
-                for x in embedding_df.loc[
-                    measured_mutants + unmeasured_mutants
-                ].embedding
-            ]
-        )
-        print(all_mutants_embedding_array.shape)
-
-        y_all_pred = model.predict(all_mutants_embedding_array)
-
-        predicted_activity_df = pd.DataFrame(
-            {
-                "seq_id": measured_mutants + unmeasured_mutants,
-                "predicted_activity": y_all_pred,
-            }
-        )
-        predicted_activity_df.index = predicted_activity_df.seq_id
-        predicted_activity_df["relevant_measured_mutants"] = (
-            predicted_activity_df.seq_id.apply(
-                lambda seq_id: " ".join(
-                    [
-                        m
-                        for m in measured_mutants
-                        if get_loci_set(m) & get_loci_set(seq_id)
-                    ]
-                )
-            )
-        )
-        predicted_activity_df["actual_activity"] = predicted_activity_df.join(
-            activity_df.groupby(level=0).activity.mean(), how="left"
-        ).activity
-        predicted_activity_df = predicted_activity_df.sort_values(
-            "predicted_activity", ascending=False
+        add_log(
+            f"Finished fitting model. {len(measured_mutants)} measured mutants and {len(unmeasured_mutants)} unmeasured mutants, all of which had activity predicted."
         )
 
         # 6. Store model, visualizations, and predicted activities in storage manager.
