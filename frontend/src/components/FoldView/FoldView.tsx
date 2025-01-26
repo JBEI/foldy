@@ -36,6 +36,7 @@ import { Annotations, FileInfo, Fold, FoldPdb, Invokation } from "../../types/ty
 import { removeLeadingSlash } from "../../api/commonApi";
 import { getFile, getFileList } from "../../api/fileApi";
 import { getFold, updateFold } from "../../api/foldApi";
+import StructurePane from "./StructurePane";
 
 const REFRESH_STATE_PERIOD = 5000;
 const REFRESH_STATE_MAX_ITERS = 200;
@@ -135,8 +136,6 @@ interface FoldState {
     jobs: Invokation[] | null;
     pdb: FoldPdb | null;
     parsedPdb: ParsedPdb | null;
-    stage: Stage | null;
-    stageRef: RefObject<any>;
 
     // Defines our current color "mode".
     colorScheme: string;
@@ -155,7 +154,6 @@ interface FoldState {
     contactIsOnScreen: boolean;
     showSplitScreen: boolean;
     numRefreshes: number;
-    isRocking: boolean;
 }
 
 // From UIkit's definition of a "medium" window: https://getuikit.com/docs/visibility
@@ -173,8 +171,6 @@ class InternalFoldView extends Component<FoldProps, FoldState> {
             jobs: null,
             pdb: null,
             parsedPdb: null,
-            stage: null,
-            stageRef: React.createRef(),
 
             colorScheme: "pfam",  // pLDDT
 
@@ -190,17 +186,12 @@ class InternalFoldView extends Component<FoldProps, FoldState> {
             contactIsOnScreen: false,
             showSplitScreen: window.innerWidth >= WINDOW_WIDTH_FOR_SPLIT_SCREEN,
             numRefreshes: 0,
-            isRocking: true,
         };
     }
 
     preventDefault = (e: any) => e.preventDefault();
 
     handleResize = () => {
-        if (this.state.stage) {
-            this.state.stage.handleResize();
-        }
-
         const newShowSplitScreen =
             window.innerWidth >= WINDOW_WIDTH_FOR_SPLIT_SCREEN;
         if (newShowSplitScreen !== this.state.showSplitScreen) {
@@ -358,44 +349,6 @@ class InternalFoldView extends Component<FoldProps, FoldState> {
                         }
 
                         console.log(`PDB is ${pdb.pdb_string.length} characters long.`);
-                        var stage = new NGL.Stage("viewport", { backgroundColor: "white" });
-
-                        var stringBlob = new Blob([pdb.pdb_string], { type: "text/plain" });
-
-                        // Load this here, since apparently it's not accessible within the below code...
-                        const nglColorScheme = this.getNglColorSchemeName(
-                            this.state.colorScheme
-                        );
-                        stage.loadFile(stringBlob, { ext: "pdb" }).then((o: any) => {
-                            const pdbRepr = o.addRepresentation("cartoon", {
-                                colorScheme: nglColorScheme,
-                            });
-                            var duration = 1000; // optional duration for animation, defaults to zero
-                            o.autoView(duration);
-
-                            const selectionRepr1 = o.addRepresentation("licorice", {
-                                // Start out with nothing selected - so make an impossible selection.
-                                sele: "1 and 2",
-                                // color: "#F866AF",  // Hot pink.
-                                color: "red",
-                            });
-
-                            const selectionRepr2 = o.addRepresentation("cartoon", {
-                                // Start out with nothing selected - so make an impossible selection.
-                                sele: "1 and 2",
-                                // color: "#F866AF",  // Hot pink.
-                                color: "red",
-                            });
-
-                            this.setState({ pdbRepr: pdbRepr, selectionRepr: [selectionRepr1, selectionRepr2] });
-                        });
-                        stage.setRock(false);
-                        this.state.stageRef.current.addEventListener(
-                            "wheel",
-                            this.preventDefault,
-                            { passive: false }
-                        );
-                        this.setState({ stage: stage });
                     },
                     (e) => {
                         // TODO(jbr): In this case, have Foldy pop up saying the structure isn't available.
@@ -412,10 +365,6 @@ class InternalFoldView extends Component<FoldProps, FoldState> {
     }
 
     componentWillUnmount() {
-        this.state.stageRef.current.removeEventListener(
-            "wheel",
-            this.preventDefault
-        );
         window.removeEventListener("resize", this.handleResize);
 
         if (this.interval) {
@@ -423,54 +372,15 @@ class InternalFoldView extends Component<FoldProps, FoldState> {
         }
     }
 
+
+
     render() {
         var structurePane = (
             <div key="structure" style={{ height: "100%" }}>
-                {this.state.pdb ? null : (
-                    <div className="uk-text-center">
-                        {this.state.pdbFailedToLoad ? (
-                            <FoldyMascot
-                                text={"Looks like your structure isn't ready."}
-                                moveTextAbove={false}
-                            />
-                        ) : (
-                            <div uk-spinner="ratio: 4"></div>
-                        )}
-                    </div>
-                )}
-
-                <div
-                    className="uk-text-center"
-                    id="viewport"
-                    style={{ width: "100%", height: "100%" }}
-                    ref={this.state.stageRef}
-                >
-                    <div
-                        style={{
-                            display: "inline",
-                            position: "absolute",
-                            top: "5px",
-                            left: "25px",
-                            zIndex: 99,
-                            borderRadius: "4px",
-                        }}
-                    >
-                        <button
-                            className="uk-button uk-button-small uk-button-default uk-margin-small-right"
-                            onClick={this.changeColor}
-                            style={{ backgroundColor: "white" }}
-                        >
-                            Color: {this.state.colorScheme.split("|").pop()}
-                        </button>
-                        <button
-                            className="uk-button uk-button-small uk-button-default"
-                            style={{ backgroundColor: "white" }}
-                            onClick={() => this.toggleRocking()}
-                        >
-                            Rock
-                        </button>
-                    </div>
-                </div>
+                <StructurePane
+                    pdbString={this.state.pdb?.pdb_string ?? null}
+                    pdbFailedToLoad={this.state.pdbFailedToLoad}
+                />
             </div>
         );
 
@@ -565,10 +475,6 @@ class InternalFoldView extends Component<FoldProps, FoldState> {
                         </fieldset>
                     </form>
 
-                    {/* TODO: Implement a file download.
-      https://github.com/TimboKZ/chonky-website/blob/master/2.x_storybook/src/demos/S3Browser.tsx
-      https://uptick.github.io/react-keyed-file-browser/
-      */}
                     <h3>Files</h3>
                     <FileBrowser
                         files={this.state.files}
@@ -781,10 +687,6 @@ class InternalFoldView extends Component<FoldProps, FoldState> {
     };
 
     changeColor = () => {
-        if (!this.state.stage) {
-            return;
-        }
-
         var newColorScheme: string;
         if (this.state.colorScheme === "pLDDT") {
             newColorScheme = "chainname";
@@ -984,14 +886,6 @@ class InternalFoldView extends Component<FoldProps, FoldState> {
         }
     };
 
-    toggleRocking = () => {
-        const newIsRocking = !this.state.isRocking;
-        if (this.state.stage) {
-            this.state.stage.setRock(newIsRocking);
-        }
-        this.setState({ isRocking: newIsRocking });
-    };
-
     setPublic = (is_public: boolean) => {
         UIkit.modal
             .confirm(
@@ -1082,6 +976,7 @@ class InternalFoldView extends Component<FoldProps, FoldState> {
             }
         );
     };
+
     deleteTag = (tagToDelete: string) => {
         UIkit.modal.confirm("Delete tag?").then(
             () => {
@@ -1105,9 +1000,11 @@ class InternalFoldView extends Component<FoldProps, FoldState> {
             }
         );
     };
+
     handleTagClick = (tagToOpen: string) => {
         window.open(`/tag/${tagToOpen}`, "_self");
     };
+
     setSelectedSubsequence = (sele: SubsequenceSelection) => {
         // Selection language described here:
         // https://nglviewer.org/ngl/api/manual/usage/selection-language.html

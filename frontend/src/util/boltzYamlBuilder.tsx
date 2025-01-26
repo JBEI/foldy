@@ -14,6 +14,7 @@ import { JSONSchemaBridge } from "uniforms-bridge-json-schema";
 import YAML from "yaml";
 import Ajv, { ErrorObject } from 'ajv';
 import addErrors from "ajv-errors";
+import { Row, Col, Button, Input } from 'antd';
 
 /** Minimal shape we'll edit in Uniforms (internal model). */
 interface BoltzFormModel {
@@ -28,6 +29,35 @@ interface BoltzFormModel {
             position: number;
             ccd: string;
         }>;
+    }>;
+    constraints?: Array<{
+        // bond: {
+        // atom1: { // [string, number, string]; // [CHAIN_ID, RES_IDX, ATOM_NAME]
+        constraint_type: "bond" | "pocket";
+
+        bond_chain_id_1?: string;
+        bond_res_idx_1?: number;
+        bond_atom_name_1?: string;
+        bond_chain_id_2?: string;
+        bond_res_idx_2?: number;
+        bond_atom_name_2?: string;
+
+        binder?: string;
+        contacts?: Array<{
+            chain_id: string;
+            res_idx: number;
+        }>;
+        // }
+        // atom2: {
+        //     chain_id: string;
+        //     res_idx: number;
+        //     atom_name: string;
+        // };
+        // };
+        // pocket?: {
+        //     binder: string;
+        //     contacts: Array<[string, number]>; // Array of [CHAIN_ID, RES_IDX]
+        // };
     }>;
 }
 
@@ -45,6 +75,8 @@ export interface BoltzYamlBuilderProps {
      */
     onSave?: (yamlString: string) => void;
 }
+
+const { TextArea } = Input;
 
 /** 1) JSON Schema for our simpler internal shape (Uniforms). */
 const simpleSchema = {
@@ -95,7 +127,7 @@ const simpleSchema = {
                             required: ["position", "ccd"],
                             properties: {
                                 position: {
-                                    type: "number",
+                                    type: "integer",
                                     title: "Position",
                                     minimum: 1,
                                 },
@@ -109,6 +141,117 @@ const simpleSchema = {
                 },
             },
         },
+        constraints: {
+            type: "array",
+            title: "Constraints",
+            items: {
+                type: "object",
+                properties: {
+                    constraint_type: {
+                        type: "string",
+                        title: "Constraint Type",
+                        enum: ["bond", "pocket"]
+                    },
+                    bond_chain_id_1: {
+                        type: "string",
+                        title: "Chain ID 1"
+                    },
+                    bond_res_idx_1: {
+                        type: "integer",
+                        title: "Residue Index 1",
+                        minimum: 1,
+                    },
+                    bond_atom_name_1: {
+                        type: "string",
+                        title: "Atom Name 1"
+                    },
+                    bond_chain_id_2: {
+                        type: "string",
+                        title: "Chain ID 2"
+                    },
+                    bond_res_idx_2: {
+                        type: "integer",
+                        title: "Residue Index 2",
+                        minimum: 1,
+                    },
+                    bond_atom_name_2: {
+                        type: "string",
+                        title: "Atom Name 2"
+                    },
+                    binder: {
+                        type: "string",
+                        title: "Binder"
+                    },
+                    contacts: {
+                        type: "array",
+                        title: "Contacts",
+                        items: {
+                            type: "object",
+                            properties: {
+                                chain_id: {
+                                    type: "string",
+                                    title: "Chain ID"
+                                },
+                                res_idx: {
+                                    type: "integer",
+                                    title: "Residue Index",
+                                    minimum: 1,
+                                }
+                            }
+                        }
+                    }
+                    // bond: {
+                    //     type: "object",
+                    //     title: "Bond Constraint",
+                    //     properties: {
+                    //         atom1: {
+                    //             type: "array",
+                    //             title: "Atom 1",
+                    //             minItems: 3,
+                    //             maxItems: 3,
+                    //             items: {
+                    //                 type: "string",
+                    //                 title: "Value"
+                    //             }
+                    //         },
+                    //         atom2: {
+                    //             type: "array",
+                    //             title: "Atom 2",
+                    //             minItems: 3,
+                    //             maxItems: 3,
+                    //             items: {
+                    //                 type: "string",
+                    //                 title: "Value"
+                    //             }
+                    //         }
+                    //     }
+                    // },
+                    // pocket: {
+                    //     type: "object",
+                    //     title: "Pocket Constraint",
+                    //     properties: {
+                    //         binder: {
+                    //             type: "string",
+                    //             title: "Binder"
+                    //         },
+                    //         contacts: {
+                    //             type: "array",
+                    //             title: "Contacts",
+                    //             items: {
+                    //                 type: "array",
+                    //                 minItems: 2,
+                    //                 maxItems: 2,
+                    //                 items: {
+                    //                     type: "string",
+                    //                     title: "Value"
+                    //                 }
+                    //             }
+                    //         }
+                    //     }
+                    // }
+                }
+            }
+        }
     },
 };
 
@@ -146,6 +289,18 @@ const schemaValidator = (model: Record<string, any>) => {
 
 function additionalChecks(model: BoltzFormModel, errors: { details: [{ name: string, message: string }] } /* Uniforms error list */) {
     model.sequences?.forEach((seq: any, index: number) => {
+        // Add chain ID length validation
+        if (seq.id) {
+            const chainIds = seq.id.split(',').map((id: string) => id.trim());
+            const invalidChainIds = chainIds.filter((id: string) => id.length > 5);
+            if (invalidChainIds.length > 0) {
+                errors.details.push({
+                    name: `sequences.${index}.id`,
+                    message: `Boltz chain IDs must be 5 or fewer characters. We do not know why. Invalid IDs: ${invalidChainIds.join(', ')}`
+                });
+            }
+        }
+
         if (!seq?.entity_type) {
             errors.details.push({
                 name: `sequences.${index}.entity_type`,
@@ -232,7 +387,50 @@ function fromBoltzObjectToModel(boltzObj: any): BoltzFormModel {
         });
     });
 
-    return { version, sequences };
+    if (!boltzObj?.constraints) {
+        return {
+            version,
+            sequences,
+            // constraints: []
+        };
+    }
+
+    const constraints: BoltzFormModel["constraints"] = [];
+
+    // Initialize constraints array, even if empty
+    boltzObj.constraints.map((constraint: any) => {
+        const constraintType = Object.keys(constraint)[0] as BoltzFormModel["constraints"][number]["constraint_type"]
+        const data = constraint[constraintType] || {};
+
+        if (constraintType === "bond") {
+            constraints.push(
+                {
+                    constraint_type: constraintType,
+                    bond_chain_id_1: data.atom1[0],
+                    bond_res_idx_1: data.atom1[1],
+                    bond_atom_name_1: data.atom1[2],
+                    bond_chain_id_2: data.atom2[0],
+                    bond_res_idx_2: data.atom2[1],
+                    bond_atom_name_2: data.atom2[2],
+                }
+            );
+        } else if (constraintType === "pocket") {
+            constraints.push({
+                constraint_type: constraintType,
+                binder: data.binder,
+                contacts: data.contacts?.map((contact: any) => ({
+                    chain_id: contact[0],
+                    res_idx: contact[1],
+                })),
+            });
+        }
+    });
+
+    return {
+        version,
+        sequences,
+        constraints
+    };
 }
 
 /** 
@@ -287,14 +485,14 @@ function toBoltzYaml(model: BoltzFormModel): string {
                 return {
                     dna: {
                         id: idArray,
-                        // no "sequence" included in final example if you only want it for protein
+                        sequence: seq.sequence || "",
                     },
                 };
             } else if (seq.entity_type === "rna") {
                 return {
                     rna: {
                         id: idArray,
-                        // no "sequence" included for rna either
+                        sequence: seq.sequence || "",
                     },
                 };
             }
@@ -302,6 +500,39 @@ function toBoltzYaml(model: BoltzFormModel): string {
             return {};
         }),
     };
+
+    // Add constraints if present
+    if (model.constraints?.length) {
+        boltzObj.constraints = model.constraints.map(constraint => {
+            if (constraint.constraint_type === "bond") {
+                return {
+                    bond: {
+                        atom1: [
+                            constraint.bond_chain_id_1,
+                            constraint.bond_res_idx_1,
+                            constraint.bond_atom_name_1
+                        ],
+                        atom2: [
+                            constraint.bond_chain_id_2,
+                            constraint.bond_res_idx_2,
+                            constraint.bond_atom_name_2
+                        ]
+                    }
+                };
+            } else if (constraint.constraint_type === "pocket") {
+                return {
+                    pocket: {
+                        binder: constraint.binder,
+                        contacts: constraint.contacts?.map(contact => [
+                            contact.chain_id,
+                            contact.res_idx
+                        ])
+                    }
+                };
+            }
+            return {};
+        });
+    }
 
     return YAML.stringify(boltzObj);
 }
@@ -320,8 +551,8 @@ const EntityTypeConditionalFields = connectField((props: { value: BoltzFormModel
                 <AutoField name="sequence" />
                 <ListField name="modifications">
                     <ListItemField name="$">
-                        <AutoField name="position" />
-                        <AutoField name="ccd" />
+                        {/* <AutoField name="position" />
+                        <AutoField name="ccd" /> */}
                     </ListItemField>
                 </ListField>
             </>
@@ -350,6 +581,34 @@ const EntityTypeConditionalFields = connectField((props: { value: BoltzFormModel
     return null;
 });
 
+const ConstraintTypeConditionalFields = connectField((props: { value: BoltzFormModel['constraints'][number] }) => {
+    if (!props.value) return null;
+
+    const constraintType = props.value.constraint_type;
+
+    if (constraintType === "bond") {
+        return <>
+            <AutoField name="bond_chain_id_1" />
+            <AutoField name="bond_res_idx_1" />
+            <AutoField name="bond_atom_name_1" />
+            <AutoField name="bond_chain_id_2" />
+            <AutoField name="bond_res_idx_2" />
+            <AutoField name="bond_atom_name_2" />
+        </>;
+    } else if (constraintType === "pocket") {
+        return <>
+            <AutoField name="binder" />
+            <ListField name="contacts">
+                <ListItemField name="$">
+                    <AutoField name="chain_id" />
+                    <AutoField name="res_idx" />
+                </ListItemField>
+            </ListField>
+        </>;
+    }
+    return null;
+});
+
 /**
  * (A) Reusable React component to edit a Boltz config in a "simplified" Uniforms model,
  * with entity_type-based conditional fields.
@@ -358,7 +617,12 @@ const BoltzYamlBuilder: React.FC<BoltzYamlBuilderProps> = ({ initialYaml, onSave
     /**
      * Parse initial YAML -> JS object -> simpler form model
      */
-    let initialModel: BoltzFormModel = { version: 1, sequences: [] };
+    let initialModel: BoltzFormModel = {
+        version: 1,
+        sequences: [],
+        constraints: [] // Initialize empty constraints array
+    };
+
     if (initialYaml) {
         try {
             const parsed = YAML.parse(initialYaml);
@@ -369,16 +633,32 @@ const BoltzYamlBuilder: React.FC<BoltzYamlBuilderProps> = ({ initialYaml, onSave
     }
 
     const [model, setModel] = useState<BoltzFormModel>(initialModel);
+    const [showYamlEditor, setShowYamlEditor] = useState(false);
+    const [yamlText, setYamlText] = useState(initialYaml || '');
 
     /** On submit, transform to final Boltz YAML and invoke onSave() callback. */
     function handleSubmit(submitted: BoltzFormModel) {
         try {
             const yaml = toBoltzYaml(submitted);
+            setYamlText(yaml); // Keep YAML view in sync
             onSave?.(yaml);
         } catch (error) {
             console.error('Failed to save:', error);
         }
     }
+
+    // Add handler for YAML text changes
+    const handleYamlChange = (newYaml: string) => {
+        setYamlText(newYaml);
+        try {
+            const parsed = YAML.parse(newYaml);
+            const newModel = fromBoltzObjectToModel(parsed);
+            setModel(newModel);
+        } catch (err) {
+            console.warn("Invalid YAML", err);
+            // Don't update model if YAML is invalid
+        }
+    };
 
     // Uniforms `onValidate` merges custom checks with AJV checks
     function handleValidate(model: BoltzFormModel, error: any) {
@@ -396,37 +676,97 @@ const BoltzYamlBuilder: React.FC<BoltzYamlBuilderProps> = ({ initialYaml, onSave
 
     return (
         <div style={{ margin: "1rem" }}>
-            <h2>Boltz YAML Editor</h2>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                <h2>Boltz YAML Editor</h2>
+                <Button
+                    onClick={() => setShowYamlEditor(!showYamlEditor)}
+                    type={showYamlEditor ? 'primary' : 'default'}
+                >
+                    {showYamlEditor ? 'Show Form Editor' : 'Show YAML Editor'}
+                </Button>
+            </div>
 
-            <AutoForm
-                schema={schemaBridge}
-                model={model}
-                onChangeModel={(m: Record<string, any>) => setModel(m as BoltzFormModel)}
-                onSubmit={(m: Record<string, any>) => handleSubmit(m as BoltzFormModel)}
-                showInlineError
-                onValidate={handleValidate}
-            >
-                <AutoField name="version" />
-
-                <ListField name="sequences">
-                    <ListItemField name="$">
-                        {/* For each sequence item, always show `entity_type` and `id`, 
-                then show conditional fields based on entity_type. 
-            */}
-                        <AutoField name="entity_type" />
-                        <AutoField name="id" />
-
-                        <EntityTypeConditionalFields name="" />
-                    </ListItemField>
-                </ListField>
-
-                {/* Display form-level errors */}
-                <ErrorsField />
-
-                <div style={{ marginTop: "1rem" }}>
-                    <SubmitField value="Save Boltz YAML" />
+            {showYamlEditor ? (
+                <div>
+                    <TextArea
+                        value={yamlText}
+                        onChange={(e) => handleYamlChange(e.target.value)}
+                        rows={20}
+                        style={{ fontFamily: 'monospace' }}
+                    />
+                    <Button
+                        type="primary"
+                        onClick={() => onSave?.(yamlText)}
+                        style={{ marginTop: '1rem' }}
+                    >
+                        Save YAML
+                    </Button>
                 </div>
-            </AutoForm>
+            ) : (
+                <AutoForm
+                    schema={schemaBridge}
+                    model={model}
+                    onChangeModel={(m: Record<string, any>) => {
+                        const newModel = m as BoltzFormModel;
+                        setModel(newModel);
+                        setYamlText(toBoltzYaml(newModel)); // Keep YAML view in sync
+                    }}
+                    onSubmit={(m: Record<string, any>) => handleSubmit(m as BoltzFormModel)}
+                    showInlineError
+                    onValidate={handleValidate}
+                >
+                    <Row gutter={24}>
+                        <Col xs={24} xl={12}>
+                            {/* Main sequence editor */}
+                            <AutoField name="version" />
+
+                            <ListField name="sequences">
+                                <ListItemField name="$">
+                                    <AutoField name="entity_type" />
+                                    <AutoField name="id" />
+                                    <EntityTypeConditionalFields name="" />
+                                </ListItemField>
+                            </ListField>
+                        </Col>
+
+                        <Col xs={24} xl={12}>
+                            {/* Constraints editor */}
+                            <div style={{
+                                backgroundColor: "#f5f5f5",
+                                padding: "1rem",
+                                borderRadius: "8px",
+                                marginBottom: "1rem"
+                            }}>
+                                <h3>Constraints</h3>
+                                <ListField name="constraints">
+                                    <ListItemField name="$">
+                                        <AutoField name="constraint_type" />
+                                        <ConstraintTypeConditionalFields name="" />
+                                        {/* Bond constraint */}
+                                        {/* <h4>Bond Constraint</h4>
+                                        <AutoField name="bond.atom1" />
+                                        <AutoField name="bond.atom2" /> */}
+
+                                        {/* Pocket constraint */}
+                                        {/* <h4>Pocket Constraint</h4>
+                                        <AutoField name="pocket.binder" />
+                                        <ListField name="pocket.contacts">
+                                            <ListItemField name="$" />
+                                        </ListField> */}
+                                    </ListItemField>
+                                </ListField>
+                            </div>
+                        </Col>
+                    </Row>
+
+                    {/* Display form-level errors */}
+                    <ErrorsField />
+
+                    <div style={{ marginTop: "1rem" }}>
+                        <SubmitField value="Save Boltz YAML" />
+                    </div>
+                </AutoForm>
+            )}
         </div>
     );
 };

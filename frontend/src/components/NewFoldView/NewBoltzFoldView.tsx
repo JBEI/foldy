@@ -94,92 +94,103 @@ sequences:
     }
 
     return (
-        <div style={{ padding: "1rem" }}>
-            <h1>New Boltz Fold</h1>
+        <div
+            data-testid="About"
+            style={{
+                flexGrow: 1,
+                overflowY: "scroll",
+                paddingTop: "10px",
+                paddingBottom: "10px",
+            }}>
+            {/* Fixed Header */}
+            <div style={{ padding: "1rem", borderBottom: "1px solid #f0f0f0" }}>
+                <h1>New Boltz Fold</h1>
 
-            {userType === "viewer" && (
-                <Alert
-                    message="You do not have permissions to submit folds on this instance."
-                    type="error"
-                    style={{ marginBottom: "1rem" }}
-                />
-            )}
-
-            <Row gutter={24}>
-                <Col span={18}>
-                    {/* Name field at the top */}
-                    <Form.Item
-                        label="Fold Name"
-                        required
-                        style={{ marginBottom: "2rem" }}
-                    >
-                        <Input
-                            value={foldName}
-                            onChange={(e) => setFoldName(e.target.value)}
-                            placeholder="Enter fold name"
-                            disabled={userType === "viewer"}
-                        />
-                    </Form.Item>
-
-                    {/* Main YAML builder */}
-                    <BoltzYamlBuilder
-                        initialYaml={partialYaml}
-                        onSave={handleSave}
+                {userType === "viewer" && (
+                    <Alert
+                        message="You do not have permissions to submit folds on this instance."
+                        type="error"
+                        style={{ marginBottom: "1rem" }}
                     />
-                </Col>
+                )}
+            </div>
 
-                {/* Advanced settings column */}
-                <Col span={6}>
-                    <div style={{
-                        backgroundColor: "#f5f5f5",
-                        padding: "1rem",
-                        borderRadius: "8px"
-                    }}>
-                        <h3>Advanced Settings</h3>
-                        <Form layout="vertical">
-                            <Form.Item label="Start Fold Job Immediately">
-                                <Switch
-                                    checked={advancedSettings.startFoldJob}
-                                    onChange={(checked) =>
-                                        setAdvancedSettings((prev) => ({
-                                            ...prev,
-                                            startFoldJob: checked,
-                                        }))
-                                    }
-                                    disabled={userType === "viewer"}
-                                />
-                            </Form.Item>
+            {/* Scrollable Content */}
+            <div style={{ flex: 1, overflow: "auto", padding: "1rem" }}>
+                <Row gutter={24}>
+                    <Col span={18}>
+                        <Form.Item
+                            label="Fold Name"
+                            required
+                            style={{ marginBottom: "2rem" }}
+                        >
+                            <Input
+                                value={foldName}
+                                onChange={(e) => setFoldName(e.target.value)}
+                                placeholder="Enter fold name"
+                                disabled={userType === "viewer"}
+                            />
+                        </Form.Item>
 
-                            <Form.Item label="Email on Completion">
-                                <Switch
-                                    checked={advancedSettings.emailOnCompletion}
-                                    onChange={(checked) =>
-                                        setAdvancedSettings((prev) => ({
-                                            ...prev,
-                                            emailOnCompletion: checked,
-                                        }))
-                                    }
-                                    disabled={userType === "viewer"}
-                                />
-                            </Form.Item>
+                        <BoltzYamlBuilder
+                            initialYaml={partialYaml}
+                            onSave={handleSave}
+                        />
+                    </Col>
 
-                            <Form.Item label="Skip Duplicate Entries">
-                                <Switch
-                                    checked={advancedSettings.skipDuplicateEntries}
-                                    onChange={(checked) =>
-                                        setAdvancedSettings((prev) => ({
-                                            ...prev,
-                                            skipDuplicateEntries: checked,
-                                        }))
-                                    }
-                                    disabled={userType === "viewer"}
-                                />
-                            </Form.Item>
+                    {/* Advanced settings column - will scroll with content */}
+                    <Col span={6} style={{ position: "sticky", top: "1rem" }}>
+                        <div style={{
+                            backgroundColor: "#f5f5f5",
+                            padding: "1rem",
+                            borderRadius: "8px"
+                        }}>
+                            <h3>Advanced Settings</h3>
+                            <Form layout="vertical">
+                                <Form.Item label="Start Fold Job Immediately">
+                                    <Switch
+                                        checked={advancedSettings.startFoldJob}
+                                        onChange={(checked) =>
+                                            setAdvancedSettings((prev) => ({
+                                                ...prev,
+                                                startFoldJob: checked,
+                                            }))
+                                        }
+                                        disabled={userType === "viewer"}
+                                    />
+                                </Form.Item>
 
-                        </Form>
-                    </div>
-                </Col>
-            </Row>
+                                <Form.Item label="Email on Completion">
+                                    <Switch
+                                        checked={advancedSettings.emailOnCompletion}
+                                        onChange={(checked) =>
+                                            setAdvancedSettings((prev) => ({
+                                                ...prev,
+                                                emailOnCompletion: checked,
+                                            }))
+                                        }
+                                        disabled={userType === "viewer"}
+                                    />
+                                </Form.Item>
+
+                                <Form.Item label="Skip Duplicate Entries">
+                                    <Switch
+                                        checked={advancedSettings.skipDuplicateEntries}
+                                        onChange={(checked) =>
+                                            setAdvancedSettings((prev) => ({
+                                                ...prev,
+                                                skipDuplicateEntries: checked,
+                                            }))
+                                        }
+                                        disabled={userType === "viewer"}
+                                    />
+                                </Form.Item>
+
+                            </Form>
+                        </div>
+                    </Col>
+                </Row>
+            </div>
         </div>
     );
 };

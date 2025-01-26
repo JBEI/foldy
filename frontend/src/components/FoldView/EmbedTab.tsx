@@ -102,7 +102,7 @@ const EmbedTab: React.FC<EmbedTabProps> = ({ foldId, jobs, embeddings, setErrorT
             {/* Description Section */}
             <section style={{ marginBottom: '20px', padding: '15px', backgroundColor: '#ffffff', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
                 <h3 style={{ marginBottom: '10px' }}>DMS Embedding Overview</h3>
-                <p>
+                <div>
                     This tab allows you to embed protein sequences using large language
                     models like <a href="https://github.com/evolutionaryscale/esm">ESMC</a>.
                     These embeddings can be used to do low-N directed evolution, as in the
@@ -127,7 +127,7 @@ const EmbedTab: React.FC<EmbedTabProps> = ({ foldId, jobs, embeddings, setErrorT
                     <p>
                         <code>Estimated cost:</code>~$100 for a DMS of a 500AA protein.
                     </p>
-                </p>
+                </div>
             </section>
 
             {/* Batch Status Section */}

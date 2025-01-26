@@ -102,7 +102,7 @@ const EvolveTab: React.FC<EvolveTabProps> = ({ foldId, jobs, files, evolutions, 
             {/* Description Section */}
             <section style={{ marginBottom: '20px', padding: '15px', backgroundColor: '#ffffff', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
                 <h3 style={{ marginBottom: '10px' }}>Evolution Runs Overview</h3>
-                <p>
+                <div>
                     This section allows you to run a version of
                     <a href="https://www.biorxiv.org/content/10.1101/2024.07.17.604015v1"> EvolvePro </a>
                     on your protein. This tool facilitates low-N directed evolution of proteins,
@@ -128,7 +128,7 @@ const EvolveTab: React.FC<EvolveTabProps> = ({ foldId, jobs, files, evolutions, 
                     <p>
                         <code>Estimated cost:</code>~$0.05 per evolution round.
                     </p>
-                </p>
+                </div>
             </section>
 
             {/* Evolution Runs Table */}

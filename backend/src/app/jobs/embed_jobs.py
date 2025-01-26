@@ -143,7 +143,7 @@ def get_esm_embeddings(
             embedding_dicts.append(
                 get_embedding_dict(seq_id, seq_id_to_seq(wt_aa_seq, seq_id))
             )
-            if ii % 10 == 0:
+            if ii % 100 == 0:
                 add_log(f"Finished embedding {ii}/{len(dms_seq_ids)}")
 
         embedding_df = pd.DataFrame(embedding_dicts)

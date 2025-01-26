@@ -28,8 +28,6 @@ axiosInstance.interceptors.request.use((config) => {
         config.headers.Authorization = `Bearer ${token}`;
     }
 
-    console.log(`In axiosInstance, interceptor, token: ${token}`);
-
     return config;
 });
 
