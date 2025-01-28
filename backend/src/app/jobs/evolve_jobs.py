@@ -24,6 +24,7 @@ from app.helpers.jobs_util import (
     _psql_tail,
     try_run_job_with_logging,
 )
+from app.helpers.boltz_yaml_helper import BoltzYamlHelper
 
 
 def run_evolvepro(evolve_id: int):
@@ -40,7 +41,14 @@ def run_evolvepro(evolve_id: int):
 
     def run_evolvepro_with_logger(add_log):
         """Helper function to run evolvepro with a logger."""
-        wt_aa_seq = fold.sequence
+        if not fold.yaml_config:
+            raise ValueError("Fold does not have a YAML config!")
+        boltz_yaml_helper = BoltzYamlHelper(fold.yaml_config)
+        if len(boltz_yaml_helper.get_protein_sequences()) != 1:
+            raise ValueError(
+                f"Fold has {len(boltz_yaml_helper.get_protein_sequences())} protein sequences, which is not supported for evolvepro yet."
+            )
+        wt_aa_seq = boltz_yaml_helper.get_protein_sequences()[0][1]
 
         fsm = FoldStorageManager()
         fsm.setup()
@@ -83,7 +91,7 @@ def run_evolvepro(evolve_id: int):
 
         # 3. Process the activity and embedding data.
         activity_df, embedding_df = process_and_validate_evolve_input_files(
-            fold.sequence, raw_activity_df, raw_embedding_df
+            wt_aa_seq, raw_activity_df, raw_embedding_df
         )
         add_log(
             f"Found {activity_df.shape[0]} activity measurements among {activity_df.seq_id.unique().shape[0]} mutants"

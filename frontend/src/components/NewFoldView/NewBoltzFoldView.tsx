@@ -62,12 +62,6 @@ const NewBoltzFoldView: React.FC<NewBoltzFoldViewProps> = ({ userType, setErrorT
     const partialYaml = `
 version: 1
 sequences:
-  - protein:
-      id: [A, B]
-      sequence: "MVTPE"
-  - ligand:
-      id: [X]
-      smiles: "CCOCC"
 `;
 
     async function handleSave(yamlString: string) {

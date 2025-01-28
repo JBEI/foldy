@@ -77,12 +77,18 @@ def test_user(app):
 def test_fold(app, test_user):
     """Create a test fold."""
     with app.app_context():
+        FOLD_YAML_CONFIG = """version: 1
+sequences:
+  - protein:
+      id: A
+      sequence: ACD
+"""
         # Get a fresh user object from the database
         user = db.session.get(User, test_user.id)
         fold = Fold(
             name="test_fold",
             user_id=test_user.id,  # Now using the refreshed user
-            sequence="ACD",
+            yaml_config=FOLD_YAML_CONFIG,
             tagstring="test",
             af2_model_preset="monomer_ptm",
         )

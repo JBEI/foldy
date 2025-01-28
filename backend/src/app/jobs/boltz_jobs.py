@@ -99,6 +99,17 @@ def run_boltz(fold_id, invokation_id):
             add_log(f"YAML file contents: {yaml_file_str}")
 
             # Run Boltz.
+            #
+            # Note that we keep running out of shared memory (shm) when running Boltz
+            # on A100s on Google Cloud.
+            #
+            # We increased shared memory to 20Gi but it didn't help.
+            #
+            # Based on the comments in this issue, it seems like we can improve
+            # performance by reducing the number of dataworkers.
+            # https://github.com/pytorch/pytorch/issues/5040#issuecomment-439590544
+            #
+            # Boltz API: https://github.com/jwohlwend/boltz/blob/main/docs/prediction.md
             gpu_available = get_torch_cuda_is_available_and_add_logs(add_log)
             accelerator = "gpu" if gpu_available else "cpu"
             boltz_command = [
@@ -112,6 +123,8 @@ def run_boltz(fold_id, invokation_id):
                 accelerator,
                 "--cache",
                 "/hf-cache/",
+                "--num_workers",
+                "1",
             ]
             add_log(
                 f"Running boltz with command: {boltz_command}",

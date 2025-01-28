@@ -21,6 +21,8 @@ import werkzeug
 from werkzeug.exceptions import BadRequest, HTTPException
 from werkzeug.middleware.dispatcher import DispatcherMiddleware
 from prometheus_client import make_wsgi_app
+from wtforms import TextAreaField
+from wtforms.widgets import TextArea
 
 from app import models
 from app.extensions import admin, db, migrate, rq, compress
@@ -81,6 +83,15 @@ def register_extensions(app):
             "models_log",
         ]
         column_default_sort = ("id", True)
+        form_overrides = {
+            "yaml_config": TextAreaField,
+        }
+        form_widget_args = {
+            "yaml_config": {
+                "rows": 10,
+                "style": "width: 100%;",
+            }
+        }
 
         def _sequence_formatter(view, context, model, name):
             return Markup(

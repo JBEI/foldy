@@ -5,8 +5,13 @@ import { BoltzYamlHelper } from '../util/boltzYamlHelper';
 
 // Add this helper function
 function enhanceFoldWithYamlHelper(fold: Fold): Fold {
-    if (fold.yaml_config && !fold.yaml_helper) {
-        fold.yaml_helper = new BoltzYamlHelper(fold.yaml_config);
+    // Try to parse the YAML config into a BoltzYamlHelper.
+    try {
+        if (fold.yaml_config && !fold.yaml_helper) {
+            fold.yaml_helper = new BoltzYamlHelper(fold.yaml_config);
+        }
+    } catch (e) {
+        console.error(e);
     }
     return fold;
 }

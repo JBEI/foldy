@@ -28,7 +28,6 @@ import "./FoldView.scss";
 import PaeTab from "./PaeTab";
 import JobsTab from "./JobsTab";
 import SequenceTab, { SubsequenceSelection } from "./SequenceTab";
-import * as NGL from 'ngl/dist/ngl.js';
 import fileDownload from "js-file-download";
 import EmbedTab from "./EmbedTab";
 import EvolveTab from "./EvolveTab";

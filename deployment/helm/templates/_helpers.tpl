@@ -140,7 +140,7 @@ spec:
           - name: dshm
             emptyDir:
               medium: Memory
-              sizeLimit: 10Gi  
+              sizeLimit: 20Gi  
 
         nodeSelector:
           iam.gke.io/gke-metadata-server-enabled: "true"

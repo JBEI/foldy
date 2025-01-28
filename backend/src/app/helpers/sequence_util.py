@@ -29,6 +29,7 @@ def get_loci_set(seq_id):
 
 def maybe_get_allele_id_error_message(wt_aa_seq, allele_id):
     """Returns an error message if allele id is invalid, otherwise None."""
+    assert type(wt_aa_seq) == str, f"wt_aa_seq must be a string, got {type(wt_aa_seq)}"
     fn = re.compile(r"([A-Z])(\d+)([A-Z])")
     m = fn.match(allele_id)
     if not m:
@@ -114,6 +115,8 @@ def get_seq_ids_for_deep_mutational_scan(
             list(allele_set), key=lambda allele: (int(allele[1:-1]), allele[-1])
         )
         return "_".join(allele_list)
+
+    assert type(wt_aa_seq) == str, f"wt_aa_seq must be a string, got {type(wt_aa_seq)}"
 
     # Validate inputs.
     for starting_seq_id in dms_starting_seq_ids:

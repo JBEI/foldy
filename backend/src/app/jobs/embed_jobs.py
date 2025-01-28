@@ -29,6 +29,7 @@ from app.helpers.jobs_util import (
     try_run_job_with_logging,
     get_torch_cuda_is_available_and_add_logs,
 )
+from app.helpers.boltz_yaml_helper import BoltzYamlHelper
 
 
 def get_esm_embeddings(
@@ -74,7 +75,15 @@ def get_esm_embeddings(
         )
 
         # 3. Validate seq_ids.
-        wt_aa_seq = fold.sequence
+        if not fold.yaml_config:
+            raise ValueError("Fold does not have a YAML config!")
+        boltz_yaml_helper = BoltzYamlHelper(fold.yaml_config)
+        if len(boltz_yaml_helper.get_protein_sequences()) > 1:
+            raise ValueError(
+                "Fold has multiple protein sequences, which is not supported for ESM embeddings yet."
+            )
+        wt_aa_seq = boltz_yaml_helper.get_protein_sequences()[0][1]
+
         for extra_seq_id in extra_seq_ids:
             error = maybe_get_seq_id_error_message(wt_aa_seq, extra_seq_id)
             if error:
@@ -89,7 +98,7 @@ def get_esm_embeddings(
                 )
 
         # 4. Get the WT sequence.
-        if ":" in fold.sequence or ";" in fold.sequence:
+        if ":" in wt_aa_seq or ";" in wt_aa_seq:
             raise KeyError(
                 f"Fold ID {fold.id} seems to be a multimer which is not supported for ESM embeddings yet."
             )

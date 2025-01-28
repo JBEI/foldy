@@ -15,6 +15,7 @@ import YAML from "yaml";
 import Ajv, { ErrorObject } from 'ajv';
 import addErrors from "ajv-errors";
 import { Row, Col, Button, Input } from 'antd';
+import { BoltzYamlHelper } from './boltzYamlHelper';
 
 /** Minimal shape we'll edit in Uniforms (internal model). */
 interface BoltzFormModel {
@@ -288,7 +289,21 @@ const schemaValidator = (model: Record<string, any>) => {
 }
 
 function additionalChecks(model: BoltzFormModel, errors: { details: [{ name: string, message: string }] } /* Uniforms error list */) {
+    if (!model.sequences || !Array.isArray(model.sequences) || model.sequences.length === 0) {
+        errors.details.push({
+            name: "sequences",
+            message: "Sequences are required"
+        });
+        return;
+    }
     model.sequences?.forEach((seq: any, index: number) => {
+        if (!seq) {
+            errors.details.push({
+                name: `sequences.${index}`,
+                message: "Sequence is invalid"
+            });
+            return;
+        }
         // Add chain ID length validation
         if (seq.id) {
             const chainIds = seq.id.split(',').map((id: string) => id.trim());
@@ -358,73 +373,40 @@ const schemaBridge = new JSONSchemaBridge({
 });
 
 /** 
- * 3) Convert a full Boltz-shaped JS object => our simpler Uniforms model.
- *    e.g. 
- *      version: 1
- *      sequences:
- *        - protein: { id: [...], sequence: ... }
- *        - ligand: { id: [...], smiles: ..., ccd: ... }
+ * 3) Convert a BoltzYamlHelper instance to our simpler Uniforms model.
  */
-function fromBoltzObjectToModel(boltzObj: any): BoltzFormModel {
-    const version = boltzObj?.version ?? 1;
-    const sequences: BoltzFormModel["sequences"] = [];
+function fromBoltzObjectToModel(helper: BoltzYamlHelper): BoltzFormModel {
+    const version = helper.getVersion() ?? 1;
 
-    // Each item in boltzObj.sequences is like:
-    //   { protein: { id: [...], sequence: ... } } 
-    // or { ligand: { id: [...], smiles: ... } } etc.
-    (boltzObj?.sequences || []).forEach((entry: any) => {
-        // We expect exactly one key in each item: "protein", "dna", "rna", or "ligand".
-        const entityType = Object.keys(entry)[0] as BoltzFormModel["sequences"][number]["entity_type"];
-        const data = entry[entityType] || {};
-
-        sequences.push({
-            entity_type: entityType,
-            id: (data.id || []).join(", "), // turn array into comma string
-            sequence: data.sequence || "",
-            smiles: data.smiles || "",
-            ccd: data.ccd || "",
-            modifications: data.modifications || [],
-        });
-    });
-
-    if (!boltzObj?.constraints) {
-        return {
-            version,
-            sequences,
-            // constraints: []
-        };
-    }
-
-    const constraints: BoltzFormModel["constraints"] = [];
-
-    // Initialize constraints array, even if empty
-    boltzObj.constraints.map((constraint: any) => {
-        const constraintType = Object.keys(constraint)[0] as BoltzFormModel["constraints"][number]["constraint_type"]
-        const data = constraint[constraintType] || {};
-
-        if (constraintType === "bond") {
-            constraints.push(
-                {
-                    constraint_type: constraintType,
-                    bond_chain_id_1: data.atom1[0],
-                    bond_res_idx_1: data.atom1[1],
-                    bond_atom_name_1: data.atom1[2],
-                    bond_chain_id_2: data.atom2[0],
-                    bond_res_idx_2: data.atom2[1],
-                    bond_atom_name_2: data.atom2[2],
-                }
-            );
-        } else if (constraintType === "pocket") {
-            constraints.push({
-                constraint_type: constraintType,
-                binder: data.binder,
-                contacts: data.contacts?.map((contact: any) => ({
-                    chain_id: contact[0],
-                    res_idx: contact[1],
-                })),
-            });
+    // Transform sequences
+    const sequences = helper.getAllSequences().map(seq => {
+        if (seq.entity_type === "protein" || seq.entity_type === "dna" || seq.entity_type === "rna") {
+            return {
+                entity_type: seq.entity_type,
+                id: seq.id.join(", "), // turn array into comma string
+                sequence: seq.sequence,
+                modifications: seq.modifications || [],
+            };
+        } else if (seq.entity_type === "ligand" && seq.smiles) {
+            return {
+                entity_type: seq.entity_type,
+                id: seq.id.join(", "), // turn array into comma string
+                smiles: seq.smiles,
+                modifications: seq.modifications || [],
+            };
+        } else if (seq.entity_type === "ligand" && seq.ccd) {
+            return {
+                entity_type: seq.entity_type,
+                id: seq.id.join(", "), // turn array into comma string
+                ccd: seq.ccd,
+                modifications: seq.modifications || [],
+            };
         }
-    });
+        throw new Error(`Invalid entity type in sequence: ${seq.entity_type}`);
+    }).filter(Boolean);
+
+    // Transform constraints
+    const constraints = helper.getNormalizedConstraints();
 
     return {
         version,
@@ -445,6 +427,9 @@ function toBoltzYaml(model: BoltzFormModel): string {
     const boltzObj: any = {
         version: model.version,
         sequences: model.sequences.map((seq) => {
+            if (!seq?.id || !seq?.entity_type) {
+                return {};
+            }
             // Turn "A, B" into ["A", "B"]
             const idArray = (seq.id || "")
                 .split(",")
@@ -625,8 +610,8 @@ const BoltzYamlBuilder: React.FC<BoltzYamlBuilderProps> = ({ initialYaml, onSave
 
     if (initialYaml) {
         try {
-            const parsed = YAML.parse(initialYaml);
-            initialModel = fromBoltzObjectToModel(parsed);
+            const helper = new BoltzYamlHelper(initialYaml);
+            initialModel = fromBoltzObjectToModel(helper);
         } catch (err) {
             console.warn("Failed to parse initial YAML. Starting empty.", err);
         }
@@ -651,8 +636,8 @@ const BoltzYamlBuilder: React.FC<BoltzYamlBuilderProps> = ({ initialYaml, onSave
     const handleYamlChange = (newYaml: string) => {
         setYamlText(newYaml);
         try {
-            const parsed = YAML.parse(newYaml);
-            const newModel = fromBoltzObjectToModel(parsed);
+            const helper = new BoltzYamlHelper(newYaml);
+            const newModel = fromBoltzObjectToModel(helper);
             setModel(newModel);
         } catch (err) {
             console.warn("Invalid YAML", err);

@@ -65,6 +65,8 @@
     "yaml": "^2.7.0"
   },
   "scripts": {
+    "test": "react-scripts test",
+    "test:coverage": "react-scripts test --coverage --watchAll=false",
     "dev": "vite",
     "build": "cross-env NODE_OPTIONS=--max-old-space-size=4096 vite build",
     "preview": "vite preview"
@@ -85,12 +87,16 @@
     ]
   },
   "devDependencies": {
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^12.1.5",
+    "@types/jest": "^29.5.14",
     "@types/lodash": "^4.14.186",
     "@types/node": "^22.10.2",
     "@types/react-csv": "^1.1.2",
     "@types/react-plotly.js": "^2.5.0",
     "@vitejs/plugin-react": "^4.3.4",
     "cross-env": "^7.0.3",
+    "jest": "^27.5.1",
     "vite": "^6.0.5"
   }
 }

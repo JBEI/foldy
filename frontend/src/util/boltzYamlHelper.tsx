@@ -277,6 +277,88 @@ export class BoltzYamlHelper {
         }
         return stringify(obj)
     }
+
+    /**
+     * Get all sequences with their full data, including modifications
+     */
+    getAllSequences(): Array<{
+        entity_type: "protein" | "dna" | "rna" | "ligand";
+        id: string[];
+        sequence?: string;
+        smiles?: string;
+        ccd?: string;
+        modifications?: Array<{
+            position: number;
+            ccd: string;
+        }>;
+    }> {
+        const results = [];
+
+        for (const entry of this.sequences) {
+            const [entityType, entityData] = Object.entries(entry)[0] as [string, any];
+            if (!["protein", "dna", "rna", "ligand"].includes(entityType)) {
+                throw new Error(`Invalid entity type in sequence: ${entityType}`);
+            }
+
+            results.push({
+                entity_type: entityType as "protein" | "dna" | "rna" | "ligand",
+                id: Array.isArray(entityData.id) ? entityData.id : [entityData.id],
+                sequence: entityData.sequence,
+                smiles: entityData.smiles,
+                ccd: entityData.ccd,
+                modifications: entityData.modifications,
+            });
+        }
+
+        return results;
+    }
+
+    /**
+     * Get all constraints in their normalized form
+     */
+    getNormalizedConstraints(): Array<{
+        constraint_type: "bond" | "pocket";
+        bond_chain_id_1?: string;
+        bond_res_idx_1?: number;
+        bond_atom_name_1?: string;
+        bond_chain_id_2?: string;
+        bond_res_idx_2?: number;
+        bond_atom_name_2?: string;
+        binder?: string;
+        contacts?: Array<{
+            chain_id: string;
+            res_idx: number;
+        }>;
+    }> {
+        const normalized = [];
+
+        for (const constraint of this.constraints) {
+            const [constraintType, data] = Object.entries(constraint)[0] as [string, any];
+
+            if (constraintType === 'bond') {
+                normalized.push({
+                    constraint_type: 'bond' as "bond" | "pocket",
+                    bond_chain_id_1: data.atom1[0],
+                    bond_res_idx_1: data.atom1[1],
+                    bond_atom_name_1: data.atom1[2],
+                    bond_chain_id_2: data.atom2[0],
+                    bond_res_idx_2: data.atom2[1],
+                    bond_atom_name_2: data.atom2[2],
+                });
+            } else if (constraintType === 'pocket') {
+                normalized.push({
+                    constraint_type: 'pocket' as "bond" | "pocket",
+                    binder: data.binder,
+                    contacts: data.contacts?.map((contact: [string, number]) => ({
+                        chain_id: contact[0],
+                        res_idx: contact[1],
+                    })),
+                });
+            }
+        }
+
+        return normalized;
+    }
 }
 
 // Example usage:

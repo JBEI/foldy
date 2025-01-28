@@ -14,4 +14,4 @@ import numpy as np
 def test_write_fastas(app, client, tmp_path, test_fold):
     fsm = FoldStorageManager()
     fsm.setup()
-    fsm.write_fastas(test_fold.id, "MAG")
+    fsm.write_fastas(test_fold.id, test_fold.yaml_config)
