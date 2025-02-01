@@ -143,101 +143,7 @@ const NaturalnessTab: React.FC<NaturalnessTabProps> = ({ foldId, jobs, logits, s
             x: loci,
             y: residues,
             colorscale: 'Viridis',
-            colorbar: {
-                y: 0.75,
-                len: 0.5,
-                yanchor: 'middle'
-            }
         }];
-
-        // Prepare data for react-table
-        const tableColumns = columns.map(col => ({
-            Header: col,
-            accessor: col,
-        }));
-
-        const {
-            getTableProps,
-            getTableBodyProps,
-            headerGroups,
-            rows,
-            prepareRow,
-            state,
-            setGlobalFilter,
-        } = useTable(
-            {
-                columns: tableColumns,
-                data,
-            },
-            useGlobalFilter,
-            useSortBy
-        ) as TableInstance<Record<string, string>> & {
-            state: { globalFilter: string | undefined };
-            setGlobalFilter: (filterValue: string | undefined) => void;
-            headerGroups: {
-                getHeaderGroupProps: () => any;
-                headers: {
-                    getHeaderProps: (props?: any) => any;
-                    getSortByToggleProps: () => any;
-                    render: (type: string) => any;
-                    isSorted?: boolean;
-                    isSortedDesc?: boolean;
-                }[];
-            }[];
-        };
-
-        const { globalFilter } = state;
-
-        const TableComponent = () => {
-            return (
-                <div className="uk-margin-top">
-                    <input
-                        className="uk-input uk-margin-bottom"
-                        value={globalFilter || ''}
-                        onChange={e => setGlobalFilter(e.target.value)}
-                        placeholder="Search all columns..."
-                    />
-                    <div style={{ maxHeight: '400px', overflow: 'auto' }}>
-                        <table {...getTableProps()} className="uk-table uk-table-small uk-table-striped">
-                            <thead>
-                                {headerGroups.map(headerGroup => (
-                                    <tr {...headerGroup.getHeaderGroupProps()}>
-                                        {headerGroup.headers.map(column => (
-                                            <th {...column.getHeaderProps()}>
-                                                <div {...column.getSortByToggleProps()}>
-                                                    {column.render('Header')}
-                                                    <span>
-                                                        {column.isSorted
-                                                            ? column.isSortedDesc
-                                                                ? ' 🔽'
-                                                                : ' 🔼'
-                                                            : ''}
-                                                    </span>
-                                                </div>
-                                            </th>
-                                        ))}
-                                    </tr>
-                                ))}
-                            </thead>
-                            <tbody {...getTableBodyProps()}>
-                                {rows.map(row => {
-                                    prepareRow(row);
-                                    return (
-                                        <tr {...row.getRowProps()}>
-                                            {row.cells.map(cell => (
-                                                <td {...cell.getCellProps()}>
-                                                    {cell.render('Cell')}
-                                                </td>
-                                            ))}
-                                        </tr>
-                                    );
-                                })}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            );
-        };
 
         return (
             <div style={{ width: '100%', maxWidth: '900px' }}>
@@ -254,7 +160,7 @@ const NaturalnessTab: React.FC<NaturalnessTabProps> = ({ foldId, jobs, logits, s
                     useResizeHandler={true}
                     style={{ width: '100%', height: '100%' }}
                 />
-                <TableComponent />
+                {/* <TableComponent /> */}
             </div>
         );
     }, [logitCsvData]);
@@ -317,11 +223,7 @@ const NaturalnessTab: React.FC<NaturalnessTabProps> = ({ foldId, jobs, logits, s
 
             {/* Display logit info, if requested. */}
             {
-                displayedLogitId ?
-                    <div>
-                        Displayed logit is {displayedLogitId}. <div onClick={() => setDisplayedLogitId(null)}>X</div>
-                        {logitPlot}
-                    </div> : null
+                displayedLogitId ? logitPlot : null
             }
 
             {/* Collapsible New Run Section */}

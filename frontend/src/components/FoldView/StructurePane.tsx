@@ -68,11 +68,13 @@ const StructurePane: React.FC<StructurePaneProps> = ({ pdbString, pdbFailedToLoa
 
         viewer.render(viewerRef.current, options);
 
-        return () => {
-            if (pluginRef.current) {
-                pluginRef.current.destroy();
-            }
-        };
+        console.log(viewer)
+
+        // return () => {
+        //     if (pluginRef.current) {
+        //         pluginRef.current.destroy();
+        //     }
+        // };
     }, [pdbString]);
 
     if (pdbFailedToLoad) {
