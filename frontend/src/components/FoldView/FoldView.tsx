@@ -29,6 +29,7 @@ import PaeTab from "./PaeTab";
 import JobsTab from "./JobsTab";
 import SequenceTab, { SubsequenceSelection } from "./SequenceTab";
 import fileDownload from "js-file-download";
+import NaturalnessTab from "./NaturalnessTab";
 import EmbedTab from "./EmbedTab";
 import EvolveTab from "./EvolveTab";
 import { Annotations, FileInfo, Fold, FoldPdb, Invokation } from "../../types/types";
@@ -319,10 +320,10 @@ class InternalFoldView extends Component<FoldProps, FoldState> {
                         }
                         this.setState({
                             pfamAnnotations: pfam,
-                            pfamColors: getColorsForAnnotations(
-                                this.state.foldData.sequence,
-                                pfam
-                            ),
+                            // pfamColors: getColorsForAnnotations(
+                            //     this.state.foldData.sequence,
+                            //     pfam
+                            // ),
                         });
                     },
                     (e) => {
@@ -410,6 +411,9 @@ class InternalFoldView extends Component<FoldProps, FoldState> {
                 </li>
                 <li>
                     <a>Dock</a>
+                </li>
+                <li>
+                    <a>Naturalness</a>
                 </li>
                 <li>
                     <a>Embed</a>
@@ -522,6 +526,15 @@ class InternalFoldView extends Component<FoldProps, FoldState> {
                         displayLigandPose={this.displayLigandPose}
                         shiftFrame={this.shiftFrame}
                         deleteLigandPose={this.deleteLigandPose}
+                    />
+                </li>
+
+                <li key="Logitli">
+                    <NaturalnessTab
+                        foldId={this.props.foldId}
+                        jobs={this.state.jobs}
+                        logits={this.state.foldData?.logits || null}
+                        setErrorText={this.props.setErrorText}
                     />
                 </li>
 

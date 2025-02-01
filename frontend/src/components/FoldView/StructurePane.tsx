@@ -61,7 +61,9 @@ const StructurePane: React.FC<StructurePaneProps> = ({ pdbString, pdbFailedToLoa
                 }
             },
             hideCanvasControls: ['expand'],
-            domainAnnotation: true
+            domainAnnotation: true,
+            hideControls: true,
+            loadingOverlay: false
         };
 
         viewer.render(viewerRef.current, options);

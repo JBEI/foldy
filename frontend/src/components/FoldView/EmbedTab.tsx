@@ -5,6 +5,7 @@ import { Embedding, Invokation } from '../../types/types';
 import { FaDownload, FaRedo } from 'react-icons/fa';
 import { getFile } from '../../api/fileApi';
 import fileDownload from 'js-file-download';
+import { startLogits } from '../../api/embedApi';
 
 interface EmbedTabProps {
     foldId: number;
@@ -95,6 +96,11 @@ const EmbedTab: React.FC<EmbedTabProps> = ({ foldId, jobs, embeddings, setErrorT
         setDmsStartingSeqIds(embedding.dms_starting_seq_ids.split(',').join('\n'));
         setExtraSequenceIDs(embedding.extra_seq_ids.split(',').join('\n'));
         setShowEmbeddingSection(true);
+    };
+
+    const handleStartLogits = async () => {
+        await startLogits(foldId);
+        UIkit.notification({ message: `Started logits run.`, timeout: 2000 });
     };
 
     return (
@@ -239,6 +245,17 @@ const EmbedTab: React.FC<EmbedTabProps> = ({ foldId, jobs, embeddings, setErrorT
                                 onClick={() => handleStartDmsEmbeddings("esmc_600m")}
                             >
                                 Start Embedding (600M model)
+                            </button>
+
+                        </div>
+                        <hr />
+                        <h4>Logits</h4>
+                        <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
+                            <button
+                                className="uk-button uk-button-primary"
+                                onClick={() => handleStartLogits()}
+                            >
+                                Start Logits
                             </button>
                         </div>
                     </div>

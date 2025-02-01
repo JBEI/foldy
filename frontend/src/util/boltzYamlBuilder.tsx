@@ -110,7 +110,7 @@ const simpleSchema = {
                     },
                     sequence: {
                         type: "string",
-                        title: "Sequence (for protein)",
+                        title: "Sequence (for protein, DNA, RNA)",
                     },
                     smiles: {
                         type: "string",
@@ -522,6 +522,39 @@ function toBoltzYaml(model: BoltzFormModel): string {
     return YAML.stringify(boltzObj);
 }
 
+/** Custom sequence field with canonicalization */
+const SequenceField = connectField((props: any) => {
+    const { onChange, value } = props;
+
+    const canonicalize = () => {
+        if (!value) return;
+        // Remove whitespace, trailing *, and capitalize
+        const canonicalized = value
+            .replace(/\s+/g, '')  // remove whitespace
+            .replace(/\*$/, '')   // remove trailing *
+            .toUpperCase();       // capitalize
+        onChange(canonicalized);
+    };
+
+    return (
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+            <TextArea
+                value={value || ''}
+                onChange={(e) => onChange(e.target.value)}
+                placeholder="Enter sequence"
+                rows={4}
+                style={{ fontFamily: 'monospace', flex: 1 }}
+            />
+            <Button
+                onClick={canonicalize}
+                title="Remove whitespace, trailing *, and capitalize"
+            >
+                Canonicalize
+            </Button>
+        </div>
+    );
+});
+
 /** 
  * A small helper that conditionally shows fields based on entity type
  */
@@ -533,7 +566,7 @@ const EntityTypeConditionalFields = connectField((props: { value: BoltzFormModel
     if (entityType === "protein" || entityType === "dna" || entityType === "rna") {
         return (
             <>
-                <AutoField name="sequence" />
+                <SequenceField name="sequence" />
                 <ListField name="modifications">
                     <ListItemField name="$">
                         {/* <AutoField name="position" />
@@ -707,9 +740,11 @@ const BoltzYamlBuilder: React.FC<BoltzYamlBuilderProps> = ({ initialYaml, onSave
 
                             <ListField name="sequences">
                                 <ListItemField name="$">
-                                    <AutoField name="entity_type" />
-                                    <AutoField name="id" />
-                                    <EntityTypeConditionalFields name="" />
+                                    <div style={{ backgroundColor: '#f8f8f8', border: '1px solid #a0a0a0', padding: "6px", borderRadius: "8px", marginBottom: "1rem" }}>
+                                        <AutoField name="id" />
+                                        <AutoField name="entity_type" />
+                                        <EntityTypeConditionalFields name="" />
+                                    </div>
                                 </ListItemField>
                             </ListField>
                         </Col>

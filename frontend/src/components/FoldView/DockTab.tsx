@@ -15,9 +15,6 @@ import {
 import ReactShowMoreText from "react-show-more-text";
 import UIkit from "uikit";
 import {
-    Dock,
-    DockInput,
-    Invokation,
     getDockSdf,
     postDock,
 } from "../../services/backend.service";

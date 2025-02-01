@@ -44,7 +44,7 @@ def try_run_job_with_logging(f, invokation):
         timestamp = datetime.now(UTC).isoformat(sep=" ", timespec="milliseconds")
         timestamped_msg = f"{timestamp} - {sanitize_log(msg)}"
         logs.append(timestamped_msg)
-        print(timestamped_msg)
+        print(timestamped_msg, flush=True)
         invokation.update(
             log=tail_function("\n".join(logs)),
             timedelta=timedelta(seconds=time.time() - start_time),

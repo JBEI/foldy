@@ -14,7 +14,7 @@ from werkzeug.exceptions import BadRequest
 
 from app.jobs import other_jobs
 from app.jobs import embed_jobs
-from app.models import Dock, Fold, Invokation, Embedding
+from app.models import Dock, Fold, Invokation, Embedding, Logit
 from app.extensions import db, rq
 from app.util import get_job_type_replacement, make_new_folds
 from app.helpers.fold_storage_manager import FoldStorageManager
@@ -99,3 +99,53 @@ class CalculateEmbeddingsResource(Resource):
         # )
 
         return True
+
+
+logits_fields = ns.model(
+    "Logits",
+    {
+        "run_name": fields.String(required=True),
+        "logit_model": fields.String(required=True),
+    },
+)
+
+
+@ns.route("/startlogits/<int:fold_id>")
+class StartLogitsResource(Resource):
+    @verify_has_edit_access
+    @ns.expect(logits_fields)
+    @ns.marshal_with(logits_fields)
+    def post(self, fold_id):
+        req = request.get_json()
+
+        run_name = req["run_name"]
+        logit_model = req["logit_model"]
+
+        assert logit_model in ["esmc_300m", "esmc_600m"]
+
+        fold = Fold.get_by_id(fold_id)
+
+        existing_logit = Logit.query.filter(
+            Logit.name == run_name, Logit.fold_id == fold_id
+        ).first()
+        if existing_logit:
+            existing_logit.delete()
+
+        new_invokation_id = get_job_type_replacement(fold, f"logits_{run_name}")
+
+        logit_record = Logit.create(
+            name=run_name,
+            fold_id=fold_id,
+            logit_model=logit_model,
+            invokation_id=new_invokation_id,
+        )
+
+        esm_q = rq.get_queue("esm")
+        esm_q.enqueue(
+            embed_jobs.get_esm_logits,
+            logit_record.id,
+            job_timeout="12h",
+            result_ttl=48 * 60 * 60,  # 2 days
+        )
+
+        return logit_record

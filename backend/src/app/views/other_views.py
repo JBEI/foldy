@@ -82,6 +82,17 @@ dock_fields = ns.model(
     },
 )
 
+logit_fields = ns.model(
+    "LogitFields",
+    {
+        "id": fields.Integer(required=True),
+        "name": fields.String(required=True),
+        "fold_id": fields.Integer(required=True),
+        "logit_model": fields.String(),
+        "invokation_id": fields.Integer(),
+    },
+)
+
 embedding_fields = ns.model(
     "EmbeddingFields",
     {
@@ -121,6 +132,7 @@ fold_fields = ns.model(
         "disable_relaxation": fields.Boolean(required=False),
         "jobs": fields.List(fields.Nested(simple_invokation_fields)),
         "docks": fields.List(fields.Nested(dock_fields)),
+        "logits": fields.List(fields.Nested(logit_fields)),
         "embeddings": fields.List(fields.Nested(embedding_fields)),
         "evolutions": fields.List(fields.Nested(evolution_fields)),
         # Old AF2 inputs.

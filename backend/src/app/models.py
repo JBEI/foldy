@@ -88,6 +88,13 @@ class Fold(PkModel):
         cascade="all,delete-orphan",
     )
 
+    logits = relationship(
+        "Logit",
+        back_populates="fold",
+        passive_deletes=True,
+        cascade="all,delete-orphan",
+    )
+
     evolutions = relationship(
         "Evolution",
         back_populates="fold",
@@ -147,6 +154,25 @@ class Dock(PkModel):
 
     # Diffdock output - a CSV of pose confidences.
     pose_confidences = Column(db.String, nullable=True)
+
+
+class Logit(PkModel):
+    """A logit run."""
+
+    __tablename__ = "logits"
+
+    name = Column(db.String, nullable=False)
+
+    fold_id = Column(
+        db.Integer, db.ForeignKey("roles.id", ondelete="CASCADE", onupdate="CASCADE")
+    )
+    fold = relationship("Fold", back_populates="logits")
+
+    logit_model = Column(db.String, nullable=False)
+    invokation_id = Column(
+        db.Integer,
+        db.ForeignKey("invokation.id", ondelete="CASCADE", onupdate="CASCADE"),
+    )
 
 
 class Embedding(PkModel):

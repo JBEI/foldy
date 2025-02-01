@@ -21,6 +21,7 @@ export interface Fold extends FoldInput {
     state: string | null;
     jobs: Invokation[] | null;
     docks: Dock[] | null;
+    logits: Logit[] | null;
     embeddings: Embedding[] | null;
     evolutions: Evolution[] | null;
 }
@@ -103,6 +104,14 @@ export interface Dock extends DockInput {
     invokation_id: number | null;
     pose_energy: number | null;
     pose_confidences: string | null;
+}
+
+export interface Logit {
+    id: number;
+    name: string;
+    fold_id: number;
+    logit_model: string;
+    invokation_id: number;
 }
 
 export interface Embedding {

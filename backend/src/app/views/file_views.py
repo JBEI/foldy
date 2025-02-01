@@ -1,11 +1,26 @@
 import io
-from flask import Response, stream_with_context, send_file
+import re
+
+from flask import Response, stream_with_context
+from flask import current_app, request, send_file, make_response
+from flask_jwt_extended.utils import get_jwt_identity, get_jwt
+from flask_restx import Namespace
 from flask_jwt_extended import jwt_required
-from flask_restx import Namespace, Resource
+from flask_restx import Resource
 from flask_restx import fields
+from flask_restx import reqparse
+from sqlalchemy.sql.elements import and_
 from werkzeug.exceptions import BadRequest
 
+from app.jobs import other_jobs
+from app.jobs import embed_jobs
+from app.models import Dock, Fold, Invokation
+from app.extensions import db, rq
 from app.helpers.fold_storage_manager import FoldStorageManager
+from app.authorization import (
+    user_jwt_grants_edit_access,
+    verify_has_edit_access,
+)
 
 ns = Namespace("file_views", decorators=[jwt_required(fresh=True)])
 
@@ -133,7 +148,7 @@ class FoldFileResource(Resource):
 @ns.route("/file/download/<int:fold_id>/<path:subpath>")
 class FileDownloadResource(Resource):
     def get(self, fold_id, subpath):
-        print(f"Fetching {subpath}...")
+        print(f"Starting download for {subpath}...")
         manager = FoldStorageManager()
         manager.setup()
 
@@ -141,27 +156,43 @@ class FileDownloadResource(Resource):
             blob = manager.storage_manager.get_blob(fold_id, subpath)
         except BadRequest as e:
             return {"message": str(e)}, 400
+        except Exception as e:
+            print(f"Error accessing blob: {str(e)}")
+            return {"message": "Error accessing file"}, 500
 
         fname = subpath.split("/")[-1]
 
         def generate():
-            with blob.open("rb") as f:
-                while True:
-                    chunk = f.read(8192)  # 8KB chunks
-                    if not chunk:
-                        break
-                    yield chunk
+            try:
+                with blob.open("rb") as f:
+                    while True:
+                        chunk = f.read(64 * 1024)  # 64KB chunks
+                        if not chunk:
+                            break
+                        yield chunk
+            except Exception as e:
+                print(f"Error during file streaming: {str(e)}")
+                return
 
         headers = {
             "Content-Disposition": f"attachment; filename={fname}",
             "Content-Type": "application/octet-stream",
-            "Content-Length": str(blob.size),  # Add content length if available
-            "Cache-Control": "no-cache",  # Prevent caching issues
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            "Pragma": "no-cache",
+            "Expires": "0",
         }
 
-        return Response(
-            stream_with_context(generate()),
-            headers=headers,
-            direct_passthrough=True,
-            # timeout=300,  # 5 minutes
-        )
+        # Only add Content-Length if blob.size is available
+        if hasattr(blob, "size") and blob.size is not None:
+            headers["Content-Length"] = str(blob.size)
+
+        try:
+            return Response(
+                stream_with_context(generate()),
+                headers=headers,
+                direct_passthrough=True,
+                mimetype="application/octet-stream",
+            )
+        except Exception as e:
+            print(f"Error creating response: {str(e)}")
+            return {"message": "Error streaming file"}, 500

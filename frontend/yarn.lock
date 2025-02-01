@@ -2949,6 +2949,13 @@
   resolved "https://registry.npmjs.org/@types/normalize-package-data/-/normalize-package-data-2.4.1.tgz"
   integrity sha512-Gj7cI7z+98M282Tqmp2K5EIsoouUEzbBJhQQzDE3jSIRk6r9gsz0oUokqIUR4u1R3dMHo0pDHM7sNOHyhulypw==
 
+"@types/papaparse@^5.3.15":
+  version "5.3.15"
+  resolved "https://registry.npmjs.org/@types/papaparse/-/papaparse-5.3.15.tgz"
+  integrity sha512-JHe6vF6x/8Z85nCX4yFdDslN11d+1pr12E526X8WAfhadOeaOTx5AuIkvDKIBopfvlzpzkdMx4YyvSKCM9oqtw==
+  dependencies:
+    "@types/node" "*"
+
 "@types/parse-json@^4.0.0":
   version "4.0.0"
   resolved "https://registry.npmjs.org/@types/parse-json/-/parse-json-4.0.0.tgz"
@@ -3032,6 +3039,13 @@
   version "1.4.2"
   resolved "https://registry.npmjs.org/@types/react-show-more-text/-/react-show-more-text-1.4.2.tgz"
   integrity sha512-CinPPhpxYFVKx4V0yqQGK0HUbHdlvLH8fQ/Ccp5XNKuQyIyc6bDMQz5b8bIBqmhMcCvn6AvSz3MmPpwNVCjmHQ==
+  dependencies:
+    "@types/react" "*"
+
+"@types/react-table@^7.7.20":
+  version "7.7.20"
+  resolved "https://registry.npmjs.org/@types/react-table/-/react-table-7.7.20.tgz"
+  integrity sha512-ahMp4pmjVlnExxNwxyaDrFgmKxSbPwU23sGQw2gJK4EhCvnvmib2s/O/+y1dfV57dXOwpr2plfyBol+vEHbi2w==
   dependencies:
     "@types/react" "*"
 
@@ -11678,6 +11692,11 @@ pacote@^21.0.0:
     ssri "^12.0.0"
     tar "^6.1.11"
 
+papaparse@^5.5.2:
+  version "5.5.2"
+  resolved "https://registry.npmjs.org/papaparse/-/papaparse-5.5.2.tgz"
+  integrity sha512-PZXg8UuAc4PcVwLosEEDYjPyfWnTEhOrUfdv+3Bx+NuAb+5NhDmXzg5fHWmdCh1mP5p7JAZfFr3IMQfcntNAdA==
+
 param-case@^3.0.4:
   version "3.0.4"
   resolved "https://registry.npmjs.org/param-case/-/param-case-3.0.4.tgz"
@@ -13496,12 +13515,17 @@ react-show-more-text@^1.7.1:
   dependencies:
     prop-types "^15.7.2"
 
+react-table@^7.8.0:
+  version "7.8.0"
+  resolved "https://registry.npmjs.org/react-table/-/react-table-7.8.0.tgz"
+  integrity sha512-hNaz4ygkZO4bESeFfnfOft73iBUj8K5oKi1EcSHPAibEydfsX2MyU6Z8KCr3mv3C9Kqqh71U+DhZkFvibbnPbA==
+
 react-tiny-fab@^4.0.4:
   version "4.0.4"
   resolved "https://registry.npmjs.org/react-tiny-fab/-/react-tiny-fab-4.0.4.tgz"
   integrity sha512-PxT6gEnIQR2vFfeIaa1Oq4PRX+cIEDbEfbS6PyevWCQngrKfqjMKPEcZOaaURaUclB9u3RilgjkaBUQFVlbWcg==
 
-react@*, react@^16.0.0, "react@^16.0.0 || ^17.0.0 || ^18.0.0", react@^16.11.0, react@^16.13.1, react@^16.14.0, "react@^16.14.0 || >=17", "react@^16.8.6 || ^17.0.0 || ^18.0.0", "react@^16.8.6 || 17.x", "react@^18.0.0 || ^17.0.0 || ^16.8.0", "react@^18.0.0 || ^17.0.0 || ^16.9.0", "react@^18.1.0 || ^17.0.2 || ^16.14.0", react@<18.0.0, "react@>= 0.14.0", "react@>= 16", "react@>= 16.14", react@>=16.0.0, react@>=16.11.0, react@>=16.3, react@>=16.8, react@>=16.8.0, react@>=16.9.0, react@>=18, react@>0.13.0, "react@0.14.x || 15.x || 16.x || 17.x", "react@16 - 18.x":
+react@*, react@^16.0.0, "react@^16.0.0 || ^17.0.0 || ^18.0.0", react@^16.11.0, react@^16.13.1, react@^16.14.0, "react@^16.14.0 || >=17", "react@^16.8.3 || ^17.0.0-0 || ^18.0.0", "react@^16.8.6 || ^17.0.0 || ^18.0.0", "react@^16.8.6 || 17.x", "react@^18.0.0 || ^17.0.0 || ^16.8.0", "react@^18.0.0 || ^17.0.0 || ^16.9.0", "react@^18.1.0 || ^17.0.2 || ^16.14.0", react@<18.0.0, "react@>= 0.14.0", "react@>= 16", "react@>= 16.14", react@>=16.0.0, react@>=16.11.0, react@>=16.3, react@>=16.8, react@>=16.8.0, react@>=16.9.0, react@>=18, react@>0.13.0, "react@0.14.x || 15.x || 16.x || 17.x", "react@16 - 18.x":
   version "16.14.0"
   resolved "https://registry.npmjs.org/react/-/react-16.14.0.tgz"
   integrity sha512-0X2CImDkJGApiAlcf0ODKIneSwBPhqJawOa5wCtKbu7ZECrmS26NvtSILynQ66cgkT/RJ4LidJOc3bUESwmU8g==
