@@ -5,7 +5,7 @@ import { Embedding, Invokation } from '../../types/types';
 import { FaDownload, FaRedo } from 'react-icons/fa';
 import { getFile } from '../../api/fileApi';
 import fileDownload from 'js-file-download';
-import { startLogits } from '../../api/embedApi';
+import { ESMModelPicker } from './ESMModelPicker';
 
 interface EmbedTabProps {
     foldId: number;
@@ -19,6 +19,7 @@ const EmbedTab: React.FC<EmbedTabProps> = ({ foldId, jobs, embeddings, setErrorT
     const [dmsStartingSeqIds, setDmsStartingSeqIds] = useState<string>('WT');
     const [extraSequenceIDs, setExtraSequenceIDs] = useState<string>('');
     const [showEmbeddingSection, setShowEmbeddingSection] = useState<boolean>(false);
+    const [model, setModel] = useState<string>('esmc_300m');
 
     const handleDmsStartingSeqIDsTextareaChange = (event: ChangeEvent<HTMLTextAreaElement>) => {
         setDmsStartingSeqIds(event.target.value);
@@ -28,7 +29,7 @@ const EmbedTab: React.FC<EmbedTabProps> = ({ foldId, jobs, embeddings, setErrorT
         setExtraSequenceIDs(event.target.value);
     };
 
-    const handleStartDmsEmbeddings = async (model: string) => {
+    const handleStartDmsEmbeddings = async () => {
         const dmsStartingSeqIdsArray: string[] = dmsStartingSeqIds
             .split('\n')
             .map(line => line.trim())
@@ -96,11 +97,7 @@ const EmbedTab: React.FC<EmbedTabProps> = ({ foldId, jobs, embeddings, setErrorT
         setDmsStartingSeqIds(embedding.dms_starting_seq_ids.split(',').join('\n'));
         setExtraSequenceIDs(embedding.extra_seq_ids.split(',').join('\n'));
         setShowEmbeddingSection(true);
-    };
-
-    const handleStartLogits = async () => {
-        await startLogits(foldId);
-        UIkit.notification({ message: `Started logits run.`, timeout: 2000 });
+        setModel(embedding.embedding_model);
     };
 
     return (
@@ -233,30 +230,20 @@ const EmbedTab: React.FC<EmbedTabProps> = ({ foldId, jobs, embeddings, setErrorT
                                 ></textarea>
                             </div>
                         </div>
+
+                        <ESMModelPicker
+                            value={model}
+                            onChange={setModel}
+                        />
+
                         <div style={{ marginTop: '20px' }}>
                             <button
                                 className="uk-button uk-button-primary"
-                                onClick={() => handleStartDmsEmbeddings("esmc_300m")}
+                                onClick={() => handleStartDmsEmbeddings()}
                             >
-                                Start Embedding (300M model)
-                            </button>
-                            <button
-                                className="uk-button uk-button-primary uk-margin-left"
-                                onClick={() => handleStartDmsEmbeddings("esmc_600m")}
-                            >
-                                Start Embedding (600M model)
+                                Start Embedding
                             </button>
 
-                        </div>
-                        <hr />
-                        <h4>Logits</h4>
-                        <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
-                            <button
-                                className="uk-button uk-button-primary"
-                                onClick={() => handleStartLogits()}
-                            >
-                                Start Logits
-                            </button>
                         </div>
                     </div>
                 )}

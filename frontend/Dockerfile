@@ -1,11 +1,22 @@
 # Stage 0: Build and compile the frontend, based on Node.js.
-FROM node:18 as build-stage
+FROM node:18-slim as build-stage
 
 WORKDIR /app
 
+# Install required build dependencies
+RUN apt-get update && apt-get install -y \
+    python3 \
+    make \
+    g++ \
+    && rm -rf /var/lib/apt/lists/*
+
+# Add custom .npmrc for faster installs
+RUN echo "network-timeout=100000\nprefer-offline=true\nprogress=false" > .npmrc
+
 COPY package.json package-lock.json /app/
 
-RUN npm install
+# Supposedly more reliable than npm install
+RUN npm ci --quiet
 
 COPY ./ /app/
 

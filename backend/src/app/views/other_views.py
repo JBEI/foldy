@@ -13,7 +13,7 @@ from sqlalchemy.sql.elements import and_
 from werkzeug.exceptions import BadRequest
 
 from app.jobs import other_jobs
-from app.jobs import embed_jobs
+from app.jobs import esm_jobs
 from app.models import Dock, Fold, Invokation
 from app.extensions import db, rq
 from app.util import start_stage, get_job_type_replacement, make_new_folds

@@ -61,18 +61,14 @@ export class BoltzYamlHelper {
         this.version = version
     }
 
-    /**
-     * Returns all protein chain sequences as [chainId, sequence].
-     * Example: [ ["A","MVTPE"], ["B","MVTPE"], ... ]
-     */
-    getProteinSequences(): ChainSequence[] {
+    getSequencesOfType(targetEntityType: string): ChainSequence[] {
         const results: ChainSequence[] = []
 
         for (const entry of this.sequences) {
             // Each entry is expected to have exactly one key,
             // e.g. "protein", "ligand", "rna", "dna", etc.
             const [entityType, entityData] = Object.entries(entry)[0] as [string, any]
-            if (entityType === 'protein') {
+            if (entityType === targetEntityType) {
                 let chainIds = entityData.id
                 if (!Array.isArray(chainIds)) {
                     chainIds = [chainIds]
@@ -86,15 +82,23 @@ export class BoltzYamlHelper {
             }
         }
 
-        return results
+        return results;
+    }
+
+    /**
+     * Returns all protein chain sequences as [chainId, sequence].
+     * Example: [ ["A","MVTPE"], ["B","MVTPE"], ... ]
+     */
+    getProteinSequences(): ChainSequence[] {
+        return this.getSequencesOfType('protein');
     }
 
     getDNASequences(): ChainSequence[] {
-        return this.sequences.filter((e) => e.dna).map((e) => [e.id, e.sequence])
+        return this.getSequencesOfType('dna');
     }
 
     getRNASequences(): ChainSequence[] {
-        return this.sequences.filter((e) => e.rna).map((e) => [e.id, e.sequence])
+        return this.getSequencesOfType('rna');
     }
 
     /**

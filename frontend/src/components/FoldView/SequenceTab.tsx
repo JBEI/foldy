@@ -109,7 +109,18 @@ const SequenceTab = React.memo((props: SequenceTabProps) => {
                 return <div key={idx} style={{ marginBottom: "20px" }}>
                     <h3>{dna[0]} (DNA)</h3>
                     <div>
-                        {dna[1]}
+                        <SeqViz
+                            name={dna[0]}
+                            seq={dna[1]}
+                            seqType="dna"
+                            viewer="linear"
+                            style={{
+                                width: "100%",
+                                marginBottom: "20px",
+                                border: "1px solid #e0e0e0",
+                                borderRadius: "8px",
+                            }}
+                        />
                     </div>
                 </div>
             })}
@@ -117,6 +128,18 @@ const SequenceTab = React.memo((props: SequenceTabProps) => {
                 return <div key={idx} style={{ marginBottom: "20px" }}>
                     <h3>{rna[0]} (RNA)</h3>
                     <div>
+                        <SeqViz
+                            name={rna[0]}
+                            seq={rna[1]}
+                            seqType="rna"
+                            viewer="linear"
+                            style={{
+                                width: "100%",
+                                marginBottom: "20px",
+                                border: "1px solid #e0e0e0",
+                                borderRadius: "8px",
+                            }}
+                        />
                         {rna[1]}
                     </div>
                 </div>

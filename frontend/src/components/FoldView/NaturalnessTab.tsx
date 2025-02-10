@@ -11,25 +11,35 @@ import Plot from 'react-plotly.js';
 import { Data } from 'plotly.js';
 import Papa from 'papaparse';
 import { useTable, useGlobalFilter, useSortBy, TableInstance } from 'react-table';
+import { ESMModelPicker } from './ESMModelPicker';
 
 interface NaturalnessTabProps {
     foldId: number;
+    foldName: string | null;
     jobs: Invokation[] | null;
     logits: Logit[] | null;
     setErrorText: (error: string) => void;
 }
 
-const NaturalnessTab: React.FC<NaturalnessTabProps> = ({ foldId, jobs, logits, setErrorText }) => {
+const NaturalnessTab: React.FC<NaturalnessTabProps> = ({ foldId, foldName, jobs, logits, setErrorText }) => {
     const [runName, setRunName] = useState<string>('');
     const [logitModel, setLogitModel] = useState<string>('esmc_600m');
+    const [useStructure, setUseStructure] = useState<boolean>(false);
     const [showForm, setShowForm] = useState<boolean>(false);
 
     const [displayedLogitId, setDisplayedLogitId] = useState<number | null>(null);
     const [logitCsvData, setLogitCsvData] = useState<string | null>(null);
+    const [maskWildType, setMaskWildType] = useState<boolean>(false);
+    const [zeroWildType, setZeroWildType] = useState<boolean>(false);
+    const [showWTMarginalLikelihood, setShowWTMarginalLikelihood] = useState<boolean>(false);
+
+
     const handleStartLogit = async () => {
         try {
-            UIkit.notification({ message: 'Starting evolution...', timeout: 2000 });
-            const logitRun = await startLogits(foldId, runName, logitModel);
+            UIkit.notification({ message: 'Starting naturalness run...', timeout: 2000 });
+            const logitRun = await startLogits(foldId, runName, useStructure, logitModel);
+            console.log(`logitRun: ${logitRun}`);
+            console.log(`logitRun keys: ${Object.keys(logitRun)}`);
             UIkit.notification({
                 message: `Logit run started with id ${logitRun.id} and name ${logitRun.name}`,
                 status: 'success'
@@ -48,11 +58,15 @@ const NaturalnessTab: React.FC<NaturalnessTabProps> = ({ foldId, jobs, logits, s
     };
 
     const downloadLogitCsv = (logit: Logit) => {
+        if (!foldName) {
+            setErrorText('Fold name is not set.');
+            return;
+        }
         const logitPath = `naturalness/logits_${logit.name}_melted.csv`;
         console.log(`Downloading logits for ${logit.name} at path ${logitPath}`);
         getFile(logit.fold_id, logitPath).then(
             (fileBlob: Blob) => {
-                const newFname = `logits_${logit.name}_melted.csv`;
+                const newFname = `logits_${foldName}_${logit.name}_melted.csv`;
                 UIkit.notification(`Downloading ${logitPath} with file name ${newFname}!`);
                 fileDownload(fileBlob, newFname);
             },
@@ -67,6 +81,8 @@ const NaturalnessTab: React.FC<NaturalnessTabProps> = ({ foldId, jobs, logits, s
         UIkit.notification({ message: `Repopulating "New Logit Run" with parameters from ${logit.name}.`, timeout: 2000 });
         setRunName(logit.name);
         setShowForm(true);
+        setUseStructure(logit.use_structure || false);
+        setLogitModel(logit.logit_model);
     };
 
     const loadLogit = (logitId: number) => {
@@ -111,30 +127,52 @@ const NaturalnessTab: React.FC<NaturalnessTabProps> = ({ foldId, jobs, logits, s
 
         // Extract the naturalness column name (any column that's not seq_id)
         const columns = Object.keys(data[0]);
-        const naturalnessColumn = columns.find(col => col !== 'seq_id') || '';
+        const naturalnessColumn = 'probability';
+        const wtMarginalColumn = 'wt_marginal';
 
         // Define standard amino acid residues
         const residues = ['A', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'K', 'L', 'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'V', 'W', 'Y'];
 
         // Process data for heatmap
         const locusSet = new Set<number>();
-        const heatmapData: { [key: string]: number } = {};
+        const probabilityHeatmapData: { [key: string]: number } = {};
+        const wtMarginalHeatmapData: { [key: string]: number } = {};
+        const wtResidues: { [key: number]: string } = {};  // Store wild-type residues by position
 
         data.forEach(row => {
             const seqId = row['seq_id'];
             // Extract locus and mutant residue using regex
-            const match = seqId.match(/[A-Z](\d+)[A-Z]/);
+            const match = seqId.match(/([A-Z])(\d+)([A-Z])/);
             if (match) {
-                const locus = parseInt(match[1]);
-                const mutantResidue = seqId[seqId.length - 1];
+                const wtResidue = match[1];
+                const locus = parseInt(match[2]);
+                const mutantResidue = match[3];
                 locusSet.add(locus);
-                heatmapData[`${locus}-${mutantResidue}`] = parseFloat(row[naturalnessColumn]);
+                probabilityHeatmapData[`${locus}-${mutantResidue}`] = parseFloat(row[naturalnessColumn]);
+                wtMarginalHeatmapData[`${locus}-${mutantResidue}`] = parseFloat(row[wtMarginalColumn]);
+                wtResidues[locus] = wtResidue;
             }
         });
+        console.log(probabilityHeatmapData);
+        console.log(wtMarginalHeatmapData);
 
         const loci = Array.from(locusSet).sort((a, b) => a - b);
         const zValues = residues.map(res =>
-            loci.map(locus => heatmapData[`${locus}-${res}`] || null)
+            loci.map(locus => {
+                // If masking is enabled and this is the wild-type residue, return null
+                if (res === wtResidues[locus]) {
+                    if (zeroWildType) {
+                        return 0.0;
+                    } else if (maskWildType) {
+                        return null;
+                    }
+                }
+                if (showWTMarginalLikelihood) {
+                    return wtMarginalHeatmapData[`${locus}-${res}`] || null;
+                } else {
+                    return probabilityHeatmapData[`${locus}-${res}`] || null;
+                }
+            })
         );
 
         const plotlyData: Array<Partial<Data>> = [{
@@ -143,14 +181,51 @@ const NaturalnessTab: React.FC<NaturalnessTabProps> = ({ foldId, jobs, logits, s
             x: loci,
             y: residues,
             colorscale: 'Viridis',
+            hoverongaps: false,
+            zmin: showWTMarginalLikelihood ? undefined : 0,  // Set minimum value for color scale
+            zmax: showWTMarginalLikelihood ? undefined : 1,  // Set maximum value for color scale
+            hovertemplate: '%{customdata}%{x}%{y}<br>' +
+                'Score: 10^(%{z})<extra></extra>',
+            customdata: residues.map(() => loci.map(locus => wtResidues[locus])),
+            showscale: true,
         }];
 
         return (
             <div style={{ width: '100%', maxWidth: '900px' }}>
+                <div style={{ marginBottom: '10px' }}>
+                    <label>
+                        <input
+                            type="checkbox"
+                            className="uk-checkbox"
+                            checked={maskWildType}
+                            onChange={(e) => setMaskWildType(e.target.checked)}
+                        /> Mask wild-type amino acids
+                    </label>
+                </div>
+                <div style={{ marginBottom: '10px' }}>
+                    <label>
+                        <input
+                            type="checkbox"
+                            className="uk-checkbox"
+                            checked={zeroWildType}
+                            onChange={(e) => setZeroWildType(e.target.checked)}
+                        /> Zero out wild-type amino acids
+                    </label>
+                </div>
+                <div style={{ marginBottom: '10px' }}>
+                    <label>
+                        <input
+                            type="checkbox"
+                            className="uk-checkbox"
+                            checked={showWTMarginalLikelihood}
+                            onChange={(e) => setShowWTMarginalLikelihood(e.target.checked)}
+                        /> Display WT Marginal Likelihood
+                    </label>
+                </div>
                 <Plot
                     data={plotlyData}
                     layout={{
-                        title: 'Mutation Naturalness Heatmap',
+                        title: `Naturalness${showWTMarginalLikelihood ? ' (WT Marginal Likelihood, log scale)' : ' (Residue Probability)'}`,
                         xaxis: { title: 'Position in Sequence' },
                         yaxis: { title: 'Mutant Residue' },
                         height: 500,
@@ -160,10 +235,9 @@ const NaturalnessTab: React.FC<NaturalnessTabProps> = ({ foldId, jobs, logits, s
                     useResizeHandler={true}
                     style={{ width: '100%', height: '100%' }}
                 />
-                {/* <TableComponent /> */}
             </div>
         );
-    }, [logitCsvData]);
+    }, [logitCsvData, maskWildType, zeroWildType, showWTMarginalLikelihood]);
 
     return (
         <div style={{ padding: '20px', backgroundColor: '#f8f9fa', boxShadow: '0 2px 6px rgba(0, 0, 0, 0.1)', borderRadius: '8px' }}>
@@ -262,6 +336,24 @@ const NaturalnessTab: React.FC<NaturalnessTabProps> = ({ foldId, jobs, logits, s
                                 />
                             </div>
 
+                            {/* Add Model Selection Dropdown */}
+                            <ESMModelPicker
+                                value={logitModel}
+                                onChange={setLogitModel}
+                            />
+
+                            {/* Use Structure Checkbox */}
+                            <div style={{ flex: 1, minWidth: '200px' }}>
+                                <label className="uk-form-label">
+                                    <input
+                                        type="checkbox"
+                                        className="uk-checkbox uk-margin-small-right"
+                                        checked={useStructure}
+                                        onChange={(e) => setUseStructure(e.target.checked)}
+                                    />
+                                    Use Structure
+                                </label>
+                            </div>
                         </div>
 
                         <button

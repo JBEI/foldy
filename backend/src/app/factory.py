@@ -53,6 +53,10 @@ def register_extensions(app):
             verify_jwt_in_request()
             return user_jwt_grants_edit_access(get_jwt()["user_claims"])
 
+        # Add these defaults for all model views
+        column_display_pk = True
+        column_default_sort = "id"
+
     class UserModelView(VerifiedModelView):
         column_list = ["email", "created_at", "access_type", "num_folds", "attributes"]
         column_editable_list = ["created_at", "access_type"]
@@ -129,12 +133,43 @@ def register_extensions(app):
             "bounding_box_radius_angstrom",
         ]
 
+    class LogitModelView(VerifiedModelView):
+        column_list = [
+            "id",
+            "name",
+            "fold",
+            "fold.user",
+            "logit_model",
+            "use_structure",
+        ]
+        column_sortable_list = ["id", "name", "logit_model", "use_structure"]
+        column_searchable_list = ["name", "logit_model"]
+
+    class EmbeddingModelView(VerifiedModelView):
+        column_list = [
+            "id",
+            "name",
+            "fold",
+            "fold.user",
+            "embedding_model",
+            "extra_seq_ids",
+            "dms_starting_seq_ids",
+        ]
+        column_sortable_list = ["id", "name", "embedding_model"]
+        column_searchable_list = ["name", "embedding_model"]
+
+    class EvolutionModelView(VerifiedModelView):
+        column_list = ["id", "name", "fold", "fold.user", "embedding_files"]
+        column_sortable_list = ["id", "name"]
+        column_searchable_list = ["name"]
+
     admin.add_view(UserModelView(models.User, db.session))
     admin.add_view(FoldModelView(models.Fold, db.session))
     admin.add_view(InvokationModelView(models.Invokation, db.session))
     admin.add_view(DockModelView(models.Dock, db.session))
-    admin.add_view(VerifiedModelView(models.Embedding, db.session))
-    admin.add_view(VerifiedModelView(models.Evolution, db.session))
+    admin.add_view(LogitModelView(models.Logit, db.session))
+    admin.add_view(EmbeddingModelView(models.Embedding, db.session))
+    admin.add_view(EvolutionModelView(models.Evolution, db.session))
     admin.init_app(app)
     db.init_app(app)
     migrate.init_app(app, db)
@@ -163,7 +198,7 @@ def create_app(config_object="settings"):
     from app.views.login_views import ns as login_views_ns, oauth
     from app.views.admin_views import ns as admin_views_ns
     from app.views.file_views import ns as file_views_ns
-    from app.views.embed_views import ns as embed_views_ns
+    from app.views.esm_views import ns as esm_views_ns
     from app.views.evolve_views import ns as evolve_views_ns
     from app.views.other_views import ns as other_views_ns
 
@@ -191,7 +226,7 @@ def create_app(config_object="settings"):
     api.add_namespace(login_views_ns, "/api")
     api.add_namespace(admin_views_ns, "/api")
     api.add_namespace(file_views_ns, "/api")
-    api.add_namespace(embed_views_ns, "/api")
+    api.add_namespace(esm_views_ns, "/api")
     api.add_namespace(evolve_views_ns, "/api")
     api.add_namespace(other_views_ns, "/api")
 

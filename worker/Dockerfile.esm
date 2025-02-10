@@ -7,6 +7,12 @@ RUN /scripts/setup.sh
 # Install special requirements.
 RUN /opt/conda/envs/worker/bin/pip install esm
 
+# # Download the huggingface models...
+# RUN HF_HUB_ENABLE_HF_TRANSFER=1 /opt/conda/envs/worker/bin/huggingface-cli download \
+#   --resume-download \
+#   --local-dir /hf-cache/ \
+#   EvolutionaryScale/esmc-300m-2024-12 data/weights/esmc_300m_2024_12_v0.pth
+
 # Copy application code.
 COPY backend/ /backend/
 COPY worker/*.sh /worker/

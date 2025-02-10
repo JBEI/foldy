@@ -66,6 +66,7 @@ export function makeFoldTable(folds: Fold[]) {
                                     {new Date(fold.create_date).toLocaleString("en-US", {
                                         timeStyle: "short",
                                         dateStyle: "short",
+                                        timeZone: "America/Los_Angeles"
                                     })}
                                 </td>
                                 <td className="uk-text-truncate">

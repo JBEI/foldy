@@ -5,13 +5,17 @@ COPY worker/scripts/setup.sh /scripts/setup.sh
 RUN /scripts/setup.sh
 
 # Install special requirements.
-RUN /opt/conda/envs/worker/bin/python -m pip install boltz==0.4.1 huggingface_hub[cli,hf_transfer]
+RUN /opt/conda/envs/worker/bin/python -m pip install boltz==0.4.1
 
-# Download the huggingface models...
-RUN HF_HUB_ENABLE_HF_TRANSFER=1 /opt/conda/envs/worker/bin/huggingface-cli download \
-  --resume-download \
-  --local-dir /hf-cache/ \
-  boltz-community/boltz-1 boltz1_conf.ckpt ccd.pkl
+# # Chat suggested this, for when on a weird network.
+# RUN echo "nameserver 8.8.8.8" > /etc/resolv.conf && \
+#     echo "nameserver 8.8.4.4" >> /etc/resolv.conf
+
+# # Download the huggingface models...
+# RUN HF_HUB_ENABLE_HF_TRANSFER=1 /opt/conda/envs/worker/bin/huggingface-cli download \
+#   --resume-download \
+#   --local-dir /hf-cache/ \
+#   boltz-community/boltz-1 boltz1_conf.ckpt ccd.pkl
 
 # Copy application code.
 COPY backend/ /backend/

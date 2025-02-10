@@ -33,9 +33,7 @@ ERROR_MESSAGE_IF_EVERYTHING_GOES_WELL = "No module named 'torch'"
 
 def test_cif_to_pdb(tmp_path):
     """Basic test for cif_to_pdb function."""
-    pdb_string = cif_to_pdb(
-        "integration_tests/testdata/000004_model_0.cif", "structure"
-    )
+    pdb_string = cif_to_pdb("app/tests/testdata/rubisco-boltz.cif", "structure")
     assert pdb_string.startswith("ATOM")
 
 

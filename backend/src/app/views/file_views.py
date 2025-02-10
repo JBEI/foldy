@@ -12,8 +12,6 @@ from flask_restx import reqparse
 from sqlalchemy.sql.elements import and_
 from werkzeug.exceptions import BadRequest
 
-from app.jobs import other_jobs
-from app.jobs import embed_jobs
 from app.models import Dock, Fold, Invokation
 from app.extensions import db, rq
 from app.helpers.fold_storage_manager import FoldStorageManager
@@ -166,7 +164,7 @@ class FileDownloadResource(Resource):
             try:
                 with blob.open("rb") as f:
                     while True:
-                        chunk = f.read(64 * 1024)  # 64KB chunks
+                        chunk = f.read(256 * 1024)  # 256KB chunks
                         if not chunk:
                             break
                         yield chunk

@@ -111,6 +111,7 @@ export interface Logit {
     name: string;
     fold_id: number;
     logit_model: string;
+    use_structure: boolean | null;
     invokation_id: number;
 }
 

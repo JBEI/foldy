@@ -40,7 +40,7 @@ Flask-Cors
 Flask-JWT-Extended
 Flask-Migrate
 flask-restx
--e git+https://github.com/Jacoberts/Flask-RQ2.git@3fed0bbd0af19d101f725718c9ace698bdcdcf2f#egg=Flask_RQ2
+git+https://github.com/Jacoberts/Flask-RQ2.git@3fed0bbd0af19d101f725718c9ace698bdcdcf2f#egg=Flask_RQ2
 Flask-SQLAlchemy
 google-api-core
 google-auth
@@ -52,6 +52,7 @@ googleapis-common-protos
 greenlet
 gunicorn
 h11
+huggingface_hub[cli,hf_transfer]
 idna
 importlib-metadata
 iniconfig

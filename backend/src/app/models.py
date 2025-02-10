@@ -169,6 +169,8 @@ class Logit(PkModel):
     fold = relationship("Fold", back_populates="logits")
 
     logit_model = Column(db.String, nullable=False)
+    use_structure = Column(db.Boolean, nullable=True)
+
     invokation_id = Column(
         db.Integer,
         db.ForeignKey("invokation.id", ondelete="CASCADE", onupdate="CASCADE"),

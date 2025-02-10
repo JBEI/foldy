@@ -11,6 +11,7 @@ const JobsTab: React.FC<JobsTabProps> = ({ jobs }) => {
             ? new Date(jobstarttime).toLocaleString("en-US", {
                 timeStyle: "short",
                 dateStyle: "short",
+                timeZone: "America/Los_Angeles"
             })
             : "Not Started / Unknown";
     };

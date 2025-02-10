@@ -36,7 +36,7 @@ class StorageAccessor:
         """Write contents to a file under the specified fold directory."""
         raise NotImplementedError
 
-    def get_binary(self, file_path):
+    def get_binary(self, fold_id, file_path):
         raise NotImplementedError
 
     def get_blob(self, fold_id, file_path):

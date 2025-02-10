@@ -11,7 +11,7 @@ import { RdYlBu } from "./color";
 // import NGL from 'ngl/dist/ngl.js';
 
 // or if it doesn’t have a default export, you may need
-import * as NGL from 'ngl/dist/ngl.js';
+// import * as NGL from 'ngl/dist/ngl.js';
 import { Annotations } from "../types/types";
 
 export const matricesAreEqual = (
@@ -350,14 +350,15 @@ export const getColorsForAnnotations = (
         sequenceViewerLegend.push(chainLegend);
     });
 
-    console.log(NGL);
-    const nglColorscheme = NGL.ColormakerRegistry.addSelectionScheme(
-        nglViewerColors,
-        "pfam_colors"
-    );
+    // console.log(NGL);
+    // const nglColorscheme = NGL.ColormakerRegistry.addSelectionScheme(
+    //     nglViewerColors,
+    //     "pfam_colors"
+    // );
 
     return new VariousColorSchemes(
-        nglColorscheme,
+        // nglColorscheme,
+        '',
         sequenceViewerCoverage,
         sequenceViewerLegend
     );

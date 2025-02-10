@@ -6,7 +6,7 @@ import pandas as pd
 from app.extensions import db
 from app.helpers.fold_storage_manager import FoldStorageManager
 from app.models import User, Fold, Evolution, Invokation, Embedding
-from app.jobs.embed_jobs import get_esm_embeddings
+from app.jobs.esm_jobs import get_esm_embeddings
 import random
 import numpy as np
 

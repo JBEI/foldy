@@ -13,7 +13,7 @@ from sqlalchemy.sql.elements import and_
 from werkzeug.exceptions import BadRequest
 
 from app.jobs import other_jobs
-from app.jobs import embed_jobs
+from app.jobs import esm_jobs
 from app.models import Dock, Fold, Invokation, Embedding, Logit
 from app.extensions import db, rq
 from app.util import get_job_type_replacement, make_new_folds
@@ -23,7 +23,22 @@ from app.authorization import (
     verify_has_edit_access,
 )
 
-ns = Namespace("embed_views", decorators=[jwt_required(fresh=True)])
+ns = Namespace("esm_views", decorators=[jwt_required(fresh=True)])
+
+ALLOWED_ESM_MODELS = [
+    "esmc_600m",
+    "esmc_300m",
+    "esm3-open",
+    "esm2_t33_650M_UR50D",
+    "esm2_t36_3B_UR50D",
+    "esm2_t48_15B_UR50D",
+    "esm1v_t33_650M_UR90S_1",
+    "esm1v_t33_650M_UR90S_2",
+    "esm1v_t33_650M_UR90S_3",
+    "esm1v_t33_650M_UR90S_4",
+    "esm1v_t33_650M_UR90S_5",
+    "esm1v",
+]
 
 
 embeddings_fields = ns.model(
@@ -54,10 +69,9 @@ class CalculateEmbeddingsResource(Resource):
             seq_id.strip() for seq_id in dms_starting_seq_ids if seq_id.strip()
         ]
 
-        ALLOWED_EMBEDDING_MODELS = ["esmc_300m", "esmc_600m"]
-        if embedding_model not in ALLOWED_EMBEDDING_MODELS:
+        if embedding_model not in ALLOWED_ESM_MODELS:
             raise BadRequest(
-                f"Invalid embedding model {embedding_model}: must be one of {ALLOWED_EMBEDDING_MODELS}"
+                f"Invalid embedding model {embedding_model}: must be one of {ALLOWED_ESM_MODELS}"
             )
 
         fold = Fold.get_by_id(fold_id)
@@ -75,7 +89,7 @@ class CalculateEmbeddingsResource(Resource):
 
         esm_q = rq.get_queue("esm")
         esm_q.enqueue(
-            embed_jobs.get_esm_embeddings,
+            esm_jobs.get_esm_embeddings,
             embed_record.id,
             job_timeout="12h",
             result_ttl=48 * 60 * 60,  # 2 days
@@ -104,8 +118,12 @@ class CalculateEmbeddingsResource(Resource):
 logits_fields = ns.model(
     "Logits",
     {
-        "run_name": fields.String(required=True),
+        "id": fields.Integer(required=False),
+        "name": fields.String(required=True),
+        "use_structure": fields.Boolean(required=False),
         "logit_model": fields.String(required=True),
+        "fold_id": fields.Integer(required=False),
+        "invokation_id": fields.Integer(required=False),
     },
 )
 
@@ -118,31 +136,36 @@ class StartLogitsResource(Resource):
     def post(self, fold_id):
         req = request.get_json()
 
-        run_name = req["run_name"]
+        name = req["name"]
         logit_model = req["logit_model"]
+        use_structure = req.get("use_structure", False)
 
-        assert logit_model in ["esmc_300m", "esmc_600m"]
+        if logit_model not in ALLOWED_ESM_MODELS:
+            raise BadRequest(
+                f"Invalid logit model {logit_model}: must be one of {ALLOWED_ESM_MODELS}"
+            )
 
         fold = Fold.get_by_id(fold_id)
 
         existing_logit = Logit.query.filter(
-            Logit.name == run_name, Logit.fold_id == fold_id
+            Logit.name == name, Logit.fold_id == fold_id
         ).first()
         if existing_logit:
             existing_logit.delete()
 
-        new_invokation_id = get_job_type_replacement(fold, f"logits_{run_name}")
+        new_invokation_id = get_job_type_replacement(fold, f"logits_{name}")
 
         logit_record = Logit.create(
-            name=run_name,
+            name=name,
             fold_id=fold_id,
+            use_structure=use_structure,
             logit_model=logit_model,
             invokation_id=new_invokation_id,
         )
 
         esm_q = rq.get_queue("esm")
         esm_q.enqueue(
-            embed_jobs.get_esm_logits,
+            esm_jobs.get_esm_logits,
             logit_record.id,
             job_timeout="12h",
             result_ttl=48 * 60 * 60,  # 2 days

@@ -21,7 +21,6 @@ function TagView(props: { setErrorText: (a: string) => void }) {
         string | null
     >(null);
     const [stageToStart, setStageToStart] = useState<string | null>(null);
-    const [showJobManagement, setShowJobManagement] = useState(true);
 
     if (!tagStringParam) {
         throw Error("Somehow wound up with an invalid tagstring.");
@@ -33,7 +32,7 @@ function TagView(props: { setErrorText: (a: string) => void }) {
         });
     }, [props]);
 
-    const restartWholePipelineForAnyFailedJob = () => {
+    const refoldAnyFailedFolds = () => {
         if (!folds) {
             return;
         }
@@ -45,9 +44,7 @@ function TagView(props: { setErrorText: (a: string) => void }) {
             }
 
             if (
-                getJobStatus(fold, "features") === "failed" ||
-                getJobStatus(fold, "models") === "failed" ||
-                getJobStatus(fold, "decompress_pkls") === "failed"
+                getJobStatus(fold, "boltz") === "failed"
             ) {
                 const stageToRun = "both";
                 queueJob(fold.id, stageToRun, false).then(
@@ -191,7 +188,7 @@ function TagView(props: { setErrorText: (a: string) => void }) {
     };
 
     return (
-        <div style={{ padding: "20px" }}>
+        <div style={{ padding: "20px", overflowY: "scroll" }}>
             {/* Tag Header */}
             <h2 style={{ textAlign: "center", marginBottom: "20px" }}>
                 Tag: <b>{tagString}</b>
@@ -206,72 +203,76 @@ function TagView(props: { setErrorText: (a: string) => void }) {
                 </div>
             )}
 
-            {/* Downloads Section */}
-            <section style={sectionStyle} className="uk-width-1-3">
-                <h3>Downloads</h3>
-                <div style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: "10px",
-                }}>
-                    <CSVLink
-                        data={folds ? folds : []}
-                        className="uk-button uk-button-primary"
-                        filename={`${tagString}_metadata.csv`}
-                    >
-                        Download Metadata as CSV
-                    </CSVLink>
-                    <button
-                        className="uk-button uk-button-primary"
-                        onClick={downloadFoldPdbZip}
-                    >
-                        Download Fold PDBs in ZIP
-                    </button>
-                    <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                        <input
-                            type="text"
-                            placeholder="ranked_0/plddt.npy"
-                            value={relativeFpathToDownload || ""}
-                            onChange={(e) => setRelativeFpathToDownload(e.target.value)}
-                            style={inputStyle}
-                        />
+            {/* Container for all sections */}
+            <div style={{
+                display: "flex",
+                flexWrap: "wrap",
+                gap: "20px",
+                justifyContent: "flex-start",
+            }}>
+                {/* Downloads Section */}
+                <section style={sectionStyle}>
+                    <h3>Downloads</h3>
+                    <div style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: "10px",
+                    }}>
+                        <CSVLink
+                            data={folds ? folds : []}
+                            className="uk-button uk-button-primary"
+                            filename={`${tagString}_metadata.csv`}
+                        >
+                            Download Metadata as CSV
+                        </CSVLink>
                         <button
                             className="uk-button uk-button-primary"
-                            onClick={downloadFoldFileZip}
+                            onClick={downloadFoldPdbZip}
                         >
-                            Download File
+                            Download Fold PDBs in ZIP
                         </button>
+                        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                            <input
+                                type="text"
+                                placeholder="ranked_0/plddt.npy"
+                                value={relativeFpathToDownload || ""}
+                                onChange={(e) => setRelativeFpathToDownload(e.target.value)}
+                                style={inputStyle}
+                            />
+                            <button
+                                className="uk-button uk-button-primary"
+                                onClick={downloadFoldFileZip}
+                            >
+                                Download File
+                            </button>
+                        </div>
                     </div>
-                </div>
-            </section>
+                </section>
 
-            {/* Visibility Section */}
-            <section style={sectionStyle} className="uk-width-1-3">
-                <h3>Visibility</h3>
-                <button
-                    className="uk-button uk-button-primary"
-                    onClick={makeAllFoldsPublic}
-                >
-                    Make All Structures Public
-                </button>
-            </section>
+                {/* Visibility Section */}
+                <section style={sectionStyle}>
+                    <h3>Visibility</h3>
+                    <button
+                        className="uk-button uk-button-primary"
+                        onClick={makeAllFoldsPublic}
+                    >
+                        Make All Structures Public
+                    </button>
+                </section>
 
-            {/* Job Management Section */}
-            <section style={sectionStyle} className="uk-width-1-3">
-                <div
-                    style={{ display: "flex", justifyContent: "space-between", cursor: "pointer" }}
-                    onClick={() => setShowJobManagement(!showJobManagement)}
-                >
-                    <h3>Job Management</h3>
-                    <span>{showJobManagement ? "▲" : "▼"}</span>
-                </div>
-                {showJobManagement && (
+                {/* Job Management Section */}
+                <section style={sectionStyle}>
+                    <div
+                        style={{ display: "flex", justifyContent: "space-between", cursor: "pointer" }}
+                    >
+                        <h3>Job Management</h3>
+                    </div>
                     <div>
                         <button
                             className="uk-button uk-button-primary"
-                            onClick={() => restartWholePipelineForAnyFailedJob()}
+                            onClick={() => refoldAnyFailedFolds()}
                         >
-                            Restart Whole Pipeline for Failed Jobs
+                            Refold Failed Folds
                         </button>
                         <div style={{ display: "flex", alignItems: "center", gap: "10px" }} className="uk-margin-small-top">
                             <select
@@ -295,25 +296,25 @@ function TagView(props: { setErrorText: (a: string) => void }) {
                             </button>
                         </div>
                     </div>
-                )}
-            </section>
+                </section>
 
-            {/* Docking Section */}
-            <section style={sectionStyle} className="uk-width-1-3">
-                <h3>Docking</h3>
-                {folds && (
-                    <NewDockPrompt
-                        setErrorText={props.setErrorText}
-                        foldIds={folds.map((fold) => fold.id ?? -1)}
-                        existingLigands={{
-                            ...(folds.reduce((acc, fold) => {
-                                acc[fold.id] = fold.docks?.map((dock: Dock) => dock.ligand_name) || [];
-                                return acc;
-                            }, {} as Record<number, string[]>)),
-                        }}
-                    />
-                )}
-            </section>
+                {/* Docking Section */}
+                <section style={sectionStyle}>
+                    <h3>Docking</h3>
+                    {folds && (
+                        <NewDockPrompt
+                            setErrorText={props.setErrorText}
+                            foldIds={folds.map((fold) => fold.id ?? -1)}
+                            existingLigands={{
+                                ...(folds.reduce((acc, fold) => {
+                                    acc[fold.id] = fold.docks?.map((dock: Dock) => dock.ligand_name) || [];
+                                    return acc;
+                                }, {} as Record<number, string[]>)),
+                            }}
+                        />
+                    )}
+                </section>
+            </div>
         </div>
     );
 }
@@ -324,6 +325,8 @@ const sectionStyle = {
     padding: "15px",
     marginBottom: "20px",
     boxShadow: "0 2px 6px rgba(0,0,0,0.1)",
+    width: "350px",  // Fixed width for each section
+    flex: "0 0 auto",  // Prevent sections from growing or shrinking
 };
 
 const buttonContainerStyle = {
