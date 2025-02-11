@@ -51,22 +51,33 @@ echo "Connecting to $FOLDY_BOX_URL"
   --project-directory . \
   exec backend python -m flask db upgrade
 
-if [ -f "/foldydbs/FINISHED" ]; then
-    echo "Foldy DBs already finished downloading."
-else 
-    echo "Downloading Foldy Databases... might take up to 48 hours."
-    /usr/bin/docker compose \
-        -f deployment/foldy-in-a-box/docker-compose.yml \
-        --project-directory /foldy \
-        exec worker /worker/download_databases.sh
-    if [ $? -eq 0 ]
-    then
-        echo "Finished downloading Foldy Databases."
-        touch /foldydbs/FINISHED
-    else
-        echo "Failed to download Foldy Databases, will retry next time"
-        echo "the foldy.service process starts. To restart the download"
-        echo "now, you can either restart the machine or you can call"
-        echo "  sudo systemctl restart foldy.service"
-    fi
-fi
+# For Nvidia container toolkit
+
+# curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey | sudo gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg \
+#   && curl -s -L https://nvidia.github.io/libnvidia-container/stable/deb/nvidia-container-toolkit.list | \
+#     sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://#g' | \
+#     sudo tee /etc/apt/sources.list.d/nvidia-container-toolkit.list
+# sudo apt-get update
+# sudo apt-get install -y nvidia-container-toolkit
+# sudo nvidia-ctk runtime configure --runtime=docker
+# sudo systemctl restart docker
+
+# if [ -f "/foldydbs/FINISHED" ]; then
+#     echo "Foldy DBs already finished downloading."
+# else 
+#     echo "Downloading Foldy Databases... might take up to 48 hours."
+#     /usr/bin/docker compose \
+#         -f deployment/foldy-in-a-box/docker-compose.yml \
+#         --project-directory /foldy \
+#         exec worker /worker/download_databases.sh
+#     if [ $? -eq 0 ]
+#     then
+#         echo "Finished downloading Foldy Databases."
+#         touch /foldydbs/FINISHED
+#     else
+#         echo "Failed to download Foldy Databases, will retry next time"
+#         echo "the foldy.service process starts. To restart the download"
+#         echo "now, you can either restart the machine or you can call"
+#         echo "  sudo systemctl restart foldy.service"
+#     fi
+# fi

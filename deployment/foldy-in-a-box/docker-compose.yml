@@ -47,12 +47,11 @@ services:
     restart: always
     entrypoint: python /app/main.py
 
-  worker:
+  worker_esm:
     build:
       context: .
-      dockerfile: worker/Dockerfile
-      args:
-        FOLDY_ALPHAFOLD_TAG: jacoberts/foldy_alphafold:latest
+      dockerfile: worker/Dockerfile.esm
+    platform: linux/amd64
     depends_on:
       - db
       - redis
@@ -65,14 +64,15 @@ services:
       - FRONTEND_URL=${FOLDY_BOX_URL}
       - DATABASE_URL=postgresql+psycopg2://user:password@db:5432/postgres
       - RQ_REDIS_URL=redis://redis:6379/0
-
       - FOLDY_STORAGE_TYPE=Local
       - FOLDY_LOCAL_STORAGE_DIR=/aftmp
     networks:
       - default
     volumes:
-      - /foldydbs:/foldydbs
-      - /aftmp:/aftmp
+      - ./backend/src/rq_worker_main.py:/backend/src/rq_worker_main.py
+      - ./backend/src/app:/backend/src/app
+      - ./backend/src/integration_tests:/backend/src/integration_tests
+      - ./backend/src/migrations:/backend/src/migrations
     deploy:
       resources:
         reservations:
@@ -80,7 +80,43 @@ services:
             - driver: nvidia
               capabilities: [gpu]
     restart: always
-    entrypoint: /opt/conda/envs/worker/bin/flask rq worker cpu gpu biggpu emailparrot
+    entrypoint: /opt/conda/envs/worker/bin/python -m flask rq worker cpu esm
+
+  worker_boltz:
+    build:
+      context: .
+      dockerfile: worker/Dockerfile.boltz
+    platform: linux/amd64
+    depends_on:
+      - db
+      - redis
+    environment:
+      - FLASK_APP=rq_worker_main.py
+      - RUN_AF2_PATH=/worker/run_alphafold.sh
+      - DECOMPRESS_PKLS_PATH=/worker/decompress_pkls.sh
+      - RUN_ANNOTATE_PATH=/worker/run_annotate.sh
+      - RUN_DOCK=/worker/run_dock.sh
+      - FRONTEND_URL=${FOLDY_BOX_URL}
+      - DATABASE_URL=postgresql+psycopg2://user:password@db:5432/postgres
+      - RQ_REDIS_URL=redis://redis:6379/0
+      - FOLDY_STORAGE_TYPE=Local
+      - FOLDY_LOCAL_STORAGE_DIR=/aftmp
+    networks:
+      - default
+    volumes:
+      - ./backend/src/rq_worker_main.py:/backend/src/rq_worker_main.py
+      - ./backend/src/app:/backend/src/app
+      - ./backend/src/integration_tests:/backend/src/integration_tests
+      - ./backend/src/migrations:/backend/src/migrations
+      - ./.boltz:/.boltz
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              capabilities: [gpu]
+    restart: always
+    entrypoint: /opt/conda/envs/worker/bin/python -m flask rq worker boltz
 
   db:
     environment:
