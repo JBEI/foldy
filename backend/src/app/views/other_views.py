@@ -1,5 +1,6 @@
 import io
 import re
+import time
 
 from flask import Response, stream_with_context
 from flask import current_app, request, send_file, make_response
@@ -184,6 +185,7 @@ class FoldsResource(Resource):
     @ns.expect(get_folds_parser)
     @ns.marshal_list_with(fold_fields, skip_none=True)
     def get(self):
+        start_time = time.time()
         args = get_folds_parser.parse_args()
         print(args, flush=True)
 
@@ -198,6 +200,12 @@ class FoldsResource(Resource):
         manager.setup()
 
         folds = manager.get_folds_with_state(filter, tag, only_public, page, per_page)
+        num_jobs = sum([len(fold.jobs) for fold in folds])
+        num_docks = sum([len(fold.docks) for fold in folds])
+        print(
+            f"Returning {len(folds)} folds with {num_jobs} jobs and {num_docks} docks in {time.time() - start_time} seconds",
+            flush=True,
+        )
         return folds
 
     # TODO(jbr): Figure out what is causing this call to fail and add validation.

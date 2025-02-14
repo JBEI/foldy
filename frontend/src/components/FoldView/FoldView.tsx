@@ -152,7 +152,7 @@ interface FoldState {
 
 // From UIkit's definition of a "medium" window: https://getuikit.com/docs/visibility
 const WINDOW_WIDTH_FOR_SPLIT_SCREEN = 960;
-
+const MAX_JOBS_TO_REFRESH = 2;
 class InternalFoldView extends Component<FoldProps, FoldState> {
     interval: NodeJS.Timeout | null = null;
 
@@ -212,6 +212,14 @@ class InternalFoldView extends Component<FoldProps, FoldState> {
                             (currentJob && currentJob.state !== foldJob.state);
                     })
                     .map(job => job.id);
+
+                if (jobsToRefresh.length > MAX_JOBS_TO_REFRESH) {
+                    UIkit.notification(`Not streaming job logs because there are too many jobs (${jobsToRefresh.length} > ${MAX_JOBS_TO_REFRESH}))`, {
+                        status: 'warning',
+                        timeout: 1000,
+                    });
+                    return;
+                }
 
                 // Create final job list
                 const finalJobs = [...this.state.foldData.jobs].map(foldJob => {
@@ -439,6 +447,7 @@ class InternalFoldView extends Component<FoldProps, FoldState> {
                             setPublic={this.setPublic}
                             setDisableRelaxation={this.setDisableRelaxation}
                             setFoldName={this.setFoldName}
+                            setFoldModelPreset={this.setFoldModelPreset}
                             setYamlConfig={this.setYamlConfig}
                             addTag={this.addTag}
                             deleteTag={this.deleteTag}
@@ -954,6 +963,25 @@ class InternalFoldView extends Component<FoldProps, FoldState> {
                             }
                         );
                     });
+            });
+    };
+
+    setFoldModelPreset = () => {
+        UIkit.modal
+            .prompt("New fold model:", "")
+            .then((newFoldModelPreset: string | null) => {
+                if (!newFoldModelPreset) {
+                    return;
+                }
+                updateFold(this.props.foldId, { af2_model_preset: newFoldModelPreset }).then(
+                    () => {
+                        this.refreshFoldDataFromBackend();
+                        UIkit.notification("Updated fold model.");
+                    },
+                    (e) => {
+                        this.props.setErrorText(e);
+                    }
+                );
             });
     };
 

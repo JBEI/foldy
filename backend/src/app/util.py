@@ -212,7 +212,7 @@ def make_new_folds(
             yaml_config = fold_data.get("yaml_config")
 
             # Old AF2 handling.
-            af2_model_preset = fold_data.get("af2_model_preset", None) or "monomer_ptm"
+            af2_model_preset = fold_data.get("af2_model_preset", None) or "boltz"
             # validate_aa_sequence(
             #     fold_data["name"], fold_data["sequence"], af2_model_preset
             # )

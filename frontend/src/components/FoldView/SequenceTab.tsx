@@ -29,6 +29,7 @@ interface SequenceTabProps {
     setPublic: (is_public: boolean) => void;
     setDisableRelaxation: (disable_relaxation: boolean) => void;
     setFoldName: () => void;
+    setFoldModelPreset: () => void;
     addTag: (tagToAdd: string) => void;
     deleteTag: (tagToDelete: string) => void;
     handleTagClick: (tagToOpen: string) => void;
@@ -294,11 +295,27 @@ const SequenceTab = React.memo((props: SequenceTabProps) => {
 
                 {/* Model Preset */}
                 <label>Model Preset</label>
-                <input
-                    className="uk-input"
-                    value={props.foldModelPreset || "unset"}
-                    disabled
-                />
+                <div style={{ display: "flex", alignItems: "center" }}>
+                    <input
+                        className="uk-input"
+                        value={props.foldModelPreset || "unset"}
+                        disabled
+                    />
+                    <button
+                        className="uk-button uk-button-default"
+                        onClick={(e) => {
+                            e.preventDefault();
+                            props.setFoldModelPreset();
+                        }}
+                        style={{
+                            marginLeft: "10px",
+                            border: "1px solid #ccc",
+                            borderRadius: "5px",
+                        }}
+                    >
+                        <AiFillEdit />
+                    </button>
+                </div>
 
                 {/* Disable Relaxation */}
                 <label>Disable Relaxation</label>

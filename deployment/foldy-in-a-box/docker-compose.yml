@@ -45,7 +45,7 @@ services:
     ports:
       - 8081:8081
     restart: always
-    entrypoint: python /app/main.py
+    entrypoint: python /src/main.py
 
   worker_esm:
     build:
@@ -55,6 +55,8 @@ services:
     depends_on:
       - db
       - redis
+    shm_size: '8gb'
+    ipc: host
     environment:
       - FLASK_APP=rq_worker_main.py
       - RUN_AF2_PATH=/worker/run_alphafold.sh
@@ -69,6 +71,7 @@ services:
     networks:
       - default
     volumes:
+      - /aftmp:/aftmp
       - ./backend/src/rq_worker_main.py:/backend/src/rq_worker_main.py
       - ./backend/src/app:/backend/src/app
       - ./backend/src/integration_tests:/backend/src/integration_tests
@@ -90,6 +93,8 @@ services:
     depends_on:
       - db
       - redis
+    shm_size: '8gb'
+    ipc: host
     environment:
       - FLASK_APP=rq_worker_main.py
       - RUN_AF2_PATH=/worker/run_alphafold.sh
@@ -104,6 +109,7 @@ services:
     networks:
       - default
     volumes:
+      - /aftmp:/aftmp
       - ./backend/src/rq_worker_main.py:/backend/src/rq_worker_main.py
       - ./backend/src/app:/backend/src/app
       - ./backend/src/integration_tests:/backend/src/integration_tests

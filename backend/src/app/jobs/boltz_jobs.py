@@ -124,7 +124,7 @@ def run_boltz(fold_id, invokation_id):
                 "--cache",
                 "/hf-cache/",
                 "--num_workers",
-                "1",
+                "0",  # Should this be 1 or 0? 1 seems to work ok, but zero doesnt spin up any workers (a behavior which seems to cause a "pin memory" issue for foldy-in-a-box).
             ]
             add_log(
                 f"Running boltz with command: {boltz_command}",

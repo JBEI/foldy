@@ -18,7 +18,7 @@ import numpy as np
 from redis import Redis
 from rq.job import Retry
 from sqlalchemy.sql.elements import or_
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload, selectinload
 from werkzeug.exceptions import BadRequest
 from pathlib import Path, PurePosixPath
 
@@ -392,9 +392,11 @@ class FoldStorageManager:
             return "(^|,)" + term + "(,|$)"
 
         query = (
-            db.session.query(Fold)
+            db.session.query(Fold).join(Fold.user)
+            # 2/13/25: Tried replacing joinedload with selectinload to try to speed up the query.
+            # Local testing actually shows that selectinload is slower than joinedload.
             .options(joinedload(Fold.jobs), joinedload(Fold.docks))
-            .join(Fold.user)
+            # .options(selectinload(Fold.jobs), selectinload(Fold.docks))
         )
 
         if tag:
@@ -408,8 +410,13 @@ class FoldStorageManager:
                 query = query.filter(
                     or_(
                         Fold.name.ilike(formatted_term),
-                        Fold.sequence.ilike(formatted_term),
-                        Fold.yaml_config.ilike(formatted_term),
+                        # 2/13/25:  For now we don't search on sequence or yaml_config
+                        # because the Dashboard is taking >10 seconds to load which is no good.
+                        # We are not sure that this search is the cause of the problem,
+                        # an alternative hypothesis is the joins with jobs and docks is the issue.
+                        # But we exclude this search for now to see if it helps.
+                        # Fold.sequence.ilike(formatted_term),
+                        # Fold.yaml_config.ilike(formatted_term),
                         User.email.ilike(formatted_term),
                         Fold.tagstring.op("~")(get_tag_regex(term)),
                     )
@@ -424,6 +431,7 @@ class FoldStorageManager:
         if page and per_page:
             iterable = query.paginate(page=page, per_page=per_page).items
 
+        # folds = [fold for fold in iterable if fold is not None]
         folds = []
         for fold in iterable:
             if not fold:
@@ -435,6 +443,14 @@ class FoldStorageManager:
             #     # sql query.
             #     job.log = None
             folds.append(fold)
+
+        # if not include_logs:
+        #   for job in fold.jobs:
+        #     # Since the log field is deferred, this will keep the
+        #     # response marshalling from accidentally triggering another
+        #     # sql query.
+        #     job.log = None
+
         return folds
 
     def write_fastas(self, id, yaml_config_str):

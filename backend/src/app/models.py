@@ -8,6 +8,7 @@ from datetime import datetime, UTC
 from sqlalchemy.ext.hybrid import hybrid_property, hybrid_method
 from sqlalchemy import func
 from sqlalchemy.orm import deferred
+from sqlalchemy import Index
 
 from app.database import Column, PkModel, db, reference_col, relationship
 
@@ -64,6 +65,19 @@ class Fold(PkModel):
     """A protein fold."""
 
     __tablename__ = "roles"
+
+    # 2/13/25: Dashboard queries are taking >10 seconds at times, so we are
+    # adding indices to try to speed them up. Unclear at this time if it will
+    # help.
+    __table_args__ = (
+        Index("ix_roles_user_id", "user_id"),
+        Index("ix_roles_public", "public"),
+        Index("ix_roles_yaml_config", "yaml_config"),
+        # Indexing a large text column (like 'sequence') depends on your DB engine;
+        # if it supports text indexing, you can enable it, but for large fields you may
+        # want more specialized search solutions. If you still want a simple index:
+        # Index("ix_roles_sequence", "sequence"),
+    )
 
     # Id is created automatically.
 

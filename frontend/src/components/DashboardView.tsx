@@ -11,7 +11,7 @@ import debounce from "lodash/debounce";
 import { getFolds } from "../api/foldApi";
 import { Fold } from "src/types/types";
 
-const PAGE_SIZE = 50;
+const PAGE_SIZE = 25;
 
 const setQueryStringWithoutPageReload = (qsValue: string) => {
     const newurl =
