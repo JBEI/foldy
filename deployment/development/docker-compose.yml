@@ -1,5 +1,29 @@
 version: "3.6"
 
+x-worker-base: &worker-base
+  platform: linux/amd64
+  depends_on:
+    - db
+    - redis
+  environment: &worker-env
+    - FLASK_APP=rq_worker_main.py
+    - ENV=development
+    - DEBUG=True
+    - FRONTEND_URL=http://localhost:3000
+    - DATABASE_URL=postgresql+psycopg2://user:password@db:5432/postgres
+    - RQ_REDIS_URL=redis://redis:6379/0
+    - FOLDY_STORAGE_TYPE=Local
+    - FOLDY_LOCAL_STORAGE_DIR=/backend/src/integration_tests/testdata
+  networks:
+    - default
+  volumes: &worker-volumes
+    - ./backend/src/rq_worker_main.py:/backend/src/rq_worker_main.py
+    - ./backend/src/app:/backend/src/app
+    - ./backend/src/integration_tests:/backend/src/integration_tests
+    - ./backend/src/migrations:/backend/src/migrations
+    - ./backend/src/notebooks:/backend/src/notebooks
+  restart: always
+
 services:
   frontend:
     build:
@@ -49,59 +73,47 @@ services:
     entrypoint: python /src/main.py
 
   worker_esm:
+    <<: *worker-base
     build:
       context: .
       dockerfile: worker/Dockerfile.esm
-    platform: linux/amd64
-    depends_on:
-      - db
-      - redis
-    environment:
-      - FLASK_APP=rq_worker_main.py
-      - ENV=development
-      - DEBUG=True
-      - FRONTEND_URL=http://localhost:3000
-      - DATABASE_URL=postgresql+psycopg2://user:password@db:5432/postgres
-      - RQ_REDIS_URL=redis://redis:6379/0
-      - FOLDY_STORAGE_TYPE=Local
-      - FOLDY_LOCAL_STORAGE_DIR=/backend/src/integration_tests/testdata
-    networks:
-      - default
-    volumes:
-      - ./backend/src/rq_worker_main.py:/backend/src/rq_worker_main.py
-      - ./backend/src/app:/backend/src/app
-      - ./backend/src/integration_tests:/backend/src/integration_tests
-      - ./backend/src/migrations:/backend/src/migrations
-    restart: always
+    environment: *worker-env
+    volumes: *worker-volumes
     entrypoint: /opt/conda/envs/worker/bin/python -m flask rq worker cpu esm
 
+  worker_protsst:
+    <<: *worker-base
+    build:
+      context: .
+      dockerfile: worker/Dockerfile.prosst
+    environment: *worker-env
+    volumes: *worker-volumes
+    entrypoint: /opt/conda/envs/worker/bin/python -m flask rq worker prosst
+
   worker_boltz:
+    <<: *worker-base
     build:
       context: .
       dockerfile: worker/Dockerfile.boltz
-    platform: linux/amd64
-    depends_on:
-      - db
-      - redis
-    environment:
-      - FLASK_APP=rq_worker_main.py
-      - ENV=development
-      - DEBUG=True
-      - FRONTEND_URL=http://localhost:3000
-      - DATABASE_URL=postgresql+psycopg2://user:password@db:5432/postgres
-      - RQ_REDIS_URL=redis://redis:6379/0
-      - FOLDY_STORAGE_TYPE=Local
-      - FOLDY_LOCAL_STORAGE_DIR=/backend/src/integration_tests/testdata
-    networks:
-      - default
+    environment: *worker-env
     volumes:
       - ./backend/src/rq_worker_main.py:/backend/src/rq_worker_main.py
       - ./backend/src/app:/backend/src/app
       - ./backend/src/integration_tests:/backend/src/integration_tests
       - ./backend/src/migrations:/backend/src/migrations
       - ./.boltz:/.boltz
-    restart: always
     entrypoint: /opt/conda/envs/worker/bin/python -m flask rq worker boltz
+
+  jupyter_esm:
+    <<: *worker-base
+    build:
+      context: .
+      dockerfile: worker/Dockerfile.esm
+    environment: *worker-env
+    volumes: *worker-volumes
+    ports:
+      - 127.0.0.1:8888:8888  # Expose Jupyter port
+    entrypoint: /opt/conda/envs/worker/bin/jupyter lab --ip=0.0.0.0 --port=8888 --no-browser --allow-root --notebook-dir=/backend/src --NotebookApp.token='thefoldytoken'
 
   db:
     environment:
@@ -119,51 +131,3 @@ services:
     image: "redis:7.2-alpine"
     ports:
       - 127.0.0.1:6379:6379
-
-  # backend-tests:
-  #   build: backend/
-  #   platform: linux/amd64
-  #   environment:
-  #     - PYTHONPATH=/src/src
-  #     - FLASK_APP=main.py
-  #     - ENV=development
-  #     - DEBUG=True
-  #     - DATABASE_URL=postgresql+psycopg2://user:password@db:5432/postgres
-  #     - RQ_REDIS_URL=redis://redis:6379/0
-  #     - FOLDY_STORAGE_TYPE=Local
-  #     - FOLDY_LOCAL_STORAGE_DIR=/tmp/test_storage
-  #   volumes:
-  #     - ./backend/src:/src
-  #   entrypoint: ["ptw", "--poll", "--ignore=/src/app/tests/test_esm_util.py", "--ignore=/src/app/tests/test_esm_client.py"]
-
-  # naturalness-tests:
-  #   build:
-  #     context: .
-  #     dockerfile: worker/Dockerfile.esm
-  #   platform: linux/amd64
-  #   environment:
-  #     - PYTHONPATH=/src/src
-  #     - FLASK_APP=main.py
-  #     - ENV=development
-  #     - DEBUG=True
-  #     - DATABASE_URL=postgresql+psycopg2://user:password@db:5432/postgres
-  #     - RQ_REDIS_URL=redis://redis:6379/0
-  #     - FOLDY_STORAGE_TYPE=Local
-  #     - FOLDY_LOCAL_STORAGE_DIR=/tmp/test_storage
-  #   volumes:
-  #     - ./backend/src:/src
-  #   entrypoint: ["/opt/conda/envs/worker/bin/ptw", "--poll", "/src", "--", "/src/app/tests/test_esm_util.py", "/src/app/tests/test_esm_client.py"]
-
-  # frontend-tests:
-  #   build:
-  #     context: frontend/
-  #     target: build-stage
-  #     args:
-  #       - BACKEND_URL=http://localhost:8080
-  #       - INSTITUTION=Local
-  #       - HOST=0.0.0.0
-  #   environment:
-  #     - CI=true
-  #   volumes:
-  #     - ./frontend:/app
-  #   command: npm test -- --watchAll

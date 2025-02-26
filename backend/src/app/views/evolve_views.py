@@ -21,7 +21,7 @@ from app.helpers.sequence_util import (
 )
 from app.models import Fold, Evolution
 from app.util import get_job_type_replacement
-from app.jobs import evolve_jobs
+from app.jobs import evolve_jobs, esm_jobs
 
 ns = Namespace("evolve_views", decorators=[jwt_required(fresh=True)])
 
@@ -31,7 +31,11 @@ upload_parser.add_argument("fold_id", type=str, location="form", required=True)
 upload_parser.add_argument(
     "activity_file", type=FileStorage, location="files", required=True
 )
-upload_parser.add_argument("embedding_paths", type=str, location="form", required=True)
+upload_parser.add_argument("mode", type=str, location="form", required=True)
+upload_parser.add_argument("embedding_paths", type=str, location="form", required=False)
+upload_parser.add_argument(
+    "finetuning_model_checkpoint", type=str, location="form", required=False
+)
 
 
 @ns.route("/evolve")
@@ -51,9 +55,29 @@ class EvolveResource(Resource):
         # Get form data
         name = args["name"]
         fold_id = int(args["fold_id"])
-        embedding_paths = json.loads(args["embedding_paths"])
         activity_file = args["activity_file"]
         evolve_directory = Path("evolve") / name
+
+        mode = args["mode"]
+        embedding_paths = (
+            json.loads(args["embedding_paths"]) if args["embedding_paths"] else None
+        )
+        finetuning_model_checkpoint = (
+            args["finetuning_model_checkpoint"]
+            if args["finetuning_model_checkpoint"]
+            else None
+        )
+
+        if mode == "randomforest":
+            if not embedding_paths:
+                raise BadRequest("embedding_paths are required for randomforest mode")
+        elif mode == "finetuning":
+            if not finetuning_model_checkpoint:
+                raise BadRequest(
+                    "finetuning_model_checkpoint is required for finetuning mode"
+                )
+        else:
+            raise BadRequest(f"Invalid mode: {mode}")
 
         # 0. Check if an evolve job with this name already exists.
         fold = Fold.query.get(fold_id)
@@ -87,13 +111,24 @@ class EvolveResource(Resource):
         evolve_record = Evolution.create(
             name=name,
             fold_id=fold_id,
-            embedding_files=",".join(embedding_paths),
+            mode=mode,
+            embedding_files=",".join(embedding_paths) if embedding_paths else None,
+            finetuning_model_checkpoint=finetuning_model_checkpoint,
             invokation_id=new_invokation_id,
         )
 
-        # 4. Start the job.
-        job = rq.get_queue("cpu").enqueue(
-            evolve_jobs.run_evolvepro,
-            evolve_record.id,
-        )
+        if mode == "randomforest":
+            # 4. Start the job.
+            job = rq.get_queue("cpu").enqueue(
+                evolve_jobs.run_evolvepro,
+                evolve_record.id,
+            )
+        elif mode == "finetuning":
+            # 4. Start the job.
+            job = rq.get_queue("esm").enqueue(
+                esm_jobs.finetune_esm_model,
+                evolve_record.id,
+                job_timeout="12h",
+                result_ttl=48 * 60 * 60,  # 2 days
+            )
         return evolve_record

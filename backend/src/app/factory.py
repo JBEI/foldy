@@ -158,8 +158,23 @@ def register_extensions(app):
         column_sortable_list = ["id", "name", "embedding_model"]
         column_searchable_list = ["name", "embedding_model"]
 
+        # Add custom CSS to truncate/scroll long text in extra_seq_ids column
+        column_formatters = {
+            "extra_seq_ids": lambda v, c, m, p: Markup(
+                f'<div style="max-width:200px; overflow-x:auto; white-space:nowrap;">{m.extra_seq_ids}</div>'
+            )
+        }
+
     class EvolutionModelView(VerifiedModelView):
-        column_list = ["id", "name", "fold", "fold.user", "embedding_files"]
+        column_list = [
+            "id",
+            "name",
+            "fold",
+            "fold.user",
+            "mode",
+            "embedding_files",
+            "finetuning_model_checkpoint",
+        ]
         column_sortable_list = ["id", "name"]
         column_searchable_list = ["name"]
 

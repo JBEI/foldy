@@ -20,10 +20,14 @@ interface SequenceTabProps {
     foldOwner: string;
     foldCreateDate: string;
     foldPublic: boolean | null;
+    yaml_config: string | null;
+    foldDiffusionSamples: number | null;
+
+    // Old AlphaFold inputs.
+    sequence: string | null;
     foldModelPreset: string | null;
     foldDisableRelaxation: boolean | null;
-    yaml_config: string | null;
-    sequence: string | null;
+
     colorScheme: string;
 
     setPublic: (is_public: boolean) => void;
@@ -250,6 +254,16 @@ const SequenceTab = React.memo((props: SequenceTabProps) => {
                     >
                         <AiFillEdit />
                     </button>
+                </div>
+
+                {/* Diffusion Samples */}
+                <label>Diffusion Samples</label>
+                <div style={{ display: "flex", alignItems: "center" }}>
+                    <input
+                        className="uk-input"
+                        value={props.foldDiffusionSamples || undefined}
+                        disabled
+                    />
                 </div>
 
                 {/* Owner */}

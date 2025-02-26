@@ -56,6 +56,7 @@ huggingface_hub[cli,hf_transfer]
 idna
 importlib-metadata
 iniconfig
+ipywidgets
 isort
 itsdangerous
 Jinja2
@@ -69,6 +70,7 @@ MarkupSafe
 marshmallow
 mccabe
 mypy-extensions
+notebook
 numpy==1.26.0
 openpyxl
 packaging

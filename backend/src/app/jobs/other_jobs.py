@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from flask import current_app
 import signal
 import subprocess
@@ -30,7 +30,7 @@ def start_generic_script(invokation_id, process_args):
         invokation.update(
             state="running",
             log="Ongoing...",
-            starttime=datetime.fromtimestamp(start_time),
+            starttime=datetime.fromtimestamp(start_time, timezone.utc),
             command=f"{process_args}",
         )
 

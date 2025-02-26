@@ -7,13 +7,21 @@ interface JobsTabProps {
 
 const JobsTab: React.FC<JobsTabProps> = ({ jobs }) => {
     const formatStartTime = (jobstarttime: string | null) => {
-        return jobstarttime
-            ? new Date(jobstarttime).toLocaleString("en-US", {
-                timeStyle: "short",
-                dateStyle: "short",
-                timeZone: "America/Los_Angeles"
-            })
-            : "Not Started / Unknown";
+        if (!jobstarttime) return "Not Started / Unknown";
+
+        // Parse the UTC time string into a Date object
+        const date = new Date(jobstarttime);
+
+        // Add debug logs to determine why this is showing up in UTC...
+        console.log("jobstarttime", jobstarttime);
+        console.log("date", date);
+
+        // Format in PT, being explicit about timezone
+        return new Intl.DateTimeFormat('en-US', {
+            timeStyle: "short",
+            dateStyle: "short",
+            timeZone: "America/Los_Angeles"
+        }).format(date);
     };
 
     const formatRunTime = (jobRunTime: number | null) => {

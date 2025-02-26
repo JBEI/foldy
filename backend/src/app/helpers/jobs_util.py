@@ -1,5 +1,5 @@
 import time
-from datetime import datetime, timedelta, UTC
+from datetime import datetime, timedelta, UTC, timezone
 import traceback
 import os
 
@@ -22,7 +22,7 @@ def _live_update_tail(
     stdout,
 ):
     """Choose a tail size that is appropriate for streaming / live updates (not the whole logs)."""
-    return _tail(stdout, 5000)
+    return _tail(stdout, 10000)
 
 
 def try_run_job_with_logging(f, invokation):
@@ -45,6 +45,11 @@ def try_run_job_with_logging(f, invokation):
         timestamped_msg = f"{timestamp} - {sanitize_log(msg)}"
         logs.append(timestamped_msg)
         print(timestamped_msg, flush=True)
+
+        # Ensure starttime is in UTC with timezone info
+        if "starttime" in kwargs:
+            kwargs["starttime"] = datetime.fromtimestamp(start_time, timezone.utc)
+
         invokation.update(
             log=tail_function("\n".join(logs)),
             timedelta=timedelta(seconds=time.time() - start_time),
@@ -83,7 +88,7 @@ def try_run_job_with_logging(f, invokation):
 
 
 def get_torch_cuda_is_available_and_add_logs(add_log):
-    """Return True if cuda is availableand add logs about the GPU."""
+    """Return True if cuda is available and add logs about the GPU."""
     import torch
 
     add_log("=== GPU Diagnostics ===")

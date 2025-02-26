@@ -63,11 +63,11 @@ export function makeFoldTable(folds: Fold[]) {
                                 </td>
                                 <td className="uk-text-truncate">{fold.owner}</td>
                                 <td className="uk-text-truncate">
-                                    {new Date(fold.create_date).toLocaleString("en-US", {
+                                    {new Intl.DateTimeFormat('en-US', {
                                         timeStyle: "short",
                                         dateStyle: "short",
                                         timeZone: "America/Los_Angeles"
-                                    })}
+                                    }).format(new Date(fold.create_date))}
                                 </td>
                                 <td className="uk-text-truncate">
                                     {fold.public ? (

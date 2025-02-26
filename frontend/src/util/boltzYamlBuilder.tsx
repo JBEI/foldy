@@ -86,9 +86,9 @@ const simpleSchema = {
     required: ["version", "sequences"],
     properties: {
         version: {
-            type: "number",
+            type: "integer",
             default: 1,
-            title: "YAML Version",
+            title: "YAML Version (you probably want 1)",
         },
         sequences: {
             type: "array",
@@ -337,6 +337,16 @@ function additionalChecks(model: BoltzFormModel, errors: { details: [{ name: str
                     name: `sequences.${index}.smiles`,
                     message: 'Please provide either SMILES or CCD'
                 });
+            }
+
+            if (hasSmiles) {
+                // Check if the SMILES string has any whitespace.
+                if (/\s/.test(seq.smiles)) {
+                    errors.details.push({
+                        name: `sequences.${index}.smiles`,
+                        message: 'SMILES cannot contain whitespace'
+                    });
+                }
             }
         } else {
             if (!seq.sequence) {

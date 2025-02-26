@@ -27,6 +27,16 @@ def get_loci_set(seq_id):
     return {get_locus_from_allele_id(allele) for allele in seq_id.split("_")}
 
 
+def allele_set_to_seq_id(allele_set):
+    """Converts the allele set to a standard ID (eg: {A12T, G3W}->"G3W_A12T")."""
+    if allele_set == {""} or len(allele_set) == 0:
+        return "WT"
+    allele_list = sorted(
+        list(allele_set), key=lambda allele: (int(allele[1:-1]), allele[-1])
+    )
+    return "_".join(allele_list)
+
+
 def maybe_get_allele_id_error_message(wt_aa_seq, allele_id):
     """Returns an error message if allele id is invalid, otherwise None."""
     assert type(wt_aa_seq) == str, f"wt_aa_seq must be a string, got {type(wt_aa_seq)}"
@@ -107,15 +117,6 @@ def get_seq_ids_for_deep_mutational_scan(
             return []
         return seq_id.split("_")
 
-    def allele_set_to_seq_id(allele_set):
-        """Converts the allele set to a standard ID (eg: {A12T, G3W}->"G3W_A12T")."""
-        if allele_set == {""} or len(allele_set) == 0:
-            return "WT"
-        allele_list = sorted(
-            list(allele_set), key=lambda allele: (int(allele[1:-1]), allele[-1])
-        )
-        return "_".join(allele_list)
-
     assert type(wt_aa_seq) == str, f"wt_aa_seq must be a string, got {type(wt_aa_seq)}"
 
     # Validate inputs.
@@ -195,11 +196,11 @@ def seq_id_to_seq(wt_aa_seq, seq_id):
 
 
 def process_and_validate_evolve_input_files(
-    wt_aa_seq, raw_activity_df, raw_embedding_df
+    wt_aa_seq, raw_activity_df, raw_embedding_df=None
 ):
     """Prepares raw inputs for EvolvePRO logic, raises ValueError if inputs are invalid."""
     activity_df = raw_activity_df.copy()
-    embedding_df = raw_embedding_df.copy()
+    embedding_df = raw_embedding_df.copy() if raw_embedding_df is not None else None
 
     if "seq_id" not in activity_df.columns:
         raise ValueError(
@@ -209,14 +210,15 @@ def process_and_validate_evolve_input_files(
         raise ValueError(
             f"Activity file must contain a 'activity' column, got {activity_df.columns}"
         )
-    if "seq_id" not in embedding_df.columns:
-        raise ValueError(
-            f"Embedding file must contain a 'seq_id' column, got {embedding_df.columns}"
-        )
-    if "embedding" not in embedding_df.columns:
-        raise ValueError(
-            f"Embedding file must contain a 'embedding' column, got {embedding_df.columns}"
-        )
+    if embedding_df is not None:
+        if "seq_id" not in embedding_df.columns:
+            raise ValueError(
+                f"Embedding file must contain a 'seq_id' column, got {embedding_df.columns}"
+            )
+        if "embedding" not in embedding_df.columns:
+            raise ValueError(
+                f"Embedding file must contain a 'embedding' column, got {embedding_df.columns}"
+            )
 
     # activity_df.replace({"seq_id": {np.nan: ""}}, inplace=True)  # "WT": "",
     for seq_id in activity_df.seq_id:
@@ -226,7 +228,10 @@ def process_and_validate_evolve_input_files(
 
     # embedding_df.fillna({"seq_id": ""}, inplace=True)
 
-    return activity_df, embedding_df
+    if embedding_df is None:
+        return activity_df
+    else:
+        return activity_df, embedding_df
 
 
 def get_measured_and_unmeasured_mutant_seq_ids(activity_df, embedding_df):

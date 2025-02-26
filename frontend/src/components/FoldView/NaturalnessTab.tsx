@@ -351,7 +351,7 @@ const NaturalnessTab: React.FC<NaturalnessTabProps> = ({ foldId, foldName, jobs,
                                         checked={useStructure}
                                         onChange={(e) => setUseStructure(e.target.checked)}
                                     />
-                                    Use Structure
+                                    Use Structure (experimental)
                                 </label>
                             </div>
                         </div>

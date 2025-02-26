@@ -3,8 +3,7 @@ import { startEmbeddings } from "../../services/backend.service";
 import UIkit from 'uikit';
 import { Embedding, Invokation } from '../../types/types';
 import { FaDownload, FaRedo } from 'react-icons/fa';
-import { getFile } from '../../api/fileApi';
-import fileDownload from 'js-file-download';
+import { downloadFileStraightToFilesystem, getFile } from '../../api/fileApi';
 import { ESMModelPicker } from './ESMModelPicker';
 
 interface EmbedTabProps {
@@ -76,18 +75,11 @@ const EmbedTab: React.FC<EmbedTabProps> = ({ foldId, jobs, embeddings, setErrorT
     const downloadEmbedding = (embedding: Embedding) => {
         const paddedFoldId = foldId.toString().padStart(6, '0');
         const embeddingPath = `embed/${paddedFoldId}_embeddings_${embedding.embedding_model}_${embedding.name}.csv`;
-        console.log(`Downloading embedding ${embedding.id} at path ${embeddingPath}`);
-        getFile(embedding.fold_id, embeddingPath).then(
-            (fileBlob: Blob) => {
-                const newFname = embeddingPath.split('/').pop() || 'embeddings.csv';
-                UIkit.notification(`Downloading ${embeddingPath} with file name ${newFname}!`);
-                fileDownload(fileBlob, newFname);
-            },
-            (e) => {
-                console.log(e);
-                setErrorText(e.toString());
-            }
-        );
+        UIkit.notification(`Downloading embedding ${embedding.id} at path ${embeddingPath}`);
+
+        downloadFileStraightToFilesystem(embedding.fold_id, embeddingPath, (progress: number) => {
+            console.log(`Downloading ${embeddingPath}: ${progress}%`);
+        });
     };
 
     const rerunEmbedding = async (embedding: Embedding) => {

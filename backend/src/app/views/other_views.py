@@ -56,7 +56,9 @@ full_invokation_fields = ns.clone(
                 r.timedelta.total_seconds() if r and r.timedelta else None
             ),
         ),
-        "starttime": fields.DateTime(readonly=True, required=False),
+        "starttime": fields.DateTime(
+            format="iso8601Z", dt_format="iso8601", readonly=True, required=False
+        ),
     },
 )
 
@@ -113,7 +115,9 @@ evolution_fields = ns.model(
         "id": fields.Integer(required=True),
         "name": fields.String(required=True),
         "fold_id": fields.Integer(required=True),
+        "mode": fields.String(required=True),
         "embedding_files": fields.String(),
+        "finetuning_model_checkpoint": fields.String(),
         "invokation_id": fields.Integer(),
     },
 )
@@ -127,9 +131,12 @@ fold_fields = ns.model(
         "name": fields.String(),
         "owner": fields.String(attribute="user.email", required=False),
         "tags": fields.List(fields.String()),
-        "create_date": fields.DateTime(readonly=True, required=False),
+        "create_date": fields.DateTime(
+            format="iso8601Z", dt_format="iso8601", readonly=True, required=False
+        ),
         "public": fields.Boolean(required=False),
         "yaml_config": fields.String(required=False),
+        "diffusion_samples": fields.Integer(required=False),
         "disable_relaxation": fields.Boolean(required=False),
         "jobs": fields.List(fields.Nested(simple_invokation_fields)),
         "docks": fields.List(fields.Nested(dock_fields)),

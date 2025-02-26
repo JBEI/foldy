@@ -152,7 +152,7 @@ interface FoldState {
 
 // From UIkit's definition of a "medium" window: https://getuikit.com/docs/visibility
 const WINDOW_WIDTH_FOR_SPLIT_SCREEN = 960;
-const MAX_JOBS_TO_REFRESH = 2;
+const MAX_JOBS_TO_REFRESH = 5;
 class InternalFoldView extends Component<FoldProps, FoldState> {
     interval: NodeJS.Timeout | null = null;
 
@@ -1083,13 +1083,14 @@ class InternalFoldView extends Component<FoldProps, FoldState> {
     };
 
     formatStartTime = (jobstarttime: string | null) => {
-        return jobstarttime
-            ? new Date(jobstarttime).toLocaleString("en-US", {
-                timeStyle: "short",
-                dateStyle: "short",
-                timeZone: "America/Los_Angeles"
-            })
-            : "Not Started / Unknown";
+        if (!jobstarttime) return "Not Started / Unknown";
+
+        // Parse the UTC time string into a Date object and format in PT
+        return new Intl.DateTimeFormat('en-US', {
+            timeStyle: "short",
+            dateStyle: "short",
+            timeZone: "America/Los_Angeles"
+        }).format(new Date(jobstarttime));
     };
 
     formatRunTime = (jobRunTime: number | null) => {

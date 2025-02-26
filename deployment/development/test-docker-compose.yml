@@ -1,0 +1,64 @@
+version: "3.6"
+
+services:
+  backend-tests:
+    build: backend/
+    platform: linux/amd64
+    environment:
+      - PYTHONPATH=/src/src
+      - FLASK_APP=main.py
+      - ENV=development
+      - DEBUG=True
+      - DATABASE_URL=postgresql+psycopg2://user:password@db:5432/postgres
+      - RQ_REDIS_URL=redis://redis:6379/0
+      - FOLDY_STORAGE_TYPE=Local
+      - FOLDY_LOCAL_STORAGE_DIR=/tmp/test_storage
+    volumes:
+      - ./backend/src:/src
+    entrypoint:
+      - "ptw"
+      - "--poll"
+      - "--ignore"
+      - "/src/app/tests/test_esm_util.py"
+      - "--ignore"
+      - "/src/app/tests/test_esm_client.py"
+      - "--ignore"
+      - "/src/app/tests/test_esm_finetuning.py"
+
+  naturalness-tests:
+    build:
+      context: .
+      dockerfile: worker/Dockerfile.esm
+    platform: linux/amd64
+    environment:
+      - PYTHONPATH=/src/src
+      - FLASK_APP=main.py
+      - ENV=development
+      - DEBUG=True
+      - DATABASE_URL=postgresql+psycopg2://user:password@db:5432/postgres
+      - RQ_REDIS_URL=redis://redis:6379/0
+      - FOLDY_STORAGE_TYPE=Local
+      - FOLDY_LOCAL_STORAGE_DIR=/tmp/test_storage
+    volumes:
+      - ./backend/src:/src
+    entrypoint:
+      - "/opt/conda/envs/worker/bin/ptw"
+      - "--poll"
+      - "/src"
+      - "/src/app/tests/test_esm_util.py"
+      - "/src/app/tests/test_esm_client.py"
+      - "/src/app/tests/test_esm_finetuning.py"
+
+  frontend-tests:
+    build:
+      context: frontend/
+      target: build-stage
+      args:
+        - BACKEND_URL=http://localhost:8080
+        - INSTITUTION=Local
+        - HOST=0.0.0.0
+    environment:
+      - CI=true
+    volumes:
+      - ./frontend:/app
+    command: npm test -- --watchAll

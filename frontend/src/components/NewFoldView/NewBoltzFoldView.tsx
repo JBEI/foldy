@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import BoltzYamlBuilder from "../../util/boltzYamlBuilder";
-import { Row, Col, Form, Input, Switch, Alert } from "antd";
+import { Row, Col, Form, Input, Switch, Alert, InputNumber } from "antd";
 import { postFolds } from "../../api/foldApi";
 import { FoldInput } from "../../types/types";
 import UIkit from "uikit";
@@ -12,9 +12,11 @@ interface NewBoltzFoldViewProps {
 }
 
 interface AdvancedSettings {
+    diffusionSamples: number;
     startFoldJob: boolean;
     emailOnCompletion: boolean;
     skipDuplicateEntries: boolean;
+    stayOnPage: boolean;
 }
 
 async function createFold(
@@ -22,6 +24,7 @@ async function createFold(
     yamlData: string,
     options: {
         userType: string | null;
+        diffusionSamples?: number;
         startFoldJob?: boolean;
         emailOnCompletion?: boolean;
         skipDuplicateEntries?: boolean;
@@ -35,13 +38,14 @@ async function createFold(
         name: foldName,
         tags: [],
         yaml_config: yamlData,
+        diffusion_samples: options.diffusionSamples || null,
         yaml_helper: null,
         sequence: null,
         af2_model_preset: "boltz",
         disable_relaxation: false,
     };
 
-    await postFolds([fold], {
+    return await postFolds([fold], {
         startJob: options.startFoldJob || false,
         emailOnCompletion: options.emailOnCompletion || false,
         skipDuplicates: options.skipDuplicateEntries || false,
@@ -53,9 +57,11 @@ const NewBoltzFoldView: React.FC<NewBoltzFoldViewProps> = ({ userType, setErrorT
     const [foldName, setFoldName] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [advancedSettings, setAdvancedSettings] = useState<AdvancedSettings>({
+        diffusionSamples: 1,
         startFoldJob: true,
         emailOnCompletion: true,
         skipDuplicateEntries: false,
+        stayOnPage: false,
     });
 
     // Example partial YAML (you can keep or remove this)
@@ -77,8 +83,14 @@ sequences:
                 ...advancedSettings,
             });
 
-            UIkit.alert("Fold successfully created!");
-            navigate("/");
+            UIkit.notification({
+                message: "Fold successfully created!",
+                status: 'success'
+            });
+
+            if (!advancedSettings.stayOnPage) {
+                navigate("/");
+            }
         } catch (err) {
             console.error(err);
             setErrorText(`Failed to create fold: ${String(err)}`);
@@ -141,6 +153,20 @@ sequences:
                         }}>
                             <h3>Advanced Settings</h3>
                             <Form layout="vertical">
+                                <Form.Item label="Diffusion Samples">
+                                    <InputNumber
+                                        value={advancedSettings.diffusionSamples}
+                                        onChange={(value) =>
+                                            setAdvancedSettings((prev) => ({
+                                                ...prev,
+                                                diffusionSamples: value || 1,
+                                            }))
+                                        }
+                                        disabled={userType === "viewer"}
+                                    />
+                                </Form.Item>
+
+
                                 <Form.Item label="Start Fold Job Immediately">
                                     <Switch
                                         checked={advancedSettings.startFoldJob}
@@ -180,6 +206,18 @@ sequences:
                                     />
                                 </Form.Item>
 
+                                <Form.Item label="Stay on this page after fold creation">
+                                    <Switch
+                                        checked={advancedSettings.stayOnPage}
+                                        onChange={(checked) =>
+                                            setAdvancedSettings((prev) => ({
+                                                ...prev,
+                                                stayOnPage: checked,
+                                            }))
+                                        }
+                                        disabled={userType === "viewer"}
+                                    />
+                                </Form.Item>
                             </Form>
                         </div>
                     </Col>

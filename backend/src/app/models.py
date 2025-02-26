@@ -25,7 +25,7 @@ class Invokation(PkModel):
 
     type = Column(db.String(80), nullable=False)
     state = Column(db.String(80), nullable=True)
-    starttime = Column(db.DateTime, nullable=True)
+    starttime = Column(db.DateTime(timezone=True), nullable=True)
     timedelta = Column(db.Interval, nullable=True)
 
     command = Column(db.Text, nullable=True)
@@ -125,7 +125,7 @@ class Fold(PkModel):
 
     # New, good, Boltz input.
     yaml_config = Column(db.String, nullable=True)
-
+    diffusion_samples = Column(db.Integer, nullable=True)
     # Old AF2 inputs.
     sequence = Column(db.Text)
     af2_model_preset = Column(db.String, nullable=True)
@@ -228,7 +228,16 @@ class Evolution(PkModel):
     )
     fold = relationship("Fold", back_populates="evolutions")
 
-    embedding_files = Column(db.String)  # A list of embedding file paths.
+    # Two options: "finetuning" on rank or "randomforest" on logits.
+    mode = Column(db.String, nullable=True)
+
+    # If mode == randomforest, then this is the fixed embeddings to use.
+    embedding_files = Column(
+        db.String, nullable=True
+    )  # A list of embedding file paths.
+
+    # If mode == finetuning, then this is the model checkpoint to use.
+    finetuning_model_checkpoint = Column(db.String, nullable=True)
 
     # State tracking.
     invokation_id = Column(

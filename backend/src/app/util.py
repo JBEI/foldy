@@ -210,6 +210,7 @@ def make_new_folds(
 
             # New Boltz input.
             yaml_config = fold_data.get("yaml_config")
+            diffusion_samples = fold_data.get("diffusion_samples", None)
 
             # Old AF2 handling.
             af2_model_preset = fold_data.get("af2_model_preset", None) or "boltz"
@@ -238,8 +239,9 @@ def make_new_folds(
                 name=fold_data["name"],
                 user_id=user.id,
                 tagstring=tagstring,
-                sequence=fold_data["sequence"],
                 yaml_config=yaml_config,
+                diffusion_samples=diffusion_samples,
+                sequence=fold_data["sequence"],
                 af2_model_preset=af2_model_preset,
                 disable_relaxation=fold_data["disable_relaxation"],
             )

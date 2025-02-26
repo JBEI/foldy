@@ -1,24 +1,22 @@
 import fileDownload from "js-file-download";
 import React, { useMemo, useState } from "react";
 import {
-    FaCheckCircle,
     FaChevronLeft,
     FaChevronRight,
     FaClock,
     FaDownload,
-    FaEllipsisV,
     FaEye,
     FaFrownOpen,
     FaRedo,
     FaTrash,
 } from "react-icons/fa";
-import ReactShowMoreText from "react-show-more-text";
 import UIkit from "uikit";
 import {
     getDockSdf,
     postDock,
 } from "../../services/backend.service";
 import { NewDockPrompt } from "../../util/newDockPrompt";
+import { Dock, Invokation, DockInput } from "../../types/types";
 
 interface DockTabProps {
     foldId: number;
@@ -98,8 +96,8 @@ const DockTab = React.memo((props: DockTabProps) => {
                     aValue = a.tool;
                     bValue = b.tool;
                 } else {
-                    aValue = getFit(a);
-                    bValue = getFit(b);
+                    aValue = Number(getFit(a));
+                    bValue = Number(getFit(b));
                 }
             } else {
                 aValue = a[key];

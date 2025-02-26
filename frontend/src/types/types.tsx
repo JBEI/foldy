@@ -5,6 +5,7 @@ export interface FoldInput {
     tags: string[];
 
     yaml_config: string | null;
+    diffusion_samples: number | null;
     yaml_helper: BoltzYamlHelper | null;
 
     // Old inputs.
@@ -129,7 +130,9 @@ export interface Evolution {
     id: number;
     name: string;
     fold_id: number;
+    mode: "finetuning" | "randomforest";
     embedding_files: string | null;
+    finetuning_model_checkpoint: string | null;
     invokation_id: number | null;
 }
 
