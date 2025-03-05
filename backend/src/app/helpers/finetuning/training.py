@@ -39,19 +39,20 @@ def set_all_seeds(seed):
     set_seed(seed)
 
 
-def create_dataset(tokenizer, sequences, labels, seq_ids):
+def create_dataset_entropy(tokenizer, input_df):
     """
-    Create a dataset from sequences, labels, and sequence IDs.
+    Create a dataset from a dataframe with columns "sequence", "label", and "seq_id".
     """
     from datasets import Dataset
 
-    # Convert sequences to list if it's a pandas Series
-    if hasattr(sequences, "tolist"):
-        sequences = sequences.tolist()
+    if any([col not in input_df.columns for col in ["sequence", "label", "seq_id"]]):
+        raise ValueError(
+            f"Input dataframe must have columns 'sequence', 'label', 'seq_id', got {input_df.columns}"
+        )
 
     # Tokenize all sequences
     tokenized = tokenizer(
-        sequences,
+        input_df["sequence"].tolist(),
         padding="max_length",
         truncation=True,
         max_length=1024,
@@ -62,17 +63,43 @@ def create_dataset(tokenizer, sequences, labels, seq_ids):
     dataset_dict = {
         "input_ids": tokenized["input_ids"],
         "attention_mask": tokenized["attention_mask"],
+        "labels": input_df["label"].tolist(),
+        "seq_id": input_df["seq_id"].tolist(),
     }
 
-    # Add labels
-    if hasattr(labels, "tolist"):
-        labels = labels.tolist()
-    dataset_dict["labels"] = labels
+    return Dataset.from_dict(dataset_dict)
 
-    # Add sequence IDs
-    if hasattr(seq_ids, "tolist"):
-        seq_ids = seq_ids.tolist()
-    dataset_dict["seq_ids"] = seq_ids
+
+def create_dataset_direct_preference(tokenizer, input_df):
+    """Takes a tokenizer and a dataframe with columns "sequence", "seq_id_w", "seq_id_l", and puts them into a dataset.
+
+    Conceptually each row corresponds to a WT sequence, the seq_id and
+    label for a "winning" mutant, and the seq_id and label for a "losing" mutant."""
+    from datasets import Dataset
+
+    if any(
+        [col not in input_df.columns for col in ["sequence", "seq_id_w", "seq_id_l"]]
+    ):
+        raise ValueError(
+            f"Input dataframe must have columns 'sequence', 'seq_id_w', 'seq_id_l', got {input_df.columns}"
+        )
+
+    # Tokenize all sequences
+    tokenized = tokenizer(
+        input_df["sequence"].tolist(),
+        padding="max_length",
+        truncation=True,
+        max_length=1024,
+        return_tensors="pt",
+    )
+
+    # Create dataset dictionary
+    dataset_dict = {
+        "input_ids": tokenized["input_ids"],
+        "attention_mask": tokenized["attention_mask"],
+        "seq_id_w": input_df["seq_id_w"].tolist(),
+        "seq_id_l": input_df["seq_id_l"].tolist(),
+    }
 
     return Dataset.from_dict(dataset_dict)
 
@@ -116,9 +143,11 @@ def full_ranking_bce(preds: torch.Tensor, targets: torch.Tensor) -> torch.Tensor
             f"Only one score should be provided per sequence, got {preds.shape[1]} scores"
         )
 
-    # Ensure everything is shape (batch_size,)
+    # Ensure everything is shape (batch_size,) and has gradients enabled
     preds = preds.view(-1)
-    targets = targets.view(-1)
+    targets = targets.view(
+        -1
+    ).detach()  # Detach targets as we don't need gradients for them
 
     # Calculate pairwise differences between all predictions
     pairwise_diffs = preds[:, None] - preds[None, :]
@@ -137,7 +166,7 @@ def full_ranking_bce(preds: torch.Tensor, targets: torch.Tensor) -> torch.Tensor
 
     # Apply mask and average
     masked_loss = 0.5 * ranking_loss * diag_mask
-    return masked_loss.mean((-1, -2))
+    return masked_loss.mean()
 
 
 def train_per_protein(
@@ -145,17 +174,17 @@ def train_per_protein(
     train_df: pd.DataFrame,
     valid_df: pd.DataFrame,
     device: torch.device,
-    num_labels: int = 1,
-    use_ranking_loss: bool = False,
+    loss: ["dpo", "entropy"] = "dpo",
     train_batch_size: int = 4,
-    grad_accum_steps: int = 2,
-    val_batch_size: int = 16,
+    grad_accum_steps: int = 1,
+    val_batch_size: int = 4,
     epochs: int = 10,
     learning_rate: float = 3e-4,
     seed: int = 42,
     deepspeed_config=None,
     mixed_precision: bool = True,
     train_full: bool = False,
+    output_dir: str = "./checkpoints",
 ):
     """
     Main training function for ESM with mutation score calculation.
@@ -168,7 +197,6 @@ def train_per_protein(
     logging.info(f"Loading model from {checkpoint}")
     model, tokenizer = load_esm_model(
         checkpoint,
-        num_labels=num_labels,
         half_precision=mixed_precision,
         train_full=train_full,
         deepspeed=bool(deepspeed_config),
@@ -180,64 +208,20 @@ def train_per_protein(
     if epochs == 0:
         return tokenizer, model, []
 
-    # 2. Basic data cleaning: e.g., replace weird AAs with X
-    for df in [train_df, valid_df]:
-        df["sequence"] = df["sequence"].str.replace(r"[OBUZJ]", "X", regex=True)
+    # # 2. Basic data cleaning: e.g., replace weird AAs with X
+    # for df in [train_df, valid_df]:
+    #     df["sequence"] = df["sequence"].str.replace(r"[OBUZJ]", "X", regex=True)
 
-    # 3. Check if seq_id column exists
-    if use_ranking_loss:
-        if "seq_id" not in train_df.columns or "seq_id" not in valid_df.columns:
-            raise ValueError(
-                "seq_id column is required in both train_df and valid_df for mutation score calculation"
-            )
-
-    # 4. Create HF Datasets
-    required_columns = ["sequence", "label", "seq_id"]
-    for df, df_name in [(train_df, "train_df"), (valid_df, "valid_df")]:
-        for col in required_columns:
-            if col not in df.columns:
-                raise ValueError(
-                    f"{col} column is required in {df_name}, only found {df.columns}"
-                )
-
-    train_dataset = create_dataset(
-        tokenizer, train_df["sequence"], train_df["label"], train_df["seq_id"]
-    )
-    valid_dataset = create_dataset(
-        tokenizer, valid_df["sequence"], valid_df["label"], valid_df["seq_id"]
-    )
-
-    # 5. Create custom data collator that preserves seq_ids
-    class CustomDataCollator(DataCollatorWithPadding):
-        """Custom data collator that keeps seq_ids as is without trying to tensorize them."""
-
-        def __call__(self, features):
-            # Extract seq_ids before handling the rest
-            seq_ids = (
-                [f.pop("seq_ids") for f in features]
-                if "seq_ids" in features[0]
-                else None
-            )
-
-            # Process the remaining features normally (convert to tensors, pad, etc.)
-            batch = super().__call__(features)
-
-            # Add seq_ids back to the batch without tensorizing
-            if seq_ids:
-                batch["seq_ids"] = seq_ids
-
-            return batch
-
-    data_collator = CustomDataCollator(tokenizer=tokenizer)
-
-    # 6. Trainer arguments
+    # 4. Trainer arguments
     logging.info(f"Creating training arguments")
     training_args = TrainingArguments(
-        output_dir="./checkpoints",
-        evaluation_strategy="epoch",
+        output_dir=str(output_dir),
+        evaluation_strategy="steps",
+        eval_steps=10,
         logging_strategy="steps",
         logging_steps=1,
-        save_strategy="no",  # or "epoch"/"steps" if you prefer
+        save_strategy="steps",
+        save_steps=50,
         learning_rate=learning_rate,
         per_device_train_batch_size=train_batch_size,
         per_device_eval_batch_size=val_batch_size,
@@ -247,21 +231,88 @@ def train_per_protein(
         deepspeed=deepspeed_config,
         fp16=mixed_precision,
         remove_unused_columns=False,
+        max_grad_norm=1.0,
+        warmup_steps=150,
+        metric_for_best_model="ranking_accuracy" if loss == "dpo" else "spearmanr",
+        load_best_model_at_end=True,
     )
 
-    def compute_spearmanr(eval_pred):
-        predictions, labels = eval_pred
-        # If predictions are scores from our custom trainer
-        if isinstance(predictions, dict) and "scores" in predictions:
-            predictions = predictions["scores"]
-        rho, _ = spearmanr(predictions, labels)
-        return {"spearmanr": rho}
+    compute_evaluation_function = None
+    if loss == "dpo":
+        compute_evaluation_function = compute_ranking_accuracy
+    elif loss == "entropy":
+        compute_evaluation_function = compute_spearmanr
+
+    # 5. Create HF Datasets
+    if loss == "entropy":
+        train_dataset = create_dataset_entropy(tokenizer, train_df)
+        valid_dataset = create_dataset_entropy(tokenizer, valid_df)
+    elif loss == "dpo":
+        train_dataset = create_dataset_direct_preference(tokenizer, train_df)
+        valid_dataset = create_dataset_direct_preference(tokenizer, valid_df)
+    else:
+        raise ValueError(f"Invalid loss function: {loss}")
+
+    # 6. Create custom data collator that preserves seq_ids
+    class EntropyDataCollator(DataCollatorWithPadding):
+        """Custom data collator that keeps seq_ids as is without trying to tensorize them."""
+
+        def __call__(self, features):
+            # Extract seq_ids before handling the rest
+            seq_ids = (
+                [f.pop("seq_id") for f in features] if "seq_id" in features[0] else None
+            )
+
+            # Process the remaining features normally (convert to tensors, pad, etc.)
+            batch = super().__call__(features)
+
+            # Add seq_ids back to the batch without tensorizing
+            if seq_ids:
+                batch["seq_id"] = seq_ids
+
+            return batch
+
+    class DPODataCollator(DataCollatorWithPadding):
+        """Custom data collator that keeps seq_ids as is without trying to tensorize them."""
+
+        def __call__(self, features):
+            # Extract seq_ids before handling the rest
+            seq_id_ws = (
+                [f.pop("seq_id_w") for f in features]
+                if "seq_id_w" in features[0]
+                else None
+            )
+
+            seq_id_ls = (
+                [f.pop("seq_id_l") for f in features]
+                if "seq_id_l" in features[0]
+                else None
+            )
+            # Process the remaining features normally (convert to tensors, pad, etc.)
+            batch = super().__call__(features)
+
+            # Add seq_ids back to the batch without tensorizing
+            if seq_id_ws:
+                batch["seq_id_w"] = seq_id_ws
+            if seq_id_ls:
+                batch["seq_id_l"] = seq_id_ls
+
+            return batch
+
+    if loss == "dpo":
+        data_collator = DPODataCollator(tokenizer=tokenizer)
+    elif loss == "entropy":
+        data_collator = EntropyDataCollator(tokenizer=tokenizer)
+    else:
+        raise ValueError(f"Invalid loss function: {loss}")
 
     # 7. Decide which Trainer
-    if use_ranking_loss:
-        trainer_cls = ESMMutationScoreTrainer
+    if loss == "dpo":
+        trainer_cls = ESMDirectPreferenceTrainer
+    elif loss == "entropy":
+        trainer_cls = ESMEntropyTrainer
     else:
-        trainer_cls = Trainer
+        raise ValueError(f"Invalid loss function: {loss}")
 
     # Create custom logging callback
     logging_callback = LoggingCallback(logging_interval=1)
@@ -274,7 +325,7 @@ def train_per_protein(
         eval_dataset=valid_dataset,
         tokenizer=tokenizer,
         data_collator=data_collator,
-        compute_metrics=compute_spearmanr,
+        compute_metrics=compute_evaluation_function,
         callbacks=[logging_callback],
     )
 
@@ -288,7 +339,6 @@ def train_per_protein(
 
 def load_esm_model(
     checkpoint,
-    num_labels=1,
     half_precision=False,
     train_full=False,
     deepspeed=False,
@@ -326,18 +376,6 @@ def load_esm_model(
     return model, tokenizer
 
 
-class ESMMutationScoreTrainer(Trainer):
-    """
-    Custom trainer that calculates mutation scores from ESM masked language modeling
-    and uses them with a ranking loss.
-    """
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        # Store the wild-type sequence for reference
-        self.wt_sequence = kwargs.pop("wt_sequence", None)
-
-
 def parse_mutations(seq_id):
     """
     Parse mutations from a sequence ID (e.g., "A132W_S155G").
@@ -360,21 +398,132 @@ def parse_mutations(seq_id):
     return mutations
 
 
-class ESMMutationScoreTrainer(Trainer):
+def calculate_log_wt_marginal_from_logits(single_protein_logits, seq_id, tokenizer):
+    """Calculate the WT marginal score from a protein logits for a seq id."""
+    sequence_score = torch.tensor(
+        0.0, device=single_protein_logits.device, requires_grad=True
+    )
+    if not seq_id or seq_id == "WT":
+        return sequence_score
+
+    mutations = parse_mutations(seq_id)
+    if not mutations:
+        return sequence_score
+
+    for wt_aa, pos, mut_aa in mutations:
+        # Account for special tokens (e.g., <cls>)
+        token_pos = pos + 1  # +1 for <cls> token
+
+        # Get probabilities for this position
+        log_probs = F.log_softmax(single_protein_logits[token_pos], dim=0)
+
+        # Get token IDs for wild-type and mutant amino acids
+        wt_token_id = tokenizer.convert_tokens_to_ids(wt_aa)
+        mut_token_id = tokenizer.convert_tokens_to_ids(mut_aa)
+
+        # Calculate score for this mutation
+        log_wt_prob = log_probs[wt_token_id]
+        log_mut_prob = log_probs[mut_token_id]
+        score = log_mut_prob - log_wt_prob
+
+        # TODO: For multi mutants, can we add in log space? Or should we add in linear space?
+        sequence_score = sequence_score + score
+
+    return sequence_score
+
+
+class ESMDirectPreferenceTrainer(Trainer):
     # Override _prepare_inputs to preserve extra keys (e.g. "seq_ids")
     def _prepare_inputs(self, inputs):
         return inputs
 
-    def __init__(self, *args, **kwargs):
-        # Remove and store wt_sequence if provided
-        self.wt_sequence = kwargs.pop("wt_sequence", None)
-        super().__init__(*args, **kwargs)
+    def prediction_step(self, model, inputs, prediction_loss_only, ignore_keys=None):
+        """Override prediction_step to handle our custom inputs and return predictions"""
+        # Get seq_ids but keep them in inputs as compute_loss needs them
+        seq_id_w = inputs.get("seq_id_w", None)
+        seq_id_l = inputs.get("seq_id_l", None)
+
+        # Calculate loss and get outputs
+        loss, outputs = self.compute_loss(model, inputs, return_outputs=True)
+
+        # Suppose we have the same batch size = N
+        dummy_labels = torch.zeros((len(seq_id_w)), dtype=torch.long).to(loss.device)
+
+        # During evaluation, we want to return the scores
+        return (
+            loss.detach(),
+            {
+                "log_score_w": torch.stack(outputs["log_score_w"]).detach(),
+                "log_score_l": torch.stack(outputs["log_score_l"]).detach(),
+            },
+            # Labels aren't needed for ranking accuracy, but "None" labels won't have compute_accuracy called.
+            dummy_labels,
+        )
+
+    def compute_loss(self, model, inputs, return_outputs=False):
+        necessary_keys = ["seq_id_w", "seq_id_l"]
+        if not all(key in inputs for key in necessary_keys):
+            raise ValueError(
+                f"Missing keys in inputs, expected {necessary_keys}, only found {inputs.keys()}"
+            )
+
+        # Remove extra keys so they are not passed to the model's forward
+        seq_id_w_list = inputs.pop("seq_id_w")
+        seq_id_l_list = inputs.pop("seq_id_l")
+
+        # Single forward pass for the entire batch
+        outputs = model(**inputs)
+        logits = outputs.logits  # Shape: [batch_size, seq_len, vocab_size]
+
+        # Extract the wt marginal scores.
+        log_score_w_list = []
+        log_score_l_list = []
+        assert logits.shape[0] == len(
+            seq_id_w_list
+        ), f"Batch size numbers are inconsistent... {logits.shape[0]} {len(seq_id_w_list)}"
+        for within_batch_idx in range(logits.shape[0]):
+            seq_id_w = seq_id_w_list[within_batch_idx]
+            seq_id_l = seq_id_l_list[within_batch_idx]
+
+            log_score_w_list.append(
+                calculate_log_wt_marginal_from_logits(
+                    logits[within_batch_idx], seq_id_w, self.tokenizer
+                )
+            )
+            log_score_l_list.append(
+                calculate_log_wt_marginal_from_logits(
+                    logits[within_batch_idx], seq_id_l, self.tokenizer
+                )
+            )
+
+        # Calculate the DPO loss with ESM3's temperature scaling
+        beta = 0.05  # Temperature parameter from ESM3 paper
+        log_ratios = [
+            (log_score_w - log_score_l) * beta
+            for log_score_w, log_score_l in zip(log_score_w_list, log_score_l_list)
+        ]
+        losses = [F.softplus(-log_ratio) for log_ratio in log_ratios]
+        loss = torch.stack(losses).mean()
+
+        outputs = {
+            "loss": loss,
+            "log_score_w": log_score_w_list,
+            "log_score_l": log_score_l_list,
+        }
+
+        return (loss, outputs) if return_outputs else loss
+
+
+class ESMEntropyTrainer(Trainer):
+    # Override _prepare_inputs to preserve extra keys (e.g. "seq_ids")
+    def _prepare_inputs(self, inputs):
+        return inputs
 
     def compute_loss(self, model, inputs, return_outputs=False):
         # Ensure that "seq_ids" and "labels" are present.
-        if "seq_ids" not in inputs:
+        if "seq_id" not in inputs:
             raise ValueError(
-                f"seq_ids is required for ESMMutationScoreTrainer. Inputs had {inputs.keys()}"
+                f"seq_id is required for ESMMutationScoreTrainer. Inputs had {inputs.keys()}"
             )
         if "labels" not in inputs:
             raise ValueError(
@@ -382,7 +531,7 @@ class ESMMutationScoreTrainer(Trainer):
             )
 
         # Remove extra keys so they are not passed to the model's forward
-        seq_ids = inputs.pop("seq_ids")
+        seq_ids = inputs.pop("seq_id")
         labels = inputs.pop("labels")
 
         # Single forward pass for the entire batch
@@ -392,7 +541,9 @@ class ESMMutationScoreTrainer(Trainer):
         # Calculate scores for each sequence
         scores_list = []
         for i, seq_id in enumerate(seq_ids):
-            sequence_score = torch.tensor(0.0, device=logits.device)
+            sequence_score = torch.zeros(
+                1, device=logits.device, requires_grad=True
+            )  # Initialize with requires_grad=True
             # Parse mutations from seq_id (e.g., "A132W_S155G")
             if seq_id and seq_id != "WT":
                 mutations = parse_mutations(seq_id)
@@ -402,7 +553,8 @@ class ESMMutationScoreTrainer(Trainer):
                         token_pos = pos + 1  # +1 for <cls> token
 
                         # Get probabilities for this position
-                        probs = torch.softmax(logits[i, token_pos], dim=0)
+                        logits_at_pos = logits[i, token_pos]  # Keep raw logits
+                        probs = torch.softmax(logits_at_pos, dim=0)
 
                         # Get token IDs for wild-type and mutant amino acids
                         wt_token_id = self.tokenizer.convert_tokens_to_ids(wt_aa)
@@ -412,7 +564,7 @@ class ESMMutationScoreTrainer(Trainer):
                         wt_prob = probs[wt_token_id]
                         mut_prob = probs[mut_token_id]
                         score = torch.log(mut_prob + 1e-10) - torch.log(wt_prob + 1e-10)
-                        sequence_score += score
+                        sequence_score = sequence_score + score
 
             scores_list.append(sequence_score)
 
@@ -420,7 +572,7 @@ class ESMMutationScoreTrainer(Trainer):
 
         # Convert labels to tensor if needed and ensure same device
         if not isinstance(labels, torch.Tensor):
-            labels = torch.tensor(labels, device=scores.device)
+            labels = torch.tensor(labels, dtype=torch.float, device=scores.device)
         if labels.device != scores.device:
             labels = labels.to(scores.device)
 
@@ -430,21 +582,52 @@ class ESMMutationScoreTrainer(Trainer):
         return (loss, outputs) if return_outputs else loss
 
 
-def score_sequences(model, tokenizer, wt_aa_seq, seq_ids, batch_size=32):
+def compute_spearmanr(eval_pred):
+    predictions, labels = eval_pred
+    # If predictions are scores from our custom trainer
+    if isinstance(predictions, dict) and "scores" in predictions:
+        predictions = predictions["scores"]
+    rho, _ = spearmanr(predictions, labels)
+    return {"spearmanr": rho}
+
+
+def compute_ranking_accuracy(eval_pred):
+    """Compute the accuracy of preference rankings (seq_id_w > seq_id_l)"""
+    # HF passes in a namedtuple: (predictions, label_ids, something_else)
+    predictions = eval_pred.predictions
+    # label_ids = eval_pred.label_ids     # We can ignore if we want
+    if isinstance(predictions, dict):
+        winning_scores = predictions["log_score_w"]
+        losing_scores = predictions["log_score_l"]
+    else:
+        winning_scores, losing_scores = predictions
+
+    # If they are PyTorch tensors, convert them to NumPy
+    if torch.is_tensor(winning_scores):
+        winning_scores = winning_scores.cpu().numpy()
+    if torch.is_tensor(losing_scores):
+        losing_scores = losing_scores.cpu().numpy()
+
+    # Now do the boolean comparison in NumPy
+    correct_rankings = np.mean((winning_scores > losing_scores).astype(np.float32))
+
+    return {"ranking_accuracy": float(correct_rankings)}
+
+
+def score_sequences(model, tokenizer, wt_aa_seq, seq_ids):
     """Score a list of sequences using the trained model.
 
     Args:
         model: Trained ESM model
         tokenizer: ESM tokenizer
         wt_aa_seq: Wild-type amino acid sequence
-        seq_ids: List of sequence IDs to score
-        batch_size: Batch size for processing
+        seq_ids
 
     Returns:
         DataFrame with columns:
         - seq_id: Sequence identifier
         - sequence: Full amino acid sequence
-        - wt_marginal_score: Sum of wild-type amino acid log probabilities
+        - log_wt_marginal: Sum of wild-type amino acid log probabilities
     """
     import torch
     import pandas as pd
@@ -453,55 +636,46 @@ def score_sequences(model, tokenizer, wt_aa_seq, seq_ids, batch_size=32):
     model.eval()
     device = next(model.parameters()).device
 
+    # Tokenize
+    inputs = tokenizer([wt_aa_seq], padding=True, truncation=True, return_tensors="pt")
+    inputs = {k: v.to(device) for k, v in inputs.items()}
+
+    # Get model predictions
+    with torch.no_grad():
+        outputs = model(**inputs)
+        logits = outputs.logits
+
+    print(logits.shape)
+
     results = []
 
     # Process in batches
-    for i in range(0, len(seq_ids), batch_size):
-        logging.info(
-            f"Scoring batch {i // batch_size + 1} of {len(seq_ids) // batch_size}"
+    for seq_id in seq_ids:
+        sequence = seq_id_to_seq(wt_aa_seq, seq_id)
+        sequence_score = 0
+        for wt_aa, pos, mut_aa in parse_mutations(seq_id):
+            # Account for special tokens (e.g., <cls>)
+            token_pos = pos + 1  # +1 for <cls> token
+
+            # Get probabilities for this position
+            log_probs = F.log_softmax(logits[0, token_pos], dim=0)
+
+            # Get token IDs for wild-type and mutant amino acids
+            wt_token_id = tokenizer.convert_tokens_to_ids(wt_aa)
+            mut_token_id = tokenizer.convert_tokens_to_ids(mut_aa)
+
+            # Calculate score for this mutation
+            log_wt_prob = log_probs[wt_token_id]
+            log_mut_prob = log_probs[mut_token_id]
+            score = log_mut_prob - log_wt_prob
+            sequence_score = sequence_score + score
+
+        results.append(
+            {
+                "seq_id": seq_id,
+                "sequence": sequence,
+                "log_wt_marginal": float(sequence_score),
+            }
         )
-        batch_seq_ids = seq_ids[i : i + batch_size]
-
-        # Convert seq_ids to sequences
-        sequences = [seq_id_to_seq(wt_aa_seq, seq_id) for seq_id in batch_seq_ids]
-
-        # Tokenize
-        inputs = tokenizer(
-            sequences, padding=True, truncation=True, return_tensors="pt"
-        )
-        inputs = {k: v.to(device) for k, v in inputs.items()}
-
-        # Get model predictions
-        with torch.no_grad():
-            outputs = model(**inputs)
-            logits = outputs.logits  # [batch_size, seq_len, vocab_size]
-
-        # Calculate scores for each sequence
-        for j, (seq_id, sequence) in enumerate(zip(batch_seq_ids, sequences)):
-            sequence_score = torch.tensor(0.0, device=logits.device)
-            for wt_aa, pos, mut_aa in parse_mutations(seq_id):
-                # Account for special tokens (e.g., <cls>)
-                token_pos = pos + 1  # +1 for <cls> token
-
-                # Get probabilities for this position
-                probs = torch.softmax(logits[j, token_pos], dim=0)
-
-                # Get token IDs for wild-type and mutant amino acids
-                wt_token_id = tokenizer.convert_tokens_to_ids(wt_aa)
-                mut_token_id = tokenizer.convert_tokens_to_ids(mut_aa)
-
-                # Calculate score for this mutation
-                wt_prob = probs[wt_token_id]
-                mut_prob = probs[mut_token_id]
-                score = torch.log(mut_prob + 1e-10) - torch.log(wt_prob + 1e-10)
-                sequence_score += score
-
-            results.append(
-                {
-                    "seq_id": seq_id,
-                    "sequence": sequence,
-                    "wt_marginal_score": sequence_score.item(),
-                }
-            )
 
     return pd.DataFrame(results)

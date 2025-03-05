@@ -12,16 +12,222 @@ import { Data } from 'plotly.js';
 import Papa from 'papaparse';
 import { useTable, useGlobalFilter, useSortBy, TableInstance } from 'react-table';
 import { ESMModelPicker } from './ESMModelPicker';
+import { Selection } from './StructurePane';
+import DataGrid from 'react-data-grid';
+import ReactDataGrid from 'react-data-grid';
+// import 'react-data-grid/lib/styles.css';  // Don't forget the styles!
+
+
+const NATURALNESS_COLUMN = 'probability';
+const WT_MARGINAL_COLUMN = 'wt_marginal';
+
+// Define standard amino acid residues
+const RESIDUES = ['A', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'K', 'L', 'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'V', 'W', 'Y'];
 
 interface NaturalnessTabProps {
     foldId: number;
     foldName: string | null;
+    foldChainIds: string[] | null;
     jobs: Invokation[] | null;
     logits: Logit[] | null;
+    setSelectedSubsequence: (selection: Selection | null) => void;
     setErrorText: (error: string) => void;
 }
 
-const NaturalnessTab: React.FC<NaturalnessTabProps> = ({ foldId, foldName, jobs, logits, setErrorText }) => {
+
+interface LogitTableProps {
+    logitCsvData: string | null;
+    useWtMarginalAsScore: boolean;
+    zeroWildType: boolean;
+    topPerformersToDisplay: number;
+}
+
+type RowData = {
+    seqId: string;
+    score: number;
+    model: number | null;
+}
+
+const parseCsvDataIntoRowData = (logitCsvData: string, useWtMarginalAsScore: boolean, zeroWildType: boolean): RowData[] | null => {
+    const { data, errors } = Papa.parse<Record<string, string>>(logitCsvData, {
+        header: true,
+        delimiter: ',',
+        skipEmptyLines: true,
+        dynamicTyping: true
+    });
+
+    if (errors.length > 0) {
+        UIkit.notification({ message: `Error parsing logit CSV: ${errors.map(error => error.message).join(', ')}`, status: 'danger' });
+        return null;
+    }
+
+    const interiorTableData = data.map((row) => {
+        var score = useWtMarginalAsScore ? parseFloat(row[WT_MARGINAL_COLUMN]) : parseFloat(row[NATURALNESS_COLUMN]);
+        score = score || 0;
+        if (zeroWildType) {
+            const match = row['seq_id'].match(/([A-Z])(\d+)([A-Z])/);
+            if (match) {
+                const wtResidue = match[1];
+                const locus = parseInt(match[2]);
+                const mutantResidue = match[3];
+                if (wtResidue == mutantResidue) {
+                    score = 0;
+                }
+            }
+        }
+        var model = null;
+        if (row['model'] != null) {
+            model = parseFloat(row['model']);
+        }
+
+        return {
+            seqId: row['seq_id'],
+            score: score,
+            model: model,
+        };
+    });
+
+    return interiorTableData.sort((a, b) => b.score - a.score);
+}
+
+// const LogitTable: React.FC<LogitTableProps> = ({ logitCsvData, useWtMarginalAsScore, zeroWildType, topPerformersToDisplay }) => {
+//     if (!logitCsvData) return null;
+
+//     const tableData: RowData[] | null = useMemo(() => {
+//         return parseCsvDataIntoRowData(logitCsvData, useWtMarginalAsScore, zeroWildType)?.slice(0, topPerformersToDisplay) || null;
+//     }, [logitCsvData, useWtMarginalAsScore, topPerformersToDisplay]);
+//     if (!tableData) return null;
+
+//     const tableSubset = tableData.slice(0, topPerformersToDisplay);
+
+//     let columnDefs: ColDef<RowData>[] = [
+//         { field: 'seqId', headerName: 'Sequence ID', sortable: true, filter: true },
+//         {
+//             field: 'score',
+//             headerName: useWtMarginalAsScore ? 'WT Marginal Likelihood' : 'Probability',
+//             sortable: true,
+//             filter: 'agNumberColumnFilter',
+//             valueFormatter: (params: any) => params.value.toExponential(6),
+//             sort: 'desc',
+//             sortIndex: 0
+//         },
+//         { field: 'model', headerName: 'Model', sortable: true, filter: true }
+//     ];
+
+//     return (
+//         <div
+//             className="ag-theme-alpine"
+//             style={{
+//                 width: '100%',
+//                 height: '500px',
+//                 marginTop: '20px'
+//             }}
+//         >
+//             <AgGridReact
+//                 modules={[ClientSideRowModelModule]}
+//                 rowData={tableSubset}
+//                 columnDefs={columnDefs}
+//                 defaultColDef={{
+//                     flex: 1,
+//                     minWidth: 100,
+//                     resizable: true,
+//                     sortable: true,
+//                     filter: true,
+//                     suppressMovable: true,
+//                     // cellStyle: { userSelect: 'text' }
+//                 }}
+//                 enableCellTextSelection={true}
+//                 copyHeadersToClipboard={true}
+//                 domLayout='autoHeight'
+//                 ensureDomOrder={true}
+//             // suppressCellFocus={true}
+//             // suppressRowClickSelection={true}
+//             />
+//         </div>
+//     );
+// };
+
+const LogitTable: React.FC<LogitTableProps> = ({
+    logitCsvData,
+    useWtMarginalAsScore,
+    zeroWildType,
+    topPerformersToDisplay
+}) => {
+    if (!logitCsvData) return null;
+
+    const [sortColumn, setSortColumn] = useState<string | null>(null);
+    const [sortDirection, setSortDirection] = useState<'ASC' | 'DESC'>('DESC');
+
+    const tableData: RowData[] | null = useMemo(() => {
+        const data = parseCsvDataIntoRowData(logitCsvData, useWtMarginalAsScore, zeroWildType)?.slice(0, topPerformersToDisplay) || null;
+
+        if (data && sortColumn) {
+            return [...data].sort((a, b) => {
+                const aValue = a[sortColumn as keyof RowData];
+                const bValue = b[sortColumn as keyof RowData];
+                if (aValue === null) return 1;
+                if (bValue === null) return -1;
+                return sortDirection === 'ASC'
+                    ? (aValue < bValue ? -1 : 1)
+                    : (aValue > bValue ? -1 : 1);
+            });
+        }
+        return data;
+    }, [logitCsvData, useWtMarginalAsScore, zeroWildType, topPerformersToDisplay, sortColumn, sortDirection]);
+
+    if (!tableData) return null;
+
+    const handleSort = (sortCol: string) => {
+        if (sortColumn === sortCol) {
+            setSortDirection(sortDirection === 'ASC' ? 'DESC' : 'ASC');
+        } else {
+            setSortColumn(sortCol);
+            setSortDirection('ASC');
+        }
+    };
+
+    const columns = [
+        {
+            key: "seqId",
+            name: "Sequence ID",
+            sortable: true,
+            resizable: true,
+            sortDescendingFirst: true
+        },
+        {
+            key: "score",
+            name: useWtMarginalAsScore ? "WT Marginal Likelihood" : "Probability",
+            sortable: true,
+            resizable: true,
+            formatter: ({ row }: { row: any }) => row.score.toExponential(6),
+            sortDescendingFirst: true
+        },
+        {
+            key: "model",
+            name: "Model",
+            sortable: true,
+            resizable: true,
+            sortDescendingFirst: true
+        }
+    ];
+
+    return (
+        <div style={{ width: "100%", height: "500px", marginTop: "20px" }}>
+            <ReactDataGrid
+                columns={columns}
+                rowGetter={i => tableData[i]}
+                rowsCount={tableData.length}
+                enableCellSelect={true}
+                onGridSort={(sortCol, direction) => {
+                    setSortColumn(sortCol);
+                    setSortDirection(direction.toUpperCase() as 'ASC' | 'DESC');
+                }}
+            />
+        </div>
+    );
+};
+
+const NaturalnessTab: React.FC<NaturalnessTabProps> = ({ foldId, foldName, foldChainIds, jobs, logits, setSelectedSubsequence, setErrorText }) => {
     const [runName, setRunName] = useState<string>('');
     const [logitModel, setLogitModel] = useState<string>('esmc_600m');
     const [useStructure, setUseStructure] = useState<boolean>(false);
@@ -32,6 +238,8 @@ const NaturalnessTab: React.FC<NaturalnessTabProps> = ({ foldId, foldName, jobs,
     const [maskWildType, setMaskWildType] = useState<boolean>(false);
     const [zeroWildType, setZeroWildType] = useState<boolean>(false);
     const [showWTMarginalLikelihood, setShowWTMarginalLikelihood] = useState<boolean>(false);
+
+    const [topPerformersToDisplay, setTopPerformersToDisplay] = useState<number>(16);
 
 
     const handleStartLogit = async () => {
@@ -114,33 +322,23 @@ const NaturalnessTab: React.FC<NaturalnessTabProps> = ({ foldId, foldName, jobs,
     const logitPlot = useMemo(() => {
         if (!logitCsvData) return null;
 
-        const { data, errors, meta } = Papa.parse<Record<string, string>>(logitCsvData, {
-            header: true,
-            delimiter: ',',
-            skipEmptyLines: true,
-            dynamicTyping: true
-        });
+        const rowData = parseCsvDataIntoRowData(logitCsvData, showWTMarginalLikelihood, zeroWildType);
+        if (!rowData) return null;
 
-        if (errors.length > 0) {
-            return <div>Error parsing logit CSV: {errors.map(error => error.message).join(', ')}</div>;
-        }
-
-        // Extract the naturalness column name (any column that's not seq_id)
-        const columns = Object.keys(data[0]);
-        const naturalnessColumn = 'probability';
-        const wtMarginalColumn = 'wt_marginal';
-
-        // Define standard amino acid residues
-        const residues = ['A', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'K', 'L', 'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'V', 'W', 'Y'];
 
         // Process data for heatmap
         const locusSet = new Set<number>();
-        const probabilityHeatmapData: { [key: string]: number } = {};
-        const wtMarginalHeatmapData: { [key: string]: number } = {};
+        const scoreHeatmapData: { [key: string]: number } = {};
         const wtResidues: { [key: number]: string } = {};  // Store wild-type residues by position
 
-        data.forEach(row => {
-            const seqId = row['seq_id'];
+        var ensembleMembers = 1.0;
+
+        rowData.forEach(row => {
+            if (row.model != null) {
+                ensembleMembers = Math.max(ensembleMembers, row.model);
+            }
+            const seqId = row.seqId;
+
             // Extract locus and mutant residue using regex
             const match = seqId.match(/([A-Z])(\d+)([A-Z])/);
             if (match) {
@@ -148,30 +346,32 @@ const NaturalnessTab: React.FC<NaturalnessTabProps> = ({ foldId, foldName, jobs,
                 const locus = parseInt(match[2]);
                 const mutantResidue = match[3];
                 locusSet.add(locus);
-                probabilityHeatmapData[`${locus}-${mutantResidue}`] = parseFloat(row[naturalnessColumn]);
-                wtMarginalHeatmapData[`${locus}-${mutantResidue}`] = parseFloat(row[wtMarginalColumn]);
                 wtResidues[locus] = wtResidue;
+                const key = `${locus}-${mutantResidue}`;
+                if (key in scoreHeatmapData) {
+                    scoreHeatmapData[key] += row.score;
+                } else {
+                    scoreHeatmapData[key] = row.score;
+                }
             }
         });
-        console.log(probabilityHeatmapData);
-        console.log(wtMarginalHeatmapData);
+        Object.keys(scoreHeatmapData).forEach(key => {
+            scoreHeatmapData[key] /= ensembleMembers;
+        });
+        console.log(scoreHeatmapData);
 
         const loci = Array.from(locusSet).sort((a, b) => a - b);
-        const zValues = residues.map(res =>
+        const zValues = RESIDUES.map(res =>
             loci.map(locus => {
                 // If masking is enabled and this is the wild-type residue, return null
                 if (res === wtResidues[locus]) {
-                    if (zeroWildType) {
-                        return 0.0;
-                    } else if (maskWildType) {
+                    if (maskWildType) {
                         return null;
                     }
                 }
-                if (showWTMarginalLikelihood) {
-                    return wtMarginalHeatmapData[`${locus}-${res}`] || null;
-                } else {
-                    return probabilityHeatmapData[`${locus}-${res}`] || null;
-                }
+                const key = `${locus}-${res}`;
+                // Use explicit check to handle zero values correctly
+                return key in scoreHeatmapData ? scoreHeatmapData[key] : null;
             })
         );
 
@@ -179,49 +379,19 @@ const NaturalnessTab: React.FC<NaturalnessTabProps> = ({ foldId, foldName, jobs,
             type: 'heatmap',
             z: zValues,
             x: loci,
-            y: residues,
+            y: RESIDUES,
             colorscale: 'Viridis',
             hoverongaps: false,
             zmin: showWTMarginalLikelihood ? undefined : 0,  // Set minimum value for color scale
             zmax: showWTMarginalLikelihood ? undefined : 1,  // Set maximum value for color scale
             hovertemplate: '%{customdata}%{x}%{y}<br>' +
-                'Score: 10^(%{z})<extra></extra>',
-            customdata: residues.map(() => loci.map(locus => wtResidues[locus])),
+                'Score: %{z}<extra></extra>',
+            customdata: RESIDUES.map(() => loci.map(locus => wtResidues[locus])),
             showscale: true,
         }];
 
         return (
             <div style={{ width: '100%', maxWidth: '900px' }}>
-                <div style={{ marginBottom: '10px' }}>
-                    <label>
-                        <input
-                            type="checkbox"
-                            className="uk-checkbox"
-                            checked={maskWildType}
-                            onChange={(e) => setMaskWildType(e.target.checked)}
-                        /> Mask wild-type amino acids
-                    </label>
-                </div>
-                <div style={{ marginBottom: '10px' }}>
-                    <label>
-                        <input
-                            type="checkbox"
-                            className="uk-checkbox"
-                            checked={zeroWildType}
-                            onChange={(e) => setZeroWildType(e.target.checked)}
-                        /> Zero out wild-type amino acids
-                    </label>
-                </div>
-                <div style={{ marginBottom: '10px' }}>
-                    <label>
-                        <input
-                            type="checkbox"
-                            className="uk-checkbox"
-                            checked={showWTMarginalLikelihood}
-                            onChange={(e) => setShowWTMarginalLikelihood(e.target.checked)}
-                        /> Display WT Marginal Likelihood
-                    </label>
-                </div>
                 <Plot
                     data={plotlyData}
                     layout={{
@@ -238,6 +408,40 @@ const NaturalnessTab: React.FC<NaturalnessTabProps> = ({ foldId, foldName, jobs,
             </div>
         );
     }, [logitCsvData, maskWildType, zeroWildType, showWTMarginalLikelihood]);
+
+    const highlightResiduesOnModel = () => {
+        if (!logitCsvData) return;
+
+        const tableData: RowData[] | null = parseCsvDataIntoRowData(logitCsvData, showWTMarginalLikelihood, zeroWildType)?.slice(0, topPerformersToDisplay) || null;
+        if (!tableData) return null;
+
+        const tableSubset = tableData.slice(0, topPerformersToDisplay);
+
+        const residuesToHighlight = tableSubset.map(row => {
+            const match = row.seqId.match(/([A-Z])(\d+)([A-Z])/);
+            if (match) {
+                return match[2];
+            }
+            return null;
+        }).filter(residue => residue !== null);
+
+        // Get unique residues to highlight
+        const uniqueResiduesToHighlight = Array.from(new Set(residuesToHighlight));
+
+        const selection = uniqueResiduesToHighlight.map(residue => {
+            return {
+                struct_asym_id: foldChainIds?.[0] || 'A',
+                start_residue_number: parseInt(residue),
+                end_residue_number: parseInt(residue),
+                color: "#FFD700",
+            }
+        })
+
+        setSelectedSubsequence({
+            data: selection,
+            // nonSelectedColor: "white",
+        });
+    }
 
     return (
         <div style={{ padding: '20px', backgroundColor: '#f8f9fa', boxShadow: '0 2px 6px rgba(0, 0, 0, 0.1)', borderRadius: '8px' }}>
@@ -297,7 +501,80 @@ const NaturalnessTab: React.FC<NaturalnessTabProps> = ({ foldId, foldName, jobs,
 
             {/* Display logit info, if requested. */}
             {
-                displayedLogitId ? logitPlot : null
+                displayedLogitId ? (
+                    <>
+                        <div style={{ marginBottom: '10px' }}>
+                            <label>
+                                <input
+                                    type="checkbox"
+                                    className="uk-checkbox"
+                                    checked={maskWildType}
+                                    onChange={(e) => setMaskWildType(e.target.checked)}
+                                /> Mask wild-type amino acids
+                            </label>
+                        </div>
+                        <div style={{ marginBottom: '10px' }}>
+                            <label>
+                                <input
+                                    type="checkbox"
+                                    className="uk-checkbox"
+                                    checked={zeroWildType}
+                                    onChange={(e) => setZeroWildType(e.target.checked)}
+                                /> Zero out wild-type amino acids
+                            </label>
+                        </div>
+                        <div style={{ marginBottom: '10px' }}>
+                            <label>
+                                <input
+                                    type="checkbox"
+                                    className="uk-checkbox"
+                                    checked={showWTMarginalLikelihood}
+                                    onChange={(e) => setShowWTMarginalLikelihood(e.target.checked)}
+                                /> Display WT Marginal Likelihood
+                            </label>
+                        </div>
+                        {logitPlot}
+                        <div>
+                            <label>
+                                Top mutants to display:
+                                <input
+                                    type="number"
+                                    className="uk-input"
+                                    value={topPerformersToDisplay}
+                                    onChange={(e) => setTopPerformersToDisplay(parseInt(e.target.value))}
+                                    style={{ width: '100px', marginLeft: '10px' }}
+                                    min="1"
+                                />
+                            </label>
+                        </div>
+                        <LogitTable logitCsvData={logitCsvData} useWtMarginalAsScore={showWTMarginalLikelihood} zeroWildType={zeroWildType} topPerformersToDisplay={topPerformersToDisplay} />
+                        <div style={{ marginTop: '10px', display: 'flex', gap: '10px' }}>
+                            <button
+                                className="uk-button uk-button-default"
+                                onClick={() => {
+                                    if (!logitCsvData) return;
+
+                                    const tableData = parseCsvDataIntoRowData(logitCsvData, showWTMarginalLikelihood, zeroWildType)
+                                        ?.slice(0, topPerformersToDisplay);
+
+                                    if (!tableData) return;
+
+                                    const mutations = tableData
+                                        .map(row => row.seqId)
+                                        .join('\n');
+
+                                    navigator.clipboard.writeText(mutations);
+                                    UIkit.notification({ message: 'Mutations copied to clipboard!', status: 'success' });
+                                }}
+                            >
+                                Copy mutations to clipboard
+                            </button>
+                            <button className="uk-button uk-button-primary" onClick={() => highlightResiduesOnModel()}>
+                                Highlight residues on model
+                            </button>
+                        </div>
+                    </>
+                ) : null
             }
 
             {/* Collapsible New Run Section */}

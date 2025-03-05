@@ -41,6 +41,7 @@ export const downloadFileStraightToFilesystem = async (
     onProgress?: (progressPercent: number) => void
 ): Promise<void> => {
     const fileName = filePath.split('/').pop() || 'downloaded_file';
+    console.log(`Downloading ${fileName}`);
 
     // Build headers, including Authorization if we have a token
     const token = authenticationService.currentJwtStringValue;

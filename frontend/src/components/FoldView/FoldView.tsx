@@ -3,7 +3,7 @@ import ParsePdb, { ParsedPdb } from "parse-pdb";
 import React, { Component, RefObject } from "react";
 import { AiOutlineFolder, AiOutlineFolderOpen } from "react-icons/ai";
 import { FaDownload } from "react-icons/fa";
-import FileBrowser from "react-keyed-file-browser";
+import { FileBrowser, FileList, FileNavbar, FileToolbar, ChonkyActions, ChonkyFileActionData } from 'chonky';
 import { useParams } from "react-router-dom";
 import UIkit from "uikit";
 import {
@@ -30,7 +30,8 @@ import { Annotations, FileInfo, Fold, FoldPdb, Invokation } from "../../types/ty
 import { removeLeadingSlash } from "../../api/commonApi";
 import { downloadFileStraightToFilesystem, getFile, getFileList } from "../../api/fileApi";
 import { getFold, updateFold } from "../../api/foldApi";
-import StructurePane from "./StructurePane";
+import StructurePane, { Selection } from "./StructurePane";
+import FileTab from "./FileTab";
 
 const REFRESH_STATE_PERIOD = 5000;
 const REFRESH_STATE_MAX_ITERS = 200;
@@ -148,6 +149,9 @@ interface FoldState {
     contactIsOnScreen: boolean;
     showSplitScreen: boolean;
     numRefreshes: number;
+
+    selectedSubsequence: Selection | null;
+    currentFolderPath: string;
 }
 
 // From UIkit's definition of a "medium" window: https://getuikit.com/docs/visibility
@@ -180,6 +184,9 @@ class InternalFoldView extends Component<FoldProps, FoldState> {
             contactIsOnScreen: false,
             showSplitScreen: window.innerWidth >= WINDOW_WIDTH_FOR_SPLIT_SCREEN,
             numRefreshes: 0,
+
+            selectedSubsequence: null,
+            currentFolderPath: '/',
         };
     }
 
@@ -374,7 +381,11 @@ class InternalFoldView extends Component<FoldProps, FoldState> {
         }
     }
 
-
+    setSelectedSubsequence = (selection: Selection | null) => {
+        this.setState({
+            selectedSubsequence: selection,
+        });
+    }
 
     render() {
         var structurePane = (
@@ -382,6 +393,7 @@ class InternalFoldView extends Component<FoldProps, FoldState> {
                 <StructurePane
                     pdbString={this.state.pdb?.pdb_string ?? null}
                     pdbFailedToLoad={this.state.pdbFailedToLoad}
+                    selection={this.state.selectedSubsequence}
                 />
             </div>
         );
@@ -437,6 +449,7 @@ class InternalFoldView extends Component<FoldProps, FoldState> {
                             foldName={this.state.foldData?.name}
                             foldTags={this.state.foldData?.tags}
                             foldOwner={this.state.foldData?.owner}
+                            foldDiffusionSamples={this.state.foldData?.diffusion_samples}
                             foldCreateDate={this.state.foldData?.create_date}
                             foldPublic={this.state.foldData?.public}
                             foldModelPreset={this.state.foldData?.af2_model_preset}
@@ -463,33 +476,13 @@ class InternalFoldView extends Component<FoldProps, FoldState> {
                 </li>
 
                 <li key="filesli">
-                    <h3>Quick Access</h3>
-                    <form className="uk-margin-bottom">
-                        <fieldset className="uk-fieldset">
-                            <div>
-                                <button
-                                    type="button"
-                                    className="uk-button uk-button-primary uk-margin-left uk-form-small"
-                                    onClick={this.maybeDownloadPdb}
-                                    disabled={
-                                        !(this.state.foldData?.name && this.state.pdb?.pdb_string)
-                                    }
-                                >
-                                    Download Best PDB
-                                </button>
-                            </div>
-                        </fieldset>
-                    </form>
-
-                    <h3>Files</h3>
-                    <FileBrowser
+                    <FileTab
+                        foldId={this.props.foldId}
+                        foldName={this.state.foldData?.name || null}
+                        pdbString={this.state.pdb?.pdb_string || null}
+                        maybeDownloadPdb={this.maybeDownloadPdb}
                         files={this.state.files}
-                        icons={{
-                            Folder: <AiOutlineFolder />,
-                            FolderOpen: <AiOutlineFolderOpen />,
-                            Download: <FaDownload />,
-                        }}
-                        onDownloadFile={this.downloadFile}
+                        setErrorText={this.props.setErrorText}
                     />
                 </li>
 
@@ -539,6 +532,7 @@ class InternalFoldView extends Component<FoldProps, FoldState> {
                         foldName={this.state.foldData?.name || null}
                         jobs={this.state.jobs}
                         logits={this.state.foldData?.logits || null}
+                        setSelectedSubsequence={this.setSelectedSubsequence}
                         setErrorText={this.props.setErrorText}
                     />
                 </li>
@@ -1041,23 +1035,6 @@ class InternalFoldView extends Component<FoldProps, FoldState> {
         window.open(`/tag/${tagToOpen}`, "_self");
     };
 
-    setSelectedSubsequence = (sele: SubsequenceSelection) => {
-        // // Selection language described here:
-        // // https://nglviewer.org/ngl/api/manual/usage/selection-language.html
-        // // Convert chain index to a chain name, which is just "A" or "B" for NGL,
-        // // for some reason.
-        // const nglChainName = String.fromCharCode(65 + sele.chainIdx);
-        // const selectionString = `${sele.startResidue}-${sele.endResidue}:${nglChainName}`;
-        // if (this.state.selectionRepr) {
-        //     console.log(`Settings selection to "${selectionString}"`);
-        //     for (const singleRepr of this.state.selectionRepr) {
-        //         singleRepr.setSelection(selectionString); // and :${chain}`);
-        //     }
-        // } else {
-        //     console.log("No selectionRepr found.");
-        // }
-    };
-
     downloadFile = (keys: string[]) => {
         console.log(keys);
         for (let key of keys) {
@@ -1085,12 +1062,24 @@ class InternalFoldView extends Component<FoldProps, FoldState> {
     formatStartTime = (jobstarttime: string | null) => {
         if (!jobstarttime) return "Not Started / Unknown";
 
-        // Parse the UTC time string into a Date object and format in PT
-        return new Intl.DateTimeFormat('en-US', {
-            timeStyle: "short",
-            dateStyle: "short",
-            timeZone: "America/Los_Angeles"
-        }).format(new Date(jobstarttime));
+
+        try {
+            // Parse the UTC time string into a Date object
+            const date = new Date(jobstarttime);
+
+            if (isNaN(date.getTime())) {
+                console.warn(`Invalid date value ${jobstarttime}`);
+                return "Invalid date";
+            }
+            return new Intl.DateTimeFormat('en-US', {
+                timeStyle: "short",
+                dateStyle: "short",
+                timeZone: "America/Los_Angeles"
+            }).format(date);
+        } catch (error) {
+            console.error(`Error formatting date ${jobstarttime}:`, error);
+            return "Error";
+        }
     };
 
     formatRunTime = (jobRunTime: number | null) => {

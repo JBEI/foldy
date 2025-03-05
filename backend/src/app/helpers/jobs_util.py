@@ -2,6 +2,10 @@ import time
 from datetime import datetime, timedelta, UTC, timezone
 import traceback
 import os
+import logging
+from contextlib import contextmanager
+from typing import Optional
+from app.models import Invokation
 
 
 PSQL_CHAR_LIMIT = 100 * 1000 * 1000
@@ -22,7 +26,7 @@ def _live_update_tail(
     stdout,
 ):
     """Choose a tail size that is appropriate for streaming / live updates (not the whole logs)."""
-    return _tail(stdout, 10000)
+    return _tail(stdout, 30000)
 
 
 def try_run_job_with_logging(f, invokation):
@@ -112,3 +116,102 @@ def get_torch_cuda_is_available_and_add_logs(add_log):
     add_log(f"CUDA_VISIBLE_DEVICES env var: {cuda_visible_devices}")
 
     return torch.cuda.is_available()
+
+
+class LoggingRecorder(logging.Handler):
+    """A logging handler that records logs to an Invokation."""
+
+    def __init__(self, invokation: Invokation, level: int = logging.INFO):
+        """Initialize the LoggingRecorder.
+
+        Args:
+            invokation: The Invokation model instance to record logs to
+            level: The minimum logging level to record (default: INFO)
+        """
+        super().__init__(level)
+        self.invokation = invokation
+        self.logs = []
+        self.starttime = time.time()
+        self.final_state = (
+            "failed"  # Default state, will be set to "finished" on success
+        )
+        try:
+            self.invokation.update(
+                state="running",
+                starttime=datetime.fromtimestamp(self.starttime, timezone.utc),
+            )
+        except Exception as e:
+            logging.error(f"Failed to update invokation: {e}")
+
+    def emit(self, record):
+        """Process a log record by adding it to the invokation."""
+        # Convert the log record to a string
+        msg = self.format(record)
+
+        # Add timestamp and severity
+        timestamp = datetime.now(UTC).isoformat(sep=" ", timespec="milliseconds")
+        severity = record.levelname
+        formatted_msg = f"{timestamp} [{severity}] - {msg}"
+
+        # Add the log to the invokation
+        self.logs.append(formatted_msg)
+        self.invokation.update(
+            log=_live_update_tail("\n".join(self.logs)),
+            timedelta=timedelta(seconds=time.time() - self.starttime),
+        )
+
+    def __enter__(self):
+        """Set up logging when entering the context."""
+        # Get the root logger
+        logger = logging.getLogger()
+
+        # Store the previous level and handlers
+        self._previous_level = logger.level
+        self._previous_handlers = logger.handlers[:]
+
+        # Remove existing handlers and set new level
+        logger.handlers = []
+        logger.setLevel(self.level)
+
+        # Add ourselves as a handler
+        logger.addHandler(self)
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Restore previous logging state when exiting the context."""
+        logger = logging.getLogger()
+
+        try:
+            if exc_type is not None:
+                # Capture the full traceback
+                full_traceback = traceback.format_exc()
+                logging.error(
+                    f"Job failed with exception:\n\n{exc_val}\n{full_traceback}"
+                )
+            else:
+                self.final_state = "finished"
+        finally:
+            # Log the final state
+            self.logs.append(f"Invokation ending with final state {self.final_state}")
+
+            # Final update with complete logs
+            self.invokation.update(
+                log=_psql_tail("\n".join(self.logs)),
+                timedelta=timedelta(seconds=time.time() - self.starttime),
+                state=self.final_state,
+            )
+
+            # Restore previous logging state
+            logger.removeHandler(self)
+            logger.level = self._previous_level
+            logger.handlers = self._previous_handlers
+
+            # If the job failed, print logs and raise assertion
+            if self.final_state != "finished":
+                print(
+                    f'Job finished in state {self.final_state} with logs:\n\n{_psql_tail("\n".join(self.logs))}',
+                    flush=True,
+                )
+                assert False, _psql_tail("\n".join(self.logs))
+
+            return False  # Re-raise any exceptions

@@ -31,6 +31,7 @@ from app.helpers.jobs_util import (
     try_run_job_with_logging,
     get_torch_cuda_is_available_and_add_logs,
 )
+from app.helpers.boltz_yaml_helper import BoltzYamlHelper
 
 
 def cif_to_pdb(cif_file: str, structure_id: str):
@@ -86,7 +87,9 @@ def run_boltz(fold_id, invokation_id):
             "Starting Boltz execution...",
         )
 
-        for ligand in fold.get_ligands():
+        boltz_yaml_helper = BoltzYamlHelper(fold.yaml_config)
+
+        for ligand in boltz_yaml_helper.get_ligands():
             if "smiles" in ligand:
                 try_check_smiles_string_validity(ligand["smiles"], add_log)
 

@@ -40,6 +40,8 @@ ALLOWED_ESM_MODELS = [
     "esm1v",
 ]
 
+ALLOWED_LOGITS_MODELS = ALLOWED_ESM_MODELS + ["esm1v_t33_650M_UR90S_ensemble"]
+
 
 embeddings_fields = ns.model(
     "Embeddings",
@@ -140,9 +142,9 @@ class StartLogitsResource(Resource):
         logit_model = req["logit_model"]
         use_structure = req.get("use_structure", False)
 
-        if logit_model not in ALLOWED_ESM_MODELS:
+        if logit_model not in ALLOWED_LOGITS_MODELS:
             raise BadRequest(
-                f"Invalid logit model {logit_model}: must be one of {ALLOWED_ESM_MODELS}"
+                f"Invalid logit model {logit_model}: must be one of {ALLOWED_LOGITS_MODELS}"
             )
 
         fold = Fold.get_by_id(fold_id)

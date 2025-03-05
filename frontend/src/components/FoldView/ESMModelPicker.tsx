@@ -8,6 +8,7 @@ const ESM_MODELS = [
     { value: 'esm2_t33_650M_UR50D', label: 'ESM-2 (650M parameters)' },
     { value: 'esm2_t36_3B_UR50D', label: 'ESM-2 (3B parameters)' },
     { value: 'esm2_t48_15B_UR50D', label: 'ESM-2 (15B parameters)' },
+    { value: 'esm1v_t33_650M_UR90S_ensemble', label: 'ESM-1v (ensemble) (650M parameters)' },
     { value: 'esm1v_t33_650M_UR90S_1', label: 'ESM-1v-1 (650M parameters)' },
     { value: 'esm1v_t33_650M_UR90S_2', label: 'ESM-1v-2 (650M parameters)' },
     { value: 'esm1v_t33_650M_UR90S_3', label: 'ESM-1v-3 (650M parameters)' },

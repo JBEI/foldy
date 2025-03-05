@@ -3,6 +3,10 @@ import ReactDOM from "react-dom";
 import "./index.scss";
 import AppWrapper from "./App";
 import * as serviceWorker from "./serviceWorker";
+import { setChonkyDefaults } from 'chonky';
+import { ChonkyIconFA } from 'chonky-icon-fontawesome';
+
+setChonkyDefaults({ iconComponent: ChonkyIconFA });
 
 ReactDOM.render(
   <React.StrictMode>

@@ -1,4 +1,5 @@
-FROM nvidia/cuda:12.2.0-devel-ubuntu20.04
+# FROM nvidia/cuda:12.2.0-devel-ubuntu20.04
+FROM nvidia/cuda:11.8.0-cudnn8-devel-ubuntu22.04
 
 COPY backend/requirements.txt /backend/
 COPY worker/scripts/setup.sh /scripts/setup.sh
@@ -14,10 +15,43 @@ RUN apt-get update && apt-get install -y \
     build-essential \
     && rm -rf /var/lib/apt/lists/*
 
-RUN git clone https://github.com/ai4protein/ProSST.git && \
-    cd ProSST && \
-    /opt/conda/envs/worker/bin/pip install -r requirements.txt
-ENV PYTHONPATH=$PYTHONPATH:$(pwd)
+RUN /opt/conda/bin/conda create -y -n prosst python=3.10
+
+# 3) Install matching PyTorch & PyG for Python 3.10 & CUDA 11.8
+#    (For Torch 2.1.0; you can adjust versions if needed.)
+RUN /opt/conda/envs/prosst/bin/pip install --no-cache-dir \
+  --timeout 300 \
+  --retries 10 \
+  torch==2.1.0+cu118 torchvision==0.16.0+cu118 torchaudio==2.1.0+cu118 \
+     -f https://download.pytorch.org/whl/cu118/torch_stable.html
+
+RUN /opt/conda/envs/prosst/bin/pip install --no-cache-dir \
+  --timeout 300 \
+  --retries 10 \
+  pyg_lib torch_scatter torch_sparse torch_cluster torch_spline_conv torch_geometric \
+     -f https://data.pyg.org/whl/torch-2.1.0+cu118.html
+
+
+# 5) Remove pinned torch / PyG lines from your requirements so they won't overwrite
+RUN sed -i '/^torch==/d' /tmp/requirements.txt && \
+     sed -i '/^torch_geometric==/d' /tmp/requirements.txt && \
+     sed -i '/^torch-sparse==/d' /tmp/requirements.txt && \
+     sed -i '/^torch-scatter==/d' /tmp/requirements.txt && \
+     sed -i '/^torch-cluster==/d' /tmp/requirements.txt && \
+     sed -i '/^torch-spline-conv==/d' /tmp/requirements.txt && \
+     sed -i '/^pyg-lib==/d' /tmp/requirements.txt
+COPY worker/ProSST/requirements.txt /tmp/requirements.txt
+RUN /opt/conda/envs/prosst/bin/pip install -r /tmp/requirements.txt
+
+COPY worker/ProSST /worker/ProSST
+ENV PYTHONPATH=$PYTHONPATH:/worker/ProSST
+
+
+
+# RUN git clone https://github.com/ginnm/ProSST.git && \
+#     cd ProSST && \
+#     /opt/conda/envs/worker/bin/pip install -r requirements.txt
+# ENV PYTHONPATH=$PYTHONPATH:$(pwd)
 
 # # Download the huggingface models...
 # RUN HF_HUB_ENABLE_HF_TRANSFER=1 /opt/conda/envs/worker/bin/huggingface-cli download \

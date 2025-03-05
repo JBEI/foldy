@@ -50,10 +50,9 @@ def mock_esm_setup():
 def test_get_naturalness_basic(mock_esm_setup):
     # Test sequence
     wt_aa_seq = "ABCDE"  # 5 amino acids
-    mock_log = Mock()
 
     # Call function
-    logits_json, melted_df = get_naturalness(wt_aa_seq, "esmc_mock_model", mock_log)
+    logits_json, melted_df = get_naturalness(wt_aa_seq, "esmc_mock_model")
 
     # Verify basic calls
     mock_esm_setup["ESMC"].from_pretrained.assert_called_once_with("esmc_mock_model")
@@ -76,7 +75,6 @@ def test_get_naturalness_basic(mock_esm_setup):
 
 def test_get_naturalness_wt_marginal_calculation(mock_esm_setup):
     wt_aa_seq = "ABC"
-    mock_log = Mock()
 
     # Create predictable logits for easier testing
     # Shape: [batch=1, sequence_length=5, vocab_size=33]
@@ -88,7 +86,7 @@ def test_get_naturalness_wt_marginal_calculation(mock_esm_setup):
     mock_esm_setup["client"].logits.return_value = mock_logits_output
 
     # Call function
-    _, melted_df = get_naturalness(wt_aa_seq, "esmc_mock_model", mock_log)
+    _, melted_df = get_naturalness(wt_aa_seq, "esmc_mock_model")
 
     # Verify wt_marginal calculations
     # Filter for a specific position
@@ -101,30 +99,27 @@ def test_get_naturalness_wt_marginal_calculation(mock_esm_setup):
 def test_get_naturalness_error_handling(mock_esm_setup):
     # Test with mismatched sequence length
     wt_aa_seq = "TOOLONG"  # 7 amino acids, but mock returns logits for 5
-    mock_log = Mock()
 
     with pytest.raises(IndexError, match="index 7 is out of bounds"):
-        get_naturalness(wt_aa_seq, "esmc_mock_model", mock_log)
+        get_naturalness(wt_aa_seq, "esmc_mock_model")
 
 
 def test_add_pdb_file_path_fails_for_esmc(mock_esm_setup):
     # Test with mismatched sequence length
     wt_aa_seq = "ABCDE"
-    mock_log = Mock()
     pdb_file_path = "app/tests/testdata/rubisco-boltz.pdb"
 
     with pytest.raises(ValueError, match="does not support PDB"):
-        get_naturalness(wt_aa_seq, "esmc_mock_model", mock_log, pdb_file_path)
+        get_naturalness(wt_aa_seq, "esmc_mock_model", pdb_file_path)
 
 
 def test_add_pdb_file_path_works_for_esm3(mock_esm_setup):
     # Test with mismatched sequence length
     wt_aa_seq = "ABCDE"
-    mock_log = Mock()
     pdb_file_path = "app/tests/testdata/rubisco-boltz.pdb"
 
     logits_json, melted_df = get_naturalness(
-        wt_aa_seq, "esm3_mock_model", mock_log, pdb_file_path
+        wt_aa_seq, "esm3_mock_model", pdb_file_path
     )
     assert logits_json is not None
     assert melted_df is not None

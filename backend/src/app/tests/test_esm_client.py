@@ -6,7 +6,7 @@ import numpy as np
 from app.helpers.esm_client import (
     FoldyESMClient,
     FoldyESMCClient,
-    FoldyESM2Client,
+    FoldyESM1and2Client,
     FoldyESM3Client,
 )
 
@@ -130,7 +130,7 @@ def test_esm3_embed_with_pdb_succeeds(mock_torch_device, mock_esm3_client):
 
 def test_esm2_embed_with_pdb_fails(mock_torch_device, mock_esm2_hub):
     client = FoldyESMClient.get_client("esm2_t33_650M_UR50D")
-    with pytest.raises(ValueError, match="ESM2 does not support PDB-based embeddings"):
+    with pytest.raises(ValueError, match="do not support PDB-based embeddings"):
         client.embed(TEST_SEQUENCE, TEST_PDB_PATH)
 
 

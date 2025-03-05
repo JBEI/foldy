@@ -14,8 +14,8 @@ class FoldyESMClient(ABC):
             return FoldyESMCClient(model_name)
         elif model_name.startswith("esm3"):
             return FoldyESM3Client(model_name)
-        elif model_name.startswith("esm2"):
-            return FoldyESM2Client(model_name)
+        elif model_name.startswith("esm1") or model_name.startswith("esm2"):
+            return FoldyESM1and2Client(model_name)
         else:
             raise ValueError(f"Unknown model type: {model_name}")
 
@@ -123,7 +123,7 @@ class FoldyESM3Client(FoldyESMClient):
     get_logits = FoldyESMCClient.get_logits
 
 
-class FoldyESM2Client(FoldyESMClient):
+class FoldyESM1and2Client(FoldyESMClient):
     def __init__(self, model_name: str):
         import torch
 
@@ -143,7 +143,7 @@ class FoldyESM2Client(FoldyESMClient):
         import torch
 
         if pdb_file_path:
-            raise ValueError("ESM2 does not support PDB-based embeddings")
+            raise ValueError("ESM1 and 2 do not support PDB-based embeddings")
 
         data = [("protein", sequence)]
         _, _, batch_tokens = self.batch_converter(data)
@@ -163,7 +163,7 @@ class FoldyESM2Client(FoldyESMClient):
         import torch
 
         if pdb_file_path:
-            raise ValueError("ESM2 does not support PDB-based logits")
+            raise ValueError("ESM1 and 2 do not support PDB-based logits")
 
         data = [("protein", sequence)]
         _, _, batch_tokens = self.batch_converter(data)

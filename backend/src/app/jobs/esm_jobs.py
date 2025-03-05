@@ -29,12 +29,14 @@ from app.helpers.sequence_util import (
     seq_id_to_seq,
     maybe_get_seq_id_error_message,
     process_and_validate_evolve_input_files,
+    get_loci_set,
 )
 from app.helpers.jobs_util import (
     _live_update_tail,
     _psql_tail,
     try_run_job_with_logging,
     get_torch_cuda_is_available_and_add_logs,
+    LoggingRecorder,
 )
 from app.helpers.boltz_yaml_helper import BoltzYamlHelper
 from app.helpers.esm_util import get_naturalness
@@ -52,7 +54,7 @@ def get_esm_embeddings(
     # 1. Get records.
     embed_record = Embedding.get_by_id(embed_id)
     if not embed_record:
-        raise KeyError(f"Embedding ID {embed_id} ({embed_name}) not found!")
+        raise KeyError(f"Embedding ID {embed_id} ({embed_id}) not found!")
 
     embed_name = embed_record.name
     embedding_model = embed_record.embedding_model
@@ -189,12 +191,8 @@ def get_esm_logits(logit_id: int):
             f"Logit ID {logit_id} ({logit_name}) does not have an associated invokation!"
         )
 
-    def get_esm_logits_with_logger(add_log):
-        add_log(
-            "Starting logit...",
-            state="running",
-            command="ESMC",
-        )
+    with LoggingRecorder(invokation):
+        logging.info("Starting logit...")
 
         fsm = FoldStorageManager()
         fsm.setup()
@@ -218,16 +216,29 @@ def get_esm_logits(logit_id: int):
             else:
                 pdb_file_path = None
 
-            logits_json, melted_df = get_naturalness(
-                wt_aa_seq, logit_model, add_log, pdb_file_path
-            )
+            if logit_model == "esm1v_t33_650M_UR90S_ensemble":
+                logits_dicts_list = []
+                melted_df_list = []
+                for ii in range(1, 6):
+                    submodel = f"esm1v_t33_650M_UR90S_{ii}"
+                    logits_json, melted_df = get_naturalness(
+                        wt_aa_seq, submodel, pdb_file_path
+                    )
+                    logits_dicts_list.append(json.loads(logits_json))
+                    melted_df_list.append(melted_df.assign(model=ii))
+                logits_json = json.dumps(logits_dicts_list)
+                melted_df = pd.concat(melted_df_list)
+            else:
+                logits_json, melted_df = get_naturalness(
+                    wt_aa_seq, logit_model, pdb_file_path
+                )
 
         melted_csv_buffer = StringIO()
         melted_df.to_csv(melted_csv_buffer, index=False)
         melted_csv_string = melted_csv_buffer.getvalue()
 
         # Save both formats using FoldStorageManager
-        add_log("Saving logits to storage")
+        logging.info("Saving logits to storage")
         padded_fold_id = "%06d" % fold.id
         logits_path = f"naturalness/logits_{logit_name}.json"
         melted_path = f"naturalness/logits_{logit_name}_melted.csv"
@@ -235,9 +246,7 @@ def get_esm_logits(logit_id: int):
         fsm.storage_manager.write_file(fold.id, logits_path, logits_json)
         fsm.storage_manager.write_file(fold.id, melted_path, melted_csv_string)
 
-        add_log("Logits computation and storage complete")
-
-    try_run_job_with_logging(get_esm_logits_with_logger, invokation)
+        logging.info("Logits computation and storage complete")
 
 
 def finetune_esm_model(evolve_id: int):
@@ -253,13 +262,10 @@ def finetune_esm_model(evolve_id: int):
     if not invokation:
         raise BadRequest(f"Invokation {evolve.invokation_id} not found")
 
-    def finetune_with_logger(add_log):
-        add_log(
-            "Starting finetuning...",
-            state="running",
-        )
+    with LoggingRecorder(invokation):
+        logging.info("Starting finetuning...")
 
-        add_log("Loading training code.")
+        logging.info("Loading training code.")
         from app.helpers.finetuning.training import train_per_protein, score_sequences
         import torch
 
@@ -278,45 +284,58 @@ def finetune_esm_model(evolve_id: int):
         # 1. Get the activity file.
         evolve_directory = Path("evolve") / evolve.name
         activity_file_path = evolve_directory / "activity.xlsx"
-        add_log(f"Getting the activity file {activity_file_path}")
+        logging.info(f"Getting the activity file {activity_file_path}")
         activity_file = fsm.storage_manager.get_binary(
             evolve.fold_id, str(activity_file_path)
         )
         raw_activity_df = pd.read_excel(BytesIO(activity_file))
 
         # 3. Process the activity and embedding data.
-        activity_df = process_and_validate_evolve_input_files(
-            wt_aa_seq, raw_activity_df
-        )
-        add_log(f"Have {activity_df.shape[0]} rows in activity_df")
+        if all(
+            [v in raw_activity_df.columns for v in ["sequence", "seq_id_w", "seq_id_l"]]
+        ):
+            loss = "dpo"
+            # TODO: do some validation...
+            activity_df = raw_activity_df
+            for seq_id in activity_df.seq_id_w.tolist() + activity_df.seq_id_l.tolist():
+                for locus in get_loci_set(seq_id):
+                    if locus >= 1023:
+                        raise BadRequest(
+                            f"One of the seq_ids is for a protein that is too big: ESM only goes up to 1024AAs, not {seq_id}."
+                        )
 
-        # Convert activity_df, which has seq_id and activity, into train and valid dfs with an 80/20 split and columns sequence and label.
-        activity_df["sequence"] = activity_df["seq_id"].apply(
-            lambda seq_id: seq_id_to_seq(wt_aa_seq, seq_id)
-        )
-        activity_df["label"] = activity_df["activity"]
+        elif all([v in raw_activity_df.columns for v in ["seq_id", "activity"]]):
+            loss = "entropy"
+            activity_df = process_and_validate_evolve_input_files(
+                wt_aa_seq, raw_activity_df
+            )
+            # Convert activity_df, which has seq_id and activity, into train and valid dfs with an 80/20 split and columns sequence and label.
+            activity_df["sequence"] = activity_df["seq_id"].apply(
+                lambda seq_id: seq_id_to_seq(wt_aa_seq, seq_id)
+            )
+            activity_df["label"] = activity_df["activity"]
+        else:
+            raise ValueError(
+                f"Activity file has invalid columns, got {raw_activity_df.columns}"
+            )
+        logging.info(f"Have {activity_df.shape[0]} rows in activity_df")
 
-        train_df = activity_df.sample(frac=0.8, random_state=42)
-        valid_df = activity_df.drop(train_df.index)
-        add_log(
+        if "use_for_validation" in activity_df.columns:
+            logging.info(
+                f'Using "use_for_validation" column to split into train and valid'
+            )
+            train_df = activity_df[activity_df["use_for_validation"] == False]
+            valid_df = activity_df[activity_df["use_for_validation"] == True]
+        else:
+            logging.info(f'No "use_for_validation" column, so splitting randomly')
+            train_df = activity_df.sample(frac=0.8, random_state=42)
+            valid_df = activity_df.drop(train_df.index)
+
+        logging.info(
             f"Train df has {train_df.shape[0]} rows and valid df has {valid_df.shape[0]} rows"
         )
 
-        gpu_available = get_torch_cuda_is_available_and_add_logs(add_log)
-
-        class InterceptHandler(logging.Handler):
-            def __init__(self, add_log):
-                super().__init__()
-                self.add_log = add_log
-
-            def emit(self, record):
-                self.add_log(record.msg)
-
-        # Later in your finetune_with_logger function:
-        handler = InterceptHandler(add_log)
-        logger = logging.getLogger()
-        logger.setLevel(logging.INFO)
-        logger.addHandler(handler)
+        gpu_available = get_torch_cuda_is_available_and_add_logs(logging.info)
 
         epochs = 10
         learning_rate = 3e-4
@@ -327,52 +346,64 @@ def finetune_esm_model(evolve_id: int):
                 key, value = parts
                 if key == "epochs":
                     epochs = int(value)
-                elif key == "learning_rate":
+                elif key == "learningrate":
                     learning_rate = float(value)
-
-        # Example: enable ranking loss
-        tokenizer2, model2, history2 = train_per_protein(
-            checkpoint=evolve.finetuning_model_checkpoint,
-            train_df=train_df,
-            valid_df=valid_df,
-            device=torch.device("cuda" if gpu_available else "cpu"),
-            num_labels=1,  # still a single numeric target
-            use_ranking_loss=True,
-            epochs=epochs,
-            learning_rate=learning_rate,
-            seed=42,
-            mixed_precision=False,  # This causes an error "Attempting to unscale FP16 gradients" when set to "gpu_available",
-            train_full=True,
-        )
-        add_log("Finetuning complete.")
 
         # Save model outputs
         padded_fold_id = "%06d" % fold.id
         model_dir = f"evolve/{evolve.name}/model"
 
-        # Save tokenizer and model
-        add_log(f"Saving tokenizer and model to {model_dir}")
+        # Declare these outside the with block
+        tokenizer = None
+        model = None
+        history = None
+
         with tempfile.TemporaryDirectory() as temp_dir:
-            tokenizer2.save_pretrained(f"{temp_dir}/tokenizer")
-            model2.save_pretrained(f"{temp_dir}/model")
+            # Make output directory.
+            temp_training_subdir = Path(temp_dir) / "training"
+            temp_training_subdir.mkdir(parents=True, exist_ok=True)
+
+            # Example: enable ranking loss
+            tokenizer, model, history = train_per_protein(
+                checkpoint=evolve.finetuning_model_checkpoint,
+                train_df=train_df,
+                valid_df=valid_df,
+                device=torch.device("cuda" if gpu_available else "cpu"),
+                train_batch_size=10,
+                grad_accum_steps=2,
+                val_batch_size=10,
+                loss=loss,
+                epochs=epochs,
+                learning_rate=learning_rate,
+                seed=42,
+                mixed_precision=False,  # This causes an error "Attempting to unscale FP16 gradients" when set to "gpu_available",
+                train_full=True,
+                output_dir=str(temp_training_subdir),
+            )
+            logging.info("Finetuning complete.")
+
+            # Save tokenizer and model
+            logging.info(f"Saving tokenizer and model to {model_dir}")
+            tokenizer.save_pretrained(str(Path(temp_dir) / "tokenizer"))
+            model.save_pretrained(str(Path(temp_dir) / "model"))
             fsm.storage_manager.upload_folder(fold.id, temp_dir, model_dir)
 
         # Save training history
-        history_json = json.dumps(history2)
+        history_json = json.dumps(history)
         fsm.storage_manager.write_file(
             fold.id, f"{model_dir}/history.json", history_json
         )
 
         # Get all sequences to score
-        add_log(f"Getting all sequences to score")
+        logging.info(f"Getting all sequences to score")
         dms_seq_ids = get_seq_ids_for_deep_mutational_scan(wt_aa_seq, ["WT"], [])
-        add_log(f"Scoring {len(dms_seq_ids)} sequences")
 
         # Score sequences and save results
-        scores_df = score_sequences(model2, tokenizer2, wt_aa_seq, dms_seq_ids)
+        logging.info(f"Scoring {len(dms_seq_ids)} sequences")
+        scores_df = score_sequences(model, tokenizer, wt_aa_seq, dms_seq_ids)
+        scores_fpath = f"evolve/{evolve.name}/scores.csv"
+        logging.info(f"Saving scores to {scores_fpath}")
         scores_csv = scores_df.to_csv(index=False)
-        fsm.storage_manager.write_file(
-            fold.id, f"evolve/{evolve.name}/scores.csv", scores_csv
-        )
+        fsm.storage_manager.write_file(fold.id, scores_fpath, scores_csv)
 
-    try_run_job_with_logging(finetune_with_logger, invokation)
+        logging.info(f"Finished finetuning and scoring.")

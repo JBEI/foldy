@@ -4,47 +4,47 @@ import re
 import json
 from app.helpers.jobs_util import get_torch_cuda_is_available_and_add_logs
 from typing import Optional
+import logging
 
 
 def get_naturalness(
     wt_aa_seq: str,
     logit_model: str,
-    add_log: Callable[[str], None],
     pdb_file_path: Optional[str] = None,
 ):
     # Import ESM client
-    add_log(f"Creating ESM client for {logit_model}")
+    logging.info(f"Creating ESM client for {logit_model}")
     from app.helpers.esm_client import FoldyESMClient
     import torch
 
     # Log cache directories
     torch_cache_dir = torch.hub.get_dir()
-    add_log(f"Torch cache directory: {torch_cache_dir}")
+    logging.info(f"Torch cache directory: {torch_cache_dir}")
 
     # Try to get Hugging Face cache dir if available
     try:
         from huggingface_hub import get_cache_dir
 
         hf_cache_dir = get_cache_dir()
-        add_log(f"Hugging Face cache directory: {hf_cache_dir}")
+        logging.info(f"Hugging Face cache directory: {hf_cache_dir}")
     except Exception as e:
-        add_log(f"Hugging Face cache directory command failed: {e}")
+        logging.info(f"Hugging Face cache directory command failed: {e}")
 
-    add_log(
+    logging.info(
         f"Starting to load model {logit_model} - this may take several minutes on first run"
     )
-    get_torch_cuda_is_available_and_add_logs(add_log)
+    get_torch_cuda_is_available_and_add_logs(logging.info)
 
     # Create client using factory method
     client = FoldyESMClient.get_client(logit_model)
-    add_log(f"Model {logit_model} loaded successfully")
+    logging.info(f"Model {logit_model} loaded successfully")
 
     # Get logits using the client
-    add_log("Computing logits")
+    logging.info("Computing logits")
     melted_df = client.get_logits(wt_aa_seq, pdb_file_path)
 
     # Process the melted dataframe to add WT marginal scores
-    add_log("Processing logits and preparing to save")
+    logging.info("Processing logits and preparing to save")
 
     def seq_id_to_locus(seq_id):
         return int(re.match(r".(\d+).*", seq_id).group(1))

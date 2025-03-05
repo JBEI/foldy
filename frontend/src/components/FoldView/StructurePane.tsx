@@ -14,26 +14,37 @@ declare global {
     }
 }
 
+export interface SelectionData {
+    struct_asym_id: string;
+    start_residue_number: number;
+    end_residue_number: number;
+    color: string;
+}
+
+export interface Selection {
+    data: SelectionData[];
+    nonSelectedColor?: string;
+}
+
 interface StructurePaneProps {
     pdbString: string | null;
     pdbFailedToLoad: boolean;
+    selection: Selection | null;
 }
 
-const StructurePane: React.FC<StructurePaneProps> = ({ pdbString, pdbFailedToLoad }) => {
+const StructurePane: React.FC<StructurePaneProps> = ({ pdbString, pdbFailedToLoad, selection }) => {
     const viewerRef = useRef<HTMLDivElement>(null);
     const pluginRef = useRef<any | null>(null);
 
     useEffect(() => {
         if (!viewerRef.current || !pdbString) return;
 
-        // Check if PDBeMolstarPlugin is available on window
         if (!window.PDBeMolstarPlugin) {
             console.error('PDBeMolstarPlugin not found on window object');
             return;
         }
 
         const viewer = new window.PDBeMolstarPlugin();
-
         pluginRef.current = viewer;
 
         const options = {
@@ -68,14 +79,39 @@ const StructurePane: React.FC<StructurePaneProps> = ({ pdbString, pdbFailedToLoa
 
         viewer.render(viewerRef.current, options);
 
-        console.log(viewer)
-
-        // return () => {
-        //     if (pluginRef.current) {
-        //         pluginRef.current.destroy();
-        //     }
-        // };
+        return () => {
+            if (pluginRef.current) {
+                // Double check that destroy is a function
+                if (typeof pluginRef.current.destroy === 'function') {
+                    pluginRef.current.destroy();
+                }
+            }
+        };
     }, [pdbString]);
+
+    // Separate effect for handling selection changes
+    useEffect(() => {
+        if (!pluginRef.current) return;
+
+        selection?.data.forEach(residue => {
+            console.log(`RESIDUE: ${residue}`);
+            console.log(`residue.struct_asym_id: ${residue.struct_asym_id}`);
+            console.log(`start: ${residue.start_residue_number}`);
+            console.log(`end: ${residue.end_residue_number}`);
+            console.log(`color: ${residue.color}`);
+        });
+        pluginRef.current.visual.clearSelection();
+
+        if (!selection) {
+            // Clear selection when selection is null
+            return;
+        }
+
+        pluginRef.current.visual.select({
+            data: selection.data,
+            nonSelectedColor: selection.nonSelectedColor
+        });
+    }, [selection]);
 
     if (pdbFailedToLoad) {
         return (

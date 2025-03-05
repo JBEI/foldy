@@ -139,10 +139,30 @@ fold_fields = ns.model(
         "diffusion_samples": fields.Integer(required=False),
         "disable_relaxation": fields.Boolean(required=False),
         "jobs": fields.List(fields.Nested(simple_invokation_fields)),
-        "docks": fields.List(fields.Nested(dock_fields)),
-        "logits": fields.List(fields.Nested(logit_fields)),
-        "embeddings": fields.List(fields.Nested(embedding_fields)),
-        "evolutions": fields.List(fields.Nested(evolution_fields)),
+        "docks": fields.List(
+            fields.Nested(dock_fields),
+            attribute=lambda x: (
+                [] if getattr(x, "_skip_embedded_fields", False) else x.docks
+            ),
+        ),
+        "logits": fields.List(
+            fields.Nested(logit_fields),
+            attribute=lambda x: (
+                [] if getattr(x, "_skip_embedded_fields", False) else x.logits
+            ),
+        ),
+        "embeddings": fields.List(
+            fields.Nested(embedding_fields),
+            attribute=lambda x: (
+                [] if getattr(x, "_skip_embedded_fields", False) else x.embeddings
+            ),
+        ),
+        "evolutions": fields.List(
+            fields.Nested(evolution_fields),
+            attribute=lambda x: (
+                [] if getattr(x, "_skip_embedded_fields", False) else x.evolutions
+            ),
+        ),
         # Old AF2 inputs.
         "sequence": fields.String(required=False),
         "af2_model_preset": fields.String(required=False),
@@ -213,6 +233,8 @@ class FoldsResource(Resource):
             f"Returning {len(folds)} folds with {num_jobs} jobs and {num_docks} docks in {time.time() - start_time} seconds",
             flush=True,
         )
+        for fold in folds:
+            fold._skip_embedded_fields = True
         return folds
 
     # TODO(jbr): Figure out what is causing this call to fail and add validation.

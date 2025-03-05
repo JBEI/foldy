@@ -5,6 +5,7 @@ import { AiFillEdit } from "react-icons/ai";
 import { BoltzYamlHelper, ChainSequence, LigandData } from "../../util/boltzYamlHelper";
 import BoltzYamlBuilder from "../../util/boltzYamlBuilder";
 import UIkit from "uikit";
+import { Selection } from "./StructurePane";
 
 export interface SubsequenceSelection {
     chainIdx: number;
@@ -38,7 +39,7 @@ interface SequenceTabProps {
     deleteTag: (tagToDelete: string) => void;
     handleTagClick: (tagToOpen: string) => void;
 
-    setSelectedSubsequence: (sele: SubsequenceSelection) => void;
+    setSelectedSubsequence: (selection: Selection | null) => void;
 
     userType: string | null;
     setYamlConfig: (yaml: string) => void;
@@ -68,23 +69,28 @@ const SequenceTab = React.memo((props: SequenceTabProps) => {
                 const chainName = sequenceNames[idx];
                 const chainSeq = ss;
 
-                const onSelectionHandler = (selection: any) => {
+                const onSelectionHandler = (chainName: string, selection: any) => {
                     if (selection.start && selection.end) {
+                        console.log(selection);
                         const start = Math.min(selection.start, selection.end);
                         const end = Math.max(selection.start, selection.end);
                         props.setSelectedSubsequence({
-                            chainIdx: idx,
-                            startResidue: start + 1,
-                            endResidue: end + 1,
-                            subsequence: chainSeq.substring(start, end),
+                            data: [{
+                                struct_asym_id: chainName,
+                                start_residue_number: start + 1,
+                                end_residue_number: end + 1,
+                                color: "white",
+                            }],
+                            // nonSelectedColor: "white",
                         });
                     }
                 };
 
                 return (
-                    <div key={idx} style={{ marginBottom: "20px" }}>
+                    <div key={`sequence-${chainName}-${idx}`} style={{ marginBottom: "20px" }}>
                         <h3>{chainName}</h3>
                         <SeqViz
+                            key={`seqviz-${chainName}-${idx}`}
                             name={chainName}
                             seq={chainSeq}
                             seqType="aa"
@@ -97,7 +103,7 @@ const SequenceTab = React.memo((props: SequenceTabProps) => {
                                 border: "1px solid #e0e0e0",
                                 borderRadius: "8px",
                             }}
-                            onSelection={onSelectionHandler}
+                            onSelection={(selection: any) => onSelectionHandler(chainName, selection)}
                         />
                     </div>
                 );

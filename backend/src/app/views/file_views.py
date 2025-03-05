@@ -164,7 +164,7 @@ class FileDownloadResource(Resource):
             try:
                 with blob.open("rb") as f:
                     while True:
-                        chunk = f.read(256 * 1024)  # 256KB chunks
+                        chunk = f.read(1024 * 1024)  # Increase to 1MB chunks
                         if not chunk:
                             break
                         yield chunk
@@ -176,6 +176,8 @@ class FileDownloadResource(Resource):
             "Content-Disposition": f"attachment; filename={fname}",
             "Content-Type": "application/octet-stream",
             "Cache-Control": "no-cache, no-store, must-revalidate",
+            "Connection": "keep-alive",
+            "Keep-Alive": "timeout=1800",  # 30 minutes
             "Pragma": "no-cache",
             "Expires": "0",
         }

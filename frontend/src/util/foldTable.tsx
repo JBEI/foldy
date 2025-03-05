@@ -35,7 +35,8 @@ export function makeFoldTable(folds: Fold[]) {
                         >
                             Public
                         </th>
-                        <th className="uk-width-small">Docked Ligands</th>
+                        {/* 250228: Disabled for now because it's not populated. */}
+                        {/* <th className="uk-width-small">Docked Ligands</th> */}
                         <th className="uk-width-small">Tags</th>
                     </tr>
                 </thead>
@@ -63,11 +64,23 @@ export function makeFoldTable(folds: Fold[]) {
                                 </td>
                                 <td className="uk-text-truncate">{fold.owner}</td>
                                 <td className="uk-text-truncate">
-                                    {new Intl.DateTimeFormat('en-US', {
-                                        timeStyle: "short",
-                                        dateStyle: "short",
-                                        timeZone: "America/Los_Angeles"
-                                    }).format(new Date(fold.create_date))}
+                                    {(() => {
+                                        try {
+                                            const date = new Date(fold.create_date);
+                                            if (isNaN(date.getTime())) {
+                                                console.warn(`Invalid date value for fold ${fold.id}: ${fold.create_date}`);
+                                                return "Invalid date";
+                                            }
+                                            return new Intl.DateTimeFormat('en-US', {
+                                                timeStyle: "short",
+                                                dateStyle: "short",
+                                                timeZone: "America/Los_Angeles"
+                                            }).format(date);
+                                        } catch (error) {
+                                            console.error(`Error formatting date for fold ${fold.id}:`, error);
+                                            return "Error";
+                                        }
+                                    })()}
                                 </td>
                                 <td className="uk-text-truncate">
                                     {fold.public ? (
@@ -76,7 +89,8 @@ export function makeFoldTable(folds: Fold[]) {
                                         />
                                     ) : null}
                                 </td>
-                                <td
+                                {/* 250228: Disabled for now because it's not populated. */}
+                                {/* <td
                                     className="uk-text-truncate "
                                     uk-tooltip={`title: ${(fold.docks || [])
                                         .map((d) => d.ligand_name)
@@ -84,7 +98,7 @@ export function makeFoldTable(folds: Fold[]) {
                                         .join(", ")}`}
                                 >
                                     {(fold.docks || []).length}
-                                </td>
+                                </td> */}
                                 <td
                                     className="uk-text-nowrap hiddenscrollbar"
                                     style={{ overflow: "scroll" }}

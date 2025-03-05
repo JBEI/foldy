@@ -1,3 +1,6 @@
 [submodule "worker/alphafold"]
 	path = worker/alphafold
 	url = git@github.com:JBEI/alphafold.git
+[submodule "worker/ProSST"]
+	path = worker/ProSST
+	url = https://github.com/ai4protein/ProSST.git

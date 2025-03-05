@@ -22,6 +22,7 @@ x-worker-base: &worker-base
     - ./backend/src/integration_tests:/backend/src/integration_tests
     - ./backend/src/migrations:/backend/src/migrations
     - ./backend/src/notebooks:/backend/src/notebooks
+    - ./worker:/worker
   restart: always
 
 services:
@@ -81,14 +82,14 @@ services:
     volumes: *worker-volumes
     entrypoint: /opt/conda/envs/worker/bin/python -m flask rq worker cpu esm
 
-  worker_protsst:
-    <<: *worker-base
-    build:
-      context: .
-      dockerfile: worker/Dockerfile.prosst
-    environment: *worker-env
-    volumes: *worker-volumes
-    entrypoint: /opt/conda/envs/worker/bin/python -m flask rq worker prosst
+  # worker_prosst:
+  #   <<: *worker-base
+  #   build:
+  #     context: .
+  #     dockerfile: worker/Dockerfile.prosst
+  #   environment: *worker-env
+  #   volumes: *worker-volumes
+  #   entrypoint: /opt/conda/envs/worker/bin/python -m flask rq worker prosst
 
   worker_boltz:
     <<: *worker-base
@@ -104,11 +105,11 @@ services:
       - ./.boltz:/.boltz
     entrypoint: /opt/conda/envs/worker/bin/python -m flask rq worker boltz
 
-  jupyter_esm:
+  jupyter:
     <<: *worker-base
     build:
       context: .
-      dockerfile: worker/Dockerfile.esm
+      dockerfile: worker/Dockerfile.esm # Dockerfile.prosst
     environment: *worker-env
     volumes: *worker-volumes
     ports:
