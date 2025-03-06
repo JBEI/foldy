@@ -35,12 +35,6 @@ interface NaturalnessTabProps {
 }
 
 
-interface LogitTableProps {
-    logitCsvData: string | null;
-    useWtMarginalAsScore: boolean;
-    zeroWildType: boolean;
-    topPerformersToDisplay: number;
-}
 
 type RowData = {
     seqId: string;
@@ -48,8 +42,20 @@ type RowData = {
     model: number | null;
 }
 
-const parseCsvDataIntoRowData = (logitCsvData: string, useWtMarginalAsScore: boolean, zeroWildType: boolean): RowData[] | null => {
-    const { data, errors } = Papa.parse<Record<string, string>>(logitCsvData, {
+const parseSeqId = (seqId: string): { wtResidue: string, locus: number, mutantResidue: string } => {
+    // If there is an underscore in seq id, we bail.
+    if (seqId.includes('_')) {
+        throw new Error(`Invalid seqId: "${seqId}"`);
+    }
+    const match = seqId.match(/([A-Z])(\d+)([A-Z])/);
+    if (!match) {
+        throw new Error(`Invalid seqId: "${seqId}"`);
+    }
+    return { wtResidue: match[1], locus: parseInt(match[2]), mutantResidue: match[3] };
+}
+
+const parseCsvDataIntoRowData = (logitCsvDataString: string, useWtMarginalAsScore: boolean, zeroWildType: boolean, maxMutationsPerLocus: number | undefined, topPerformersToDisplay: number | undefined): RowData[] | null => {
+    const { data, errors } = Papa.parse<Record<string, string>>(logitCsvDataString, {
         header: true,
         delimiter: ',',
         skipEmptyLines: true,
@@ -61,19 +67,32 @@ const parseCsvDataIntoRowData = (logitCsvData: string, useWtMarginalAsScore: boo
         return null;
     }
 
-    const interiorTableData = data.map((row) => {
-        var score = useWtMarginalAsScore ? parseFloat(row[WT_MARGINAL_COLUMN]) : parseFloat(row[NATURALNESS_COLUMN]);
+    const interiorTableRows = data.filter((row) => {
+        // Filter out rows that end in special characters like <cls>.
+        const endsInSpecialCharacter = row['seq_id'].match(/.*<.*>/);
+        const endsInDot = row['seq_id'].match(/.*\..*/);
+        const endsInHyphen = row['seq_id'].match(/.*-.*/);
+        const endsInBar = row['seq_id'].match(/.*\|.*/);
+        if (endsInSpecialCharacter || endsInDot || endsInHyphen || endsInBar) {
+            console.log(`Filtering out row: ${row['seq_id']}`);
+            return false;
+        }
+        return true;
+    }).map((row) => {
+        var score;
+        if (useWtMarginalAsScore) {
+            score = parseFloat(row[WT_MARGINAL_COLUMN]);
+            // Take the log of the score.
+            score = score ? Math.log(score || 1e-7) : null;
+        } else {
+            score = parseFloat(row[NATURALNESS_COLUMN]) || 0;
+        }
         score = score || 0;
-        if (zeroWildType) {
-            const match = row['seq_id'].match(/([A-Z])(\d+)([A-Z])/);
-            if (match) {
-                const wtResidue = match[1];
-                const locus = parseInt(match[2]);
-                const mutantResidue = match[3];
-                if (wtResidue == mutantResidue) {
-                    score = 0;
-                }
-            }
+
+        const { wtResidue, locus, mutantResidue } = parseSeqId(row['seq_id']);
+
+        if (zeroWildType && wtResidue == mutantResidue) {
+            score = 0;
         }
         var model = null;
         if (row['model'] != null) {
@@ -87,7 +106,25 @@ const parseCsvDataIntoRowData = (logitCsvData: string, useWtMarginalAsScore: boo
         };
     });
 
-    return interiorTableData.sort((a, b) => b.score - a.score);
+    const allRows = interiorTableRows.sort((a, b) => b.score - a.score);
+
+    // Filter out mutations where we've already seen that locus N times.
+    const locusCounts: { [key: number]: number } = {};
+    const relevantRows = [];
+    for (const row of allRows) {
+        const { wtResidue, locus, mutantResidue } = parseSeqId(row.seqId);
+
+        locusCounts[locus] = (locusCounts[locus] || 0) + 1;
+
+        if (maxMutationsPerLocus && locusCounts[locus] > maxMutationsPerLocus) {
+            continue;
+        }
+        relevantRows.push(row);
+        if (topPerformersToDisplay && relevantRows.length >= topPerformersToDisplay) {
+            break;
+        }
+    }
+    return relevantRows;
 }
 
 // const LogitTable: React.FC<LogitTableProps> = ({ logitCsvData, useWtMarginalAsScore, zeroWildType, topPerformersToDisplay }) => {
@@ -146,12 +183,20 @@ const parseCsvDataIntoRowData = (logitCsvData: string, useWtMarginalAsScore: boo
 //         </div>
 //     );
 // };
+interface LogitTableProps {
+    logitCsvData: string | null;
+    useWtMarginalAsScore: boolean;
+    zeroWildType: boolean;
+    maxMutationsPerLocus: number;
+    topPerformersToDisplay: number;
+}
 
 const LogitTable: React.FC<LogitTableProps> = ({
     logitCsvData,
     useWtMarginalAsScore,
     zeroWildType,
-    topPerformersToDisplay
+    maxMutationsPerLocus,
+    topPerformersToDisplay,
 }) => {
     if (!logitCsvData) return null;
 
@@ -159,7 +204,9 @@ const LogitTable: React.FC<LogitTableProps> = ({
     const [sortDirection, setSortDirection] = useState<'ASC' | 'DESC'>('DESC');
 
     const tableData: RowData[] | null = useMemo(() => {
-        const data = parseCsvDataIntoRowData(logitCsvData, useWtMarginalAsScore, zeroWildType)?.slice(0, topPerformersToDisplay) || null;
+        const data = parseCsvDataIntoRowData(logitCsvData, useWtMarginalAsScore, zeroWildType, maxMutationsPerLocus, topPerformersToDisplay);
+        if (!data) return null;
+
 
         if (data && sortColumn) {
             return [...data].sort((a, b) => {
@@ -173,7 +220,7 @@ const LogitTable: React.FC<LogitTableProps> = ({
             });
         }
         return data;
-    }, [logitCsvData, useWtMarginalAsScore, zeroWildType, topPerformersToDisplay, sortColumn, sortDirection]);
+    }, [logitCsvData, useWtMarginalAsScore, zeroWildType, maxMutationsPerLocus, topPerformersToDisplay, sortColumn, sortDirection]);
 
     if (!tableData) return null;
 
@@ -196,23 +243,16 @@ const LogitTable: React.FC<LogitTableProps> = ({
         },
         {
             key: "score",
-            name: useWtMarginalAsScore ? "WT Marginal Likelihood" : "Probability",
+            name: useWtMarginalAsScore ? "Log(WT Marginal Likelihood)" : "Probability",
             sortable: true,
             resizable: true,
-            formatter: ({ row }: { row: any }) => row.score.toExponential(6),
-            sortDescendingFirst: true
-        },
-        {
-            key: "model",
-            name: "Model",
-            sortable: true,
-            resizable: true,
+            formatter: ({ row }: { row: any }) => row.score.toFixed(4),
             sortDescendingFirst: true
         }
     ];
 
     return (
-        <div style={{ width: "100%", height: "500px", marginTop: "20px" }}>
+        <div style={{ width: "auto", height: "auto", marginTop: "20px" }}>
             <ReactDataGrid
                 columns={columns}
                 rowGetter={i => tableData[i]}
@@ -237,9 +277,10 @@ const NaturalnessTab: React.FC<NaturalnessTabProps> = ({ foldId, foldName, foldC
     const [logitCsvData, setLogitCsvData] = useState<string | null>(null);
     const [maskWildType, setMaskWildType] = useState<boolean>(false);
     const [zeroWildType, setZeroWildType] = useState<boolean>(false);
-    const [showWTMarginalLikelihood, setShowWTMarginalLikelihood] = useState<boolean>(false);
+    const [showWTMarginalLikelihood, setShowWTMarginalLikelihood] = useState<boolean>(true);
 
-    const [topPerformersToDisplay, setTopPerformersToDisplay] = useState<number>(16);
+    const [maxMutationsPerLocus, setMaxMutationsPerLocus] = useState<number>(2);
+    const [topPerformersToDisplay, setTopPerformersToDisplay] = useState<number>(24);
 
 
     const handleStartLogit = async () => {
@@ -322,7 +363,7 @@ const NaturalnessTab: React.FC<NaturalnessTabProps> = ({ foldId, foldName, foldC
     const logitPlot = useMemo(() => {
         if (!logitCsvData) return null;
 
-        const rowData = parseCsvDataIntoRowData(logitCsvData, showWTMarginalLikelihood, zeroWildType);
+        const rowData = parseCsvDataIntoRowData(logitCsvData, showWTMarginalLikelihood, zeroWildType, undefined, undefined);
         if (!rowData) return null;
 
 
@@ -374,6 +415,10 @@ const NaturalnessTab: React.FC<NaturalnessTabProps> = ({ foldId, foldName, foldC
                 return key in scoreHeatmapData ? scoreHeatmapData[key] : null;
             })
         );
+        const zmin = showWTMarginalLikelihood ? 0 : 0;
+        const zmax = showWTMarginalLikelihood ? Math.max(...zValues.flat(2).filter(val => val !== null) as number[]) : 1;
+
+        const hoverTemplate = showWTMarginalLikelihood ? '%{customdata}%{x}%{y}<br>Score: 10^%{z}<extra></extra>' : '%{customdata}%{x}%{y}<br>Probability: %{z}<extra></extra>';
 
         const plotlyData: Array<Partial<Data>> = [{
             type: 'heatmap',
@@ -382,10 +427,10 @@ const NaturalnessTab: React.FC<NaturalnessTabProps> = ({ foldId, foldName, foldC
             y: RESIDUES,
             colorscale: 'Viridis',
             hoverongaps: false,
-            zmin: showWTMarginalLikelihood ? undefined : 0,  // Set minimum value for color scale
-            zmax: showWTMarginalLikelihood ? undefined : 1,  // Set maximum value for color scale
-            hovertemplate: '%{customdata}%{x}%{y}<br>' +
-                'Score: %{z}<extra></extra>',
+            zmin: zmin,
+            zmax: zmax,
+            zauto: false,
+            hovertemplate: hoverTemplate,
             customdata: RESIDUES.map(() => loci.map(locus => wtResidues[locus])),
             showscale: true,
         }];
@@ -412,27 +457,22 @@ const NaturalnessTab: React.FC<NaturalnessTabProps> = ({ foldId, foldName, foldC
     const highlightResiduesOnModel = () => {
         if (!logitCsvData) return;
 
-        const tableData: RowData[] | null = parseCsvDataIntoRowData(logitCsvData, showWTMarginalLikelihood, zeroWildType)?.slice(0, topPerformersToDisplay) || null;
+        const tableData: RowData[] | null = parseCsvDataIntoRowData(logitCsvData, showWTMarginalLikelihood, zeroWildType, maxMutationsPerLocus, topPerformersToDisplay) || null;
         if (!tableData) return null;
 
-        const tableSubset = tableData.slice(0, topPerformersToDisplay);
-
-        const residuesToHighlight = tableSubset.map(row => {
-            const match = row.seqId.match(/([A-Z])(\d+)([A-Z])/);
-            if (match) {
-                return match[2];
-            }
-            return null;
+        const lociToHighlight = tableData.map(row => {
+            const { wtResidue, locus, mutantResidue } = parseSeqId(row.seqId);
+            return locus;
         }).filter(residue => residue !== null);
 
         // Get unique residues to highlight
-        const uniqueResiduesToHighlight = Array.from(new Set(residuesToHighlight));
+        const uniqueLociToHighlight = Array.from(new Set(lociToHighlight));
 
-        const selection = uniqueResiduesToHighlight.map(residue => {
+        const selection = uniqueLociToHighlight.map(locus => {
             return {
                 struct_asym_id: foldChainIds?.[0] || 'A',
-                start_residue_number: parseInt(residue),
-                end_residue_number: parseInt(residue),
+                start_residue_number: locus,
+                end_residue_number: locus,
                 color: "#FFD700",
             }
         })
@@ -501,7 +541,7 @@ const NaturalnessTab: React.FC<NaturalnessTabProps> = ({ foldId, foldName, foldC
 
             {/* Display logit info, if requested. */}
             {
-                displayedLogitId ? (
+                displayedLogitId ?
                     <>
                         <div style={{ marginBottom: '10px' }}>
                             <label>
@@ -530,10 +570,23 @@ const NaturalnessTab: React.FC<NaturalnessTabProps> = ({ foldId, foldName, foldC
                                     className="uk-checkbox"
                                     checked={showWTMarginalLikelihood}
                                     onChange={(e) => setShowWTMarginalLikelihood(e.target.checked)}
-                                /> Display WT Marginal Likelihood
+                                /> Display Log(WT Marginal Likelihood)
                             </label>
                         </div>
                         {logitPlot}
+                        <div>
+                            <label>
+                                Max number of mutants per locus:
+                                <input
+                                    type="number"
+                                    className="uk-input"
+                                    value={maxMutationsPerLocus}
+                                    onChange={(e) => setMaxMutationsPerLocus(parseInt(e.target.value))}
+                                    style={{ width: '100px', marginLeft: '10px' }}
+                                    min="1"
+                                />
+                            </label>
+                        </div>
                         <div>
                             <label>
                                 Top mutants to display:
@@ -547,15 +600,20 @@ const NaturalnessTab: React.FC<NaturalnessTabProps> = ({ foldId, foldName, foldC
                                 />
                             </label>
                         </div>
-                        <LogitTable logitCsvData={logitCsvData} useWtMarginalAsScore={showWTMarginalLikelihood} zeroWildType={zeroWildType} topPerformersToDisplay={topPerformersToDisplay} />
+                        <LogitTable
+                            logitCsvData={logitCsvData}
+                            useWtMarginalAsScore={showWTMarginalLikelihood}
+                            zeroWildType={zeroWildType}
+                            maxMutationsPerLocus={maxMutationsPerLocus}
+                            topPerformersToDisplay={topPerformersToDisplay}
+                        />
                         <div style={{ marginTop: '10px', display: 'flex', gap: '10px' }}>
                             <button
                                 className="uk-button uk-button-default"
                                 onClick={() => {
                                     if (!logitCsvData) return;
 
-                                    const tableData = parseCsvDataIntoRowData(logitCsvData, showWTMarginalLikelihood, zeroWildType)
-                                        ?.slice(0, topPerformersToDisplay);
+                                    const tableData = parseCsvDataIntoRowData(logitCsvData, showWTMarginalLikelihood, zeroWildType, maxMutationsPerLocus, topPerformersToDisplay)
 
                                     if (!tableData) return;
 
@@ -574,7 +632,7 @@ const NaturalnessTab: React.FC<NaturalnessTabProps> = ({ foldId, foldName, foldC
                             </button>
                         </div>
                     </>
-                ) : null
+                    : null
             }
 
             {/* Collapsible New Run Section */}

@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 import pandas as pd
-from typing import List, Optional
+from typing import List, Optional, Tuple
 import json
 
 
@@ -20,15 +20,21 @@ class FoldyESMClient(ABC):
             raise ValueError(f"Unknown model type: {model_name}")
 
     @abstractmethod
-    def embed(self, sequence: str, pdb_file_path: Optional[str] = None) -> List[float]:
-        """Get embedding for a sequence."""
+    def embed(
+        self,
+        sequence_or_complex: str | List[Tuple[str, str]],
+        pdb_file_path: Optional[str] = None,
+    ) -> List[float]:
+        """Get embedding for a sequence or complex {chain id: seq}."""
         pass
 
     @abstractmethod
     def get_logits(
-        self, sequence: str, pdb_file_path: Optional[str] = None
+        self,
+        sequence_or_complex: str | List[Tuple[str, str]],
+        pdb_file_path: Optional[str] = None,
     ) -> pd.DataFrame:
-        """Get logits for a sequence."""
+        """Get logits for a sequence or complex {chain id: seq}."""
         pass
 
 
@@ -43,11 +49,10 @@ class FoldyESMCClient(FoldyESMClient):
         self.client = ESMC.from_pretrained(model_name).to(device)
         self.device = device
 
-    def get_esm_protein_tensor(
+    def _get_esm_protein_tensor_for_sequence(
         self, sequence: str, pdb_file_path: Optional[str] = None
     ):  # -> torch.Tensor:
         from esm.sdk.api import ESMProtein, LogitsConfig
-        from esm.utils.structure.protein_complex import ProteinComplex
 
         if pdb_file_path:
             raise ValueError("ESM-C does not support PDB-based embeddings")
@@ -55,11 +60,41 @@ class FoldyESMCClient(FoldyESMClient):
 
         return self.client.encode(protein)
 
-    def embed(self, sequence: str, pdb_file_path: Optional[str] = None) -> List[float]:
+    def _get_esm_protein_tensor_for_complex(
+        self, complex: List[Tuple[str, str]], pdb_file_path: Optional[str] = None
+    ):  # -> torch.Tensor:
+        from esm.sdk.api import ESMProtein, LogitsConfig
+        from esm.utils.structure.protein_complex import ProteinComplex
+        from esm.utils.structure.protein_chain import ProteinChain
+
+        if pdb_file_path:
+            raise ValueError("ESM-C does not support PDB-based embeddings")
+
+        chains = [
+            ProteinChain(chain_id=chain_id, sequence=sequence)
+            for chain_id, sequence in complex
+        ]
+        protein_complex = ProteinComplex.from_chains(chains)
+        protein = ESMProtein.from_protein_complex(protein_complex)
+
+        return self.client.encode(protein)
+
+    def embed(
+        self,
+        sequence_or_complex: str | List[Tuple[str, str]],
+        pdb_file_path: Optional[str] = None,
+    ) -> List[float]:
         from esm.sdk.api import ESMProtein, LogitsConfig
         from esm.utils.structure.protein_complex import ProteinComplex
 
-        protein_tensor = self.get_esm_protein_tensor(sequence, pdb_file_path)
+        if isinstance(sequence_or_complex, list):
+            protein_tensor = self._get_esm_protein_tensor_for_complex(
+                sequence_or_complex, pdb_file_path
+            )
+        else:
+            protein_tensor = self._get_esm_protein_tensor_for_sequence(
+                sequence_or_complex, pdb_file_path
+            )
         logits_output = self.client.logits(
             protein_tensor, LogitsConfig(sequence=False, return_embeddings=True)
         )
@@ -68,14 +103,23 @@ class FoldyESMCClient(FoldyESMClient):
         return embedding.tolist()
 
     def get_logits(
-        self, sequence: str, pdb_file_path: Optional[str] = None
+        self,
+        sequence_or_complex: str | List[Tuple[str, str]],
+        pdb_file_path: Optional[str] = None,
     ) -> pd.DataFrame:
         import torch
         from esm.sdk.api import ESMProtein, LogitsConfig
         from esm.utils.structure.protein_complex import ProteinComplex
         from esm.utils.constants import esm3 as esm3_constants
 
-        protein_tensor = self.get_esm_protein_tensor(sequence, pdb_file_path)
+        if isinstance(sequence_or_complex, list):
+            protein_tensor = self._get_esm_protein_tensor_for_complex(
+                sequence_or_complex, pdb_file_path
+            )
+        else:
+            protein_tensor = self._get_esm_protein_tensor_for_sequence(
+                sequence_or_complex, pdb_file_path
+            )
         logits_output = self.client.logits(
             protein_tensor, LogitsConfig(sequence=True, return_embeddings=False)
         )
@@ -83,14 +127,25 @@ class FoldyESMCClient(FoldyESMClient):
         sequence_probs = torch.softmax(logits_output.logits.sequence, dim=-1)
         melted_rows = []
 
-        for pos in range(1, len(sequence) + 1):  # 1-based positions
-            wt_aa = sequence[pos - 1]
-            probs = sequence_probs[0, pos, :].tolist()
+        if isinstance(sequence_or_complex, str):
+            sequence = sequence_or_complex
+            for pos in range(1, len(sequence) + 1):  # 1-based positions
+                wt_aa = sequence[pos - 1]
+                probs = sequence_probs[0, pos, :].tolist()
 
-            for vocab_idx, vocab_char in enumerate(esm3_constants.SEQUENCE_VOCAB):
-                prob = probs[vocab_idx]
-                seq_id = f"{wt_aa}{pos}{vocab_char}"
-                melted_rows.append({"seq_id": seq_id, "probability": prob})
+                for vocab_idx, vocab_char in enumerate(esm3_constants.SEQUENCE_VOCAB):
+                    prob = probs[vocab_idx]
+                    seq_id = f"{wt_aa}{pos}{vocab_char}"
+                    melted_rows.append({"seq_id": seq_id, "probability": prob})
+        else:
+            # We don't know how this is formatted to start, so we just dump out the data.
+            for idx in range(sequence_probs.shape[1]):
+                probs = sequence_probs[0, idx, :].tolist()
+
+                for vocab_idx, vocab_char in enumerate(esm3_constants.SEQUENCE_VOCAB):
+                    prob = probs[vocab_idx]
+                    seq_id = f"{idx}{vocab_char}"
+                    melted_rows.append({"seq_id": seq_id, "probability": prob})
 
         return pd.DataFrame(melted_rows)
 
@@ -104,7 +159,7 @@ class FoldyESM3Client(FoldyESMClient):
         self.client = ESM3.from_pretrained(model_name).to(device)
         self.device = device
 
-    def get_esm_protein_tensor(
+    def _get_esm_protein_tensor_for_sequence(
         self, sequence: str, pdb_file_path: Optional[str] = None
     ):  # -> torch.Tensor:
         from esm.sdk.api import ESMProtein, LogitsConfig
@@ -117,6 +172,26 @@ class FoldyESM3Client(FoldyESMClient):
             protein = ESMProtein(sequence=sequence)
 
         protein_tensor = self.client.encode(protein)
+
+    def _get_esm_protein_tensor_for_complex(
+        self, complex: List[Tuple[str, str]], pdb_file_path: Optional[str] = None
+    ):  # -> torch.Tensor:
+        from esm.sdk.api import ESMProtein, LogitsConfig
+        from esm.utils.structure.protein_complex import ProteinComplex
+        from esm.utils.structure.protein_chain import ProteinChain
+
+        if pdb_file_path:
+            protein_complex = ProteinComplex.from_pdb(path=pdb_file_path)
+            protein = ESMProtein.from_protein_complex(protein_complex)
+        else:
+            chains = [
+                ProteinChain(chain_id=chain_id, sequence=sequence)
+                for chain_id, sequence in complex
+            ]
+            protein_complex = ProteinComplex.from_chains(chains)
+            protein = ESMProtein.from_protein_complex(protein_complex)
+
+        return self.client.encode(protein)
 
     # Implementation similar to ESMCClient
     embed = FoldyESMCClient.embed
@@ -139,9 +214,16 @@ class FoldyESM1and2Client(FoldyESMClient):
         else:
             self.device = torch.device("cpu")
 
-    def embed(self, sequence: str, pdb_file_path: Optional[str] = None) -> List[float]:
+    def embed(
+        self,
+        sequence_or_complex: str | List[Tuple[str, str]],
+        pdb_file_path: Optional[str] = None,
+    ) -> List[float]:
         import torch
 
+        if isinstance(sequence_or_complex, list):
+            raise ValueError("ESM1 and 2 do not support protein complexes")
+        sequence = sequence_or_complex
         if pdb_file_path:
             raise ValueError("ESM1 and 2 do not support PDB-based embeddings")
 
@@ -158,9 +240,15 @@ class FoldyESM1and2Client(FoldyESMClient):
         return protein_embedding.cpu().tolist()
 
     def get_logits(
-        self, sequence: str, pdb_file_path: Optional[str] = None
+        self,
+        sequence_or_complex: str | List[Tuple[str, str]],
+        pdb_file_path: Optional[str] = None,
     ) -> pd.DataFrame:
         import torch
+
+        if isinstance(sequence_or_complex, list):
+            raise ValueError("ESM1 and 2 do not support protein complexes")
+        sequence = sequence_or_complex
 
         if pdb_file_path:
             raise ValueError("ESM1 and 2 do not support PDB-based logits")

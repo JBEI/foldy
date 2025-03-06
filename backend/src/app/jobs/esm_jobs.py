@@ -78,11 +78,9 @@ def get_esm_embeddings(
             f"Embedding ID {embed_id} ({embed_name}) does not have an associated invokation!"
         )
 
-    def run_get_esm_embeddings_with_logger(add_log):
-        add_log(
+    with LoggingRecorder(invokation):
+        logging.info(
             "Starting embedding...",
-            state="running",
-            command="ESMC",
         )
 
         # 3. Validate seq_ids.
@@ -114,18 +112,18 @@ def get_esm_embeddings(
                 f"Fold ID {fold.id} seems to be a multimer which is not supported for ESM embeddings yet."
             )
 
-        add_log(
+        logging.info(
             f"Getting all sequence IDs (dms_starting_seq_ids: {dms_starting_seq_ids}; extra_seq_ids: {extra_seq_ids})"
         )
         dms_seq_ids = get_seq_ids_for_deep_mutational_scan(
             wt_aa_seq, dms_starting_seq_ids, extra_seq_ids
         )
-        add_log(f"Will be embedding {len(dms_seq_ids)} sequences")
+        logging.info(f"Will be embedding {len(dms_seq_ids)} sequences")
 
         # 5. Import ESM and create client.
-        add_log(f"Importing ESM and creating client for {embedding_model}")
+        logging.info(f"Importing ESM and creating client for {embedding_model}")
 
-        gpu_available = get_torch_cuda_is_available_and_add_logs(add_log)
+        gpu_available = get_torch_cuda_is_available_and_add_logs(logging.info)
 
         foldy_esm_client = FoldyESMClient.get_client(embedding_model)
 
@@ -143,7 +141,7 @@ def get_esm_embeddings(
                 get_embedding_dict(seq_id, seq_id_to_seq(wt_aa_seq, seq_id))
             )
             if ii % 100 == 0:
-                add_log(f"Finished embedding {ii}/{len(dms_seq_ids)}")
+                logging.info(f"Finished embedding {ii}/{len(dms_seq_ids)}")
 
         embedding_df = pd.DataFrame(embedding_dicts)
 
@@ -160,7 +158,7 @@ def get_esm_embeddings(
             f"embed/{padded_fold_id}_embeddings_{embedding_model}_{embed_name}.csv"
         )
 
-        add_log(f"Saving output to {embedding_path}")
+        logging.info(f"Saving output to {embedding_path}")
         fsm = FoldStorageManager()
         fsm.setup()
         fsm.storage_manager.write_file(fold.id, embedding_path, embedding_csv_string)
@@ -201,11 +199,12 @@ def get_esm_logits(logit_id: int):
         if not fold.yaml_config:
             raise ValueError("Fold does not have a YAML config!")
         boltz_yaml_helper = BoltzYamlHelper(fold.yaml_config)
+
+        protein_input = None
         if len(boltz_yaml_helper.get_protein_sequences()) > 1:
-            raise ValueError(
-                "Fold has multiple protein sequences, which is not supported for ESM embeddings yet."
-            )
-        wt_aa_seq = boltz_yaml_helper.get_protein_sequences()[0][1]
+            protein_input = boltz_yaml_helper.get_protein_sequences()
+        else:
+            protein_input = boltz_yaml_helper.get_protein_sequences()[0][1]
 
         with tempfile.TemporaryDirectory() as temp_dir:
             if logit_record.use_structure:
@@ -222,7 +221,7 @@ def get_esm_logits(logit_id: int):
                 for ii in range(1, 6):
                     submodel = f"esm1v_t33_650M_UR90S_{ii}"
                     logits_json, melted_df = get_naturalness(
-                        wt_aa_seq, submodel, pdb_file_path
+                        protein_input, submodel, pdb_file_path
                     )
                     logits_dicts_list.append(json.loads(logits_json))
                     melted_df_list.append(melted_df.assign(model=ii))
@@ -230,7 +229,7 @@ def get_esm_logits(logit_id: int):
                 melted_df = pd.concat(melted_df_list)
             else:
                 logits_json, melted_df = get_naturalness(
-                    wt_aa_seq, logit_model, pdb_file_path
+                    protein_input, logit_model, pdb_file_path
                 )
 
         melted_csv_buffer = StringIO()

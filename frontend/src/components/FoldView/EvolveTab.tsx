@@ -18,7 +18,7 @@ const EvolveTab: React.FC<EvolveTabProps> = ({ foldId, jobs, files, evolutions, 
     const [evolutionName, setEvolutionName] = useState<string>('');
     const [showForm, setShowForm] = useState<boolean>(false);
     const [activityFile, setActivityFile] = useState<File | null>(null);
-    const [mode, setMode] = useState<'finetuning' | 'randomforest'>('finetuning');
+    const [mode, setMode] = useState<'randomforest' | 'mlp' | 'finetuning'>('randomforest');
     const [selectedEmbeddingPaths, setSelectedEmbeddingPaths] = useState<string[]>([]);
     const [finetuningModelCheckpoint, setFinetuningModelCheckpoint] = useState<string>('facebook/esm2_t6_8M_UR50D');
 
@@ -46,7 +46,7 @@ const EvolveTab: React.FC<EvolveTabProps> = ({ foldId, jobs, files, evolutions, 
     };
 
     const handleEvolve = async () => {
-        if (!activityFile || (mode === 'randomforest' && selectedEmbeddingPaths.length === 0)) {
+        if (!activityFile || ((mode === 'randomforest' || mode === 'mlp') && selectedEmbeddingPaths.length === 0)) {
             UIkit.notification({
                 message: 'Please fill in all required fields',
                 status: 'warning'
@@ -61,7 +61,7 @@ const EvolveTab: React.FC<EvolveTabProps> = ({ foldId, jobs, files, evolutions, 
                 foldId,
                 activityFile,
                 mode,
-                mode === 'randomforest' ? selectedEmbeddingPaths : undefined,
+                (mode === 'randomforest' || mode === 'mlp') ? selectedEmbeddingPaths : undefined,
                 mode === 'finetuning' ? finetuningModelCheckpoint : undefined
             );
             UIkit.notification({
@@ -233,8 +233,9 @@ const EvolveTab: React.FC<EvolveTabProps> = ({ foldId, jobs, files, evolutions, 
                                     value={mode}
                                     onChange={(e) => setMode(e.target.value as 'finetuning' | 'randomforest')}
                                 >
-                                    <option value="finetuning">Finetuning</option>
                                     <option value="randomforest">Random Forest</option>
+                                    <option value="mlp">Multi-Layer Perceptron</option>
+                                    <option value="finetuning">Finetuning</option>
                                 </select>
                             </div>
 
@@ -255,7 +256,7 @@ const EvolveTab: React.FC<EvolveTabProps> = ({ foldId, jobs, files, evolutions, 
                             )}
 
                             {/* Show embedding files selection only for randomforest mode */}
-                            {mode === 'randomforest' && (
+                            {(mode === 'randomforest' || mode === 'mlp') && (
                                 <div style={{ flex: '0 0 auto', width: '100%' }}>
                                     <label className="uk-form-label">Select Embedding Files</label>
                                     <select
@@ -284,7 +285,7 @@ const EvolveTab: React.FC<EvolveTabProps> = ({ foldId, jobs, files, evolutions, 
                             disabled={
                                 evolutionName === '' ||
                                 !activityFile ||
-                                (mode === 'randomforest' && selectedEmbeddingPaths.length === 0) ||
+                                ((mode === 'randomforest' || mode === 'mlp') && selectedEmbeddingPaths.length === 0) ||
                                 (mode === 'finetuning' && !finetuningModelCheckpoint)
                             }
                         >

@@ -50,6 +50,8 @@ def run_evolvepro(evolve_id: int):
             )
         wt_aa_seq = boltz_yaml_helper.get_protein_sequences()[0][1]
 
+        mode = evolve.mode or "randomforest"
+
         fsm = FoldStorageManager()
         fsm.setup()
 
@@ -98,7 +100,7 @@ def run_evolvepro(evolve_id: int):
         )
 
         (measured_mutants, unmeasured_mutants, model, predicted_activity_df) = (
-            train_and_predict_activities(activity_df, embedding_df)
+            train_and_predict_activities(activity_df, embedding_df, mode)
         )
 
         add_log(

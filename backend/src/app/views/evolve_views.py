@@ -68,7 +68,7 @@ class EvolveResource(Resource):
             else None
         )
 
-        if mode == "randomforest":
+        if mode == "randomforest" or mode == "mlp":
             if not embedding_paths:
                 raise BadRequest("embedding_paths are required for randomforest mode")
         elif mode == "finetuning":
@@ -117,18 +117,18 @@ class EvolveResource(Resource):
             invokation_id=new_invokation_id,
         )
 
-        if mode == "randomforest":
-            # 4. Start the job.
-            job = rq.get_queue("cpu").enqueue(
-                evolve_jobs.run_evolvepro,
-                evolve_record.id,
-            )
-        elif mode == "finetuning":
+        if mode == "finetuning":
             # 4. Start the job.
             job = rq.get_queue("esm").enqueue(
                 esm_jobs.finetune_esm_model,
                 evolve_record.id,
                 job_timeout="12h",
                 result_ttl=48 * 60 * 60,  # 2 days
+            )
+        else:
+            # 4. Start the job.
+            job = rq.get_queue("cpu").enqueue(
+                evolve_jobs.run_evolvepro,
+                evolve_record.id,
             )
         return evolve_record

@@ -8,6 +8,7 @@ from dnachisel import biotools
 import numpy as np
 import pandas as pd
 from sklearn.ensemble import RandomForestRegressor
+from sklearn.neural_network import MLPRegressor
 from werkzeug.exceptions import BadRequest
 
 
@@ -255,8 +256,7 @@ def get_measured_and_unmeasured_mutant_seq_ids(activity_df, embedding_df):
 
 
 def train_and_predict_activities(
-    activity_df: pd.DataFrame,
-    embedding_df: pd.DataFrame,
+    activity_df: pd.DataFrame, embedding_df: pd.DataFrame, mode: str
 ) -> tuple[list, list, RandomForestRegressor, pd.DataFrame]:
     """Train a Random Forest model on measured mutants and predict activities for all mutants.
 
@@ -286,25 +286,33 @@ def train_and_predict_activities(
     )
     y_train = activity_df.activity.to_numpy()
 
-    model = RandomForestRegressor(
-        n_estimators=100,
-        criterion="friedman_mse",
-        max_depth=None,
-        min_samples_split=2,
-        min_samples_leaf=1,
-        min_weight_fraction_leaf=0.0,
-        max_features=1.0,
-        max_leaf_nodes=None,
-        min_impurity_decrease=0.0,
-        bootstrap=True,
-        oob_score=False,
-        n_jobs=None,
-        random_state=1,
-        verbose=0,
-        warm_start=False,
-        ccp_alpha=0.0,
-        max_samples=None,
-    )
+    model = None
+    if mode == "randomforest":
+        model = RandomForestRegressor(
+            n_estimators=100,
+            criterion="friedman_mse",
+            max_depth=None,
+            min_samples_split=2,
+            min_samples_leaf=1,
+            min_weight_fraction_leaf=0.0,
+            max_features=1.0,
+            max_leaf_nodes=None,
+            min_impurity_decrease=0.0,
+            bootstrap=True,
+            oob_score=False,
+            n_jobs=None,
+            random_state=1,
+            verbose=0,
+            warm_start=False,
+            ccp_alpha=0.0,
+            max_samples=None,
+        )
+    elif mode == "mlp":
+        model = MLPRegressor(
+            random_state=1, max_iter=5000, hidden_layer_sizes=(100, 50)
+        )
+    else:
+        raise ValueError(f"Invalid model choice: {mode}")
     model.fit(X_train, y_train)
 
     # Prepare prediction data for all mutants
