@@ -131,7 +131,7 @@ def get_esm_embeddings(
             return {
                 "seq_id": seq_id,
                 "seq": seq,
-                "embedding": json.dumps(foldy_esm_client.embed(sequence=seq)),
+                "embedding": json.dumps(foldy_esm_client.embed(seq)),
             }
 
         embedding_dicts = []

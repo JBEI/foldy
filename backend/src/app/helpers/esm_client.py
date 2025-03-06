@@ -171,7 +171,7 @@ class FoldyESM3Client(FoldyESMClient):
         else:
             protein = ESMProtein(sequence=sequence)
 
-        protein_tensor = self.client.encode(protein)
+        return self.client.encode(protein)
 
     def _get_esm_protein_tensor_for_complex(
         self, complex: List[Tuple[str, str]], pdb_file_path: Optional[str] = None
