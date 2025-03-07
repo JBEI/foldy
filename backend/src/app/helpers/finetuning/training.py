@@ -381,7 +381,7 @@ def parse_mutations(seq_id):
     Parse mutations from a sequence ID (e.g., "A132W_S155G").
 
     Returns:
-        List of tuples (wt_aa, position, mut_aa)
+        List of tuples (wt_aa, locus (1-indexed), mut_aa)
     """
     import re
 
@@ -393,7 +393,7 @@ def parse_mutations(seq_id):
         match = re.match(r"([A-Z])(\d+)([A-Z])", mut)
         if match:
             wt_aa, pos_str, mut_aa = match.groups()
-            pos = int(pos_str) - 1  # convert to 0-indexed
+            pos = int(pos_str)  # Leave 1-indexed
             mutations.append((wt_aa, pos, mut_aa))
     return mutations
 
@@ -410,12 +410,11 @@ def calculate_log_wt_marginal_from_logits(single_protein_logits, seq_id, tokeniz
     if not mutations:
         return sequence_score
 
-    for wt_aa, pos, mut_aa in mutations:
-        # Account for special tokens (e.g., <cls>)
-        token_pos = pos + 1  # +1 for <cls> token
+    for wt_aa, locus, mut_aa in mutations:
+        # pos is already 1-indexed which handles <cls> token
 
         # Get probabilities for this position
-        log_probs = F.log_softmax(single_protein_logits[token_pos], dim=0)
+        log_probs = F.log_softmax(single_protein_logits[locus], dim=0)
 
         # Get token IDs for wild-type and mutant amino acids
         wt_token_id = tokenizer.convert_tokens_to_ids(wt_aa)
@@ -548,22 +547,21 @@ class ESMEntropyTrainer(Trainer):
             if seq_id and seq_id != "WT":
                 mutations = parse_mutations(seq_id)
                 if mutations:
-                    for wt_aa, pos, mut_aa in mutations:
-                        # Account for special tokens (e.g., <cls>)
-                        token_pos = pos + 1  # +1 for <cls> token
+                    for wt_aa, locus, mut_aa in mutations:
+                        # Locus is already 1-indexed which handles <cls> token
 
                         # Get probabilities for this position
-                        logits_at_pos = logits[i, token_pos]  # Keep raw logits
-                        probs = torch.softmax(logits_at_pos, dim=0)
+                        logits_at_pos = logits[i, locus]  # Keep raw logits
+                        log_probs = torch.log_softmax(logits_at_pos, dim=0)
 
                         # Get token IDs for wild-type and mutant amino acids
                         wt_token_id = self.tokenizer.convert_tokens_to_ids(wt_aa)
                         mut_token_id = self.tokenizer.convert_tokens_to_ids(mut_aa)
 
                         # Calculate score for this mutation
-                        wt_prob = probs[wt_token_id]
-                        mut_prob = probs[mut_token_id]
-                        score = torch.log(mut_prob + 1e-10) - torch.log(wt_prob + 1e-10)
+                        log_wt_prob = log_probs[wt_token_id]
+                        log_mut_prob = log_probs[mut_token_id]
+                        score = log_mut_prob - log_wt_prob
                         sequence_score = sequence_score + score
 
             scores_list.append(sequence_score)
@@ -653,12 +651,11 @@ def score_sequences(model, tokenizer, wt_aa_seq, seq_ids):
     for seq_id in seq_ids:
         sequence = seq_id_to_seq(wt_aa_seq, seq_id)
         sequence_score = 0
-        for wt_aa, pos, mut_aa in parse_mutations(seq_id):
-            # Account for special tokens (e.g., <cls>)
-            token_pos = pos + 1  # +1 for <cls> token
+        for wt_aa, locus, mut_aa in parse_mutations(seq_id):
+            # Locus is already 1-indexed which handles <cls> token
 
             # Get probabilities for this position
-            log_probs = F.log_softmax(logits[0, token_pos], dim=0)
+            log_probs = F.log_softmax(logits[0, locus], dim=0)
 
             # Get token IDs for wild-type and mutant amino acids
             wt_token_id = tokenizer.convert_tokens_to_ids(wt_aa)

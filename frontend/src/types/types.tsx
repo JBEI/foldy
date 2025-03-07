@@ -113,6 +113,7 @@ export interface Logit {
     fold_id: number;
     logit_model: string;
     use_structure: boolean | null;
+    get_depth_two_logits: boolean | null;
     invokation_id: number;
 }
 

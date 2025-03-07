@@ -206,6 +206,8 @@ def get_esm_logits(logit_id: int):
         else:
             protein_input = boltz_yaml_helper.get_protein_sequences()[0][1]
 
+        get_depth_two_logits = logit_record.get_depth_two_logits or False
+
         with tempfile.TemporaryDirectory() as temp_dir:
             if logit_record.use_structure:
                 pdb_binary = fsm.storage_manager.get_binary(fold.id, "ranked_0.pdb")
@@ -221,7 +223,7 @@ def get_esm_logits(logit_id: int):
                 for ii in range(1, 6):
                     submodel = f"esm1v_t33_650M_UR90S_{ii}"
                     logits_json, melted_df = get_naturalness(
-                        protein_input, submodel, pdb_file_path
+                        protein_input, submodel, get_depth_two_logits, pdb_file_path
                     )
                     logits_dicts_list.append(json.loads(logits_json))
                     melted_df_list.append(melted_df.assign(model=ii))
@@ -229,7 +231,7 @@ def get_esm_logits(logit_id: int):
                 melted_df = pd.concat(melted_df_list)
             else:
                 logits_json, melted_df = get_naturalness(
-                    protein_input, logit_model, pdb_file_path
+                    protein_input, logit_model, get_depth_two_logits, pdb_file_path
                 )
 
         melted_csv_buffer = StringIO()

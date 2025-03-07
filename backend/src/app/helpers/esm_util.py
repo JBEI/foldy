@@ -5,11 +5,16 @@ import json
 from app.helpers.jobs_util import get_torch_cuda_is_available_and_add_logs
 from typing import Optional
 import logging
+from app.helpers.sequence_util import (
+    get_seq_ids_for_deep_mutational_scan,
+    seq_id_to_seq,
+)
 
 
 def get_naturalness(
     wt_aa_seq: str,
     logit_model: str,
+    get_depth_two_logits: Optional[bool] = False,
     pdb_file_path: Optional[str] = None,
 ):
     # Import ESM client
@@ -41,41 +46,61 @@ def get_naturalness(
 
     # Get logits using the client
     logging.info("Computing logits")
-    melted_df = client.get_logits(wt_aa_seq, pdb_file_path)
+    if get_depth_two_logits:
+        base_seq_ids = get_seq_ids_for_deep_mutational_scan(wt_aa_seq, ["WT"], ["WT"])
+        logging.info(
+            f"Going to depth 2 mutants; getting logits for {len(base_seq_ids)} base mutants"
+        )
 
-    # Process the melted dataframe to add WT marginal scores
-    logging.info("Processing logits and preparing to save")
+        melted_df_list = []
+        for ii, base_seq_id in enumerate(base_seq_ids):
+            base_seq = seq_id_to_seq(wt_aa_seq, base_seq_id)
+            melted_df = client.get_logits(base_seq, pdb_file_path)
+            melted_df["base_seq_id"] = base_seq_id
+            melted_df_list.append(melted_df)
 
-    def seq_id_to_locus(seq_id):
-        return int(re.match(r".(\d+).*", seq_id).group(1))
+            if ii % 100 == 0:
+                logging.info(f"Finished {ii}/{len(base_seq_ids)} base mutants")
+        melted_df = pd.concat(melted_df_list)
+        return "", melted_df
+    else:
+        melted_df = client.get_logits(wt_aa_seq, pdb_file_path)
 
-    melted_df["locus"] = melted_df.seq_id.apply(seq_id_to_locus)
+        # Process the melted dataframe to add WT marginal scores
+        logging.info("Processing logits and preparing to save")
 
-    # Add the "WT marginal" score column
-    wt_naturalness = (
-        melted_df[melted_df.seq_id.apply(lambda x: x[0] == x[-1])]
-        .rename(columns={"probability": "wt_probability"})
-        .drop(columns=["seq_id"])
-    )
+        def seq_id_to_locus(seq_id):
+            return int(re.match(r".(\d+).*", seq_id).group(1))
 
-    melted_df = pd.merge(
-        melted_df, wt_naturalness, left_on="locus", right_on="locus", how="left"
-    )
-    melted_df["wt_marginal"] = melted_df.apply(
-        lambda x: x.probability / x.wt_probability, axis=1
-    )
+        melted_df["locus"] = melted_df.seq_id.apply(seq_id_to_locus)
 
-    # Create position_probs format for JSON
-    position_probs = []
-    for pos in range(1, len(wt_aa_seq) + 1):
-        pos_probs = melted_df[melted_df.locus == pos]
-        wt_aa = wt_aa_seq[pos - 1]
-        probs = [
-            float(pos_probs[pos_probs.seq_id.str.endswith(aa)].probability.iloc[0])
-            for aa in pos_probs.seq_id.str[-1].unique()
-        ]
-        position_probs.append({"locus": pos, "wt_aa": wt_aa, "probabilities": probs})
+        # Add the "WT marginal" score column
+        wt_naturalness = (
+            melted_df[melted_df.seq_id.apply(lambda x: x[0] == x[-1])]
+            .rename(columns={"probability": "wt_probability"})
+            .drop(columns=["seq_id"])
+        )
 
-    logits_json = json.dumps(position_probs)
+        melted_df = pd.merge(
+            melted_df, wt_naturalness, left_on="locus", right_on="locus", how="left"
+        )
+        melted_df["wt_marginal"] = melted_df.apply(
+            lambda x: x.probability / x.wt_probability, axis=1
+        )
 
-    return logits_json, melted_df
+        # Create position_probs format for JSON
+        position_probs = []
+        for pos in range(1, len(wt_aa_seq) + 1):
+            pos_probs = melted_df[melted_df.locus == pos]
+            wt_aa = wt_aa_seq[pos - 1]
+            probs = [
+                float(pos_probs[pos_probs.seq_id.str.endswith(aa)].probability.iloc[0])
+                for aa in pos_probs.seq_id.str[-1].unique()
+            ]
+            position_probs.append(
+                {"locus": pos, "wt_aa": wt_aa, "probabilities": probs}
+            )
+
+        logits_json = json.dumps(position_probs)
+
+        return logits_json, melted_df

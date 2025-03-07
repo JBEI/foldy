@@ -22,6 +22,7 @@ from app.authorization import (
     user_jwt_grants_edit_access,
     verify_has_edit_access,
 )
+from app.views.other_views import logit_fields
 
 ns = Namespace("esm_views", decorators=[jwt_required(fresh=True)])
 
@@ -117,30 +118,18 @@ class CalculateEmbeddingsResource(Resource):
         return True
 
 
-logits_fields = ns.model(
-    "Logits",
-    {
-        "id": fields.Integer(required=False),
-        "name": fields.String(required=True),
-        "use_structure": fields.Boolean(required=False),
-        "logit_model": fields.String(required=True),
-        "fold_id": fields.Integer(required=False),
-        "invokation_id": fields.Integer(required=False),
-    },
-)
-
-
 @ns.route("/startlogits/<int:fold_id>")
 class StartLogitsResource(Resource):
     @verify_has_edit_access
-    @ns.expect(logits_fields)
-    @ns.marshal_with(logits_fields)
+    @ns.expect(logit_fields)
+    @ns.marshal_with(logit_fields)
     def post(self, fold_id):
         req = request.get_json()
 
         name = req["name"]
         logit_model = req["logit_model"]
         use_structure = req.get("use_structure", False)
+        get_depth_two_logits = req.get("get_depth_two_logits", False)
 
         if logit_model not in ALLOWED_LOGITS_MODELS:
             raise BadRequest(
@@ -160,8 +149,9 @@ class StartLogitsResource(Resource):
         logit_record = Logit.create(
             name=name,
             fold_id=fold_id,
-            use_structure=use_structure,
             logit_model=logit_model,
+            use_structure=use_structure,
+            get_depth_two_logits=get_depth_two_logits,
             invokation_id=new_invokation_id,
         )
 

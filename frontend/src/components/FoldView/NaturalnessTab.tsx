@@ -271,6 +271,7 @@ const NaturalnessTab: React.FC<NaturalnessTabProps> = ({ foldId, foldName, foldC
     const [runName, setRunName] = useState<string>('');
     const [logitModel, setLogitModel] = useState<string>('esmc_600m');
     const [useStructure, setUseStructure] = useState<boolean>(false);
+    const [getDepthTwoLogits, setGetDepthTwoLogits] = useState<boolean>(false);
     const [showForm, setShowForm] = useState<boolean>(false);
 
     const [displayedLogitId, setDisplayedLogitId] = useState<number | null>(null);
@@ -286,7 +287,7 @@ const NaturalnessTab: React.FC<NaturalnessTabProps> = ({ foldId, foldName, foldC
     const handleStartLogit = async () => {
         try {
             UIkit.notification({ message: 'Starting naturalness run...', timeout: 2000 });
-            const logitRun = await startLogits(foldId, runName, useStructure, logitModel);
+            const logitRun = await startLogits(foldId, runName, logitModel, useStructure, getDepthTwoLogits);
             console.log(`logitRun: ${logitRun}`);
             console.log(`logitRun keys: ${Object.keys(logitRun)}`);
             UIkit.notification({
@@ -330,8 +331,9 @@ const NaturalnessTab: React.FC<NaturalnessTabProps> = ({ foldId, foldName, foldC
         UIkit.notification({ message: `Repopulating "New Logit Run" with parameters from ${logit.name}.`, timeout: 2000 });
         setRunName(logit.name);
         setShowForm(true);
-        setUseStructure(logit.use_structure || false);
         setLogitModel(logit.logit_model);
+        setUseStructure(logit.use_structure || false);
+        setGetDepthTwoLogits(logit.get_depth_two_logits || false);
     };
 
     const loadLogit = (logitId: number) => {
@@ -687,6 +689,19 @@ const NaturalnessTab: React.FC<NaturalnessTabProps> = ({ foldId, foldName, foldC
                                         onChange={(e) => setUseStructure(e.target.checked)}
                                     />
                                     Use Structure (experimental)
+                                </label>
+                            </div>
+
+                            {/* Get Depth Two Logits Checkbox */}
+                            <div style={{ flex: 1, minWidth: '200px' }}>
+                                <label className="uk-form-label">
+                                    <input
+                                        type="checkbox"
+                                        className="uk-checkbox uk-margin-small-right"
+                                        checked={getDepthTwoLogits}
+                                        onChange={(e) => setGetDepthTwoLogits(e.target.checked)}
+                                    />
+                                    Get Depth Two Logits (experimental)
                                 </label>
                             </div>
                         </div>

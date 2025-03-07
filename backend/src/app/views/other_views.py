@@ -88,11 +88,13 @@ dock_fields = ns.model(
 logit_fields = ns.model(
     "LogitFields",
     {
-        "id": fields.Integer(required=True),
+        "id": fields.Integer(required=False),
         "name": fields.String(required=True),
-        "fold_id": fields.Integer(required=True),
-        "logit_model": fields.String(),
-        "invokation_id": fields.Integer(),
+        "fold_id": fields.Integer(required=False),
+        "logit_model": fields.String(required=True),
+        "use_structure": fields.Boolean(required=False),
+        "get_depth_two_logits": fields.Boolean(required=False),
+        "invokation_id": fields.Integer(required=False),
     },
 )
 

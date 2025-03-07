@@ -184,6 +184,7 @@ class Logit(PkModel):
 
     logit_model = Column(db.String, nullable=False)
     use_structure = Column(db.Boolean, nullable=True)
+    get_depth_two_logits = Column(db.Boolean, nullable=True)
 
     invokation_id = Column(
         db.Integer,
