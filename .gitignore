@@ -145,6 +145,6 @@ db_creation_resources.yaml
 
 # Generally don't commit the local directory for foldy
 backend/src/integration_tests/testdata/
-backend/src/notebooks/*
+backend/src/notebooks/jacob/data/*
 backend/src/integration_tests/testdata/*/evolve/*
 .boltz/
