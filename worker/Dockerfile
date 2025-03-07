@@ -1,43 +1,49 @@
-ARG FOLDY_ALPHAFOLD_TAG
+FROM nvidia/cuda:12.2.0-devel-ubuntu20.04
 
-FROM --platform=linux/amd64 $FOLDY_ALPHAFOLD_TAG
+COPY backend/requirements.txt /backend/
+COPY worker/scripts/setup.sh /scripts/setup.sh
+RUN /scripts/setup.sh
 
 
-WORKDIR /
+ENV PATH="/opt/conda/bin:$PATH"
+
+# Note that we are using an old version of google cloud CLI...
+RUN conda install -y python=3.9
+
 # RUN rm /etc/apt/sources.list.d/cuda.list
 # RUN apt-key del 7fa2af80
 # RUN apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/7fa2af80.pub
 # Install curl for this script, and aria2 and rsync for AF DB downloading.
-RUN apt-get -y update && apt-get -y install tree curl aria2 rsync && \
-  curl -O https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-cli-401.0.0-linux-x86_64.tar.gz && \
+RUN curl -O https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-cli-401.0.0-linux-x86_64.tar.gz && \
   tar -xf google-cloud-cli-401.0.0-linux-x86_64.tar.gz && \
   ./google-cloud-sdk/install.sh -q && \
-  source /google-cloud-sdk/path.bash.inc
+  . /google-cloud-sdk/path.bash.inc
 
-RUN mkdir /backend && mkdir -p /worker/docking
-
-
-# Install backend requirements.
-COPY backend/requirements.txt /backend/
-RUN conda create -n worker python=3.7
-RUN /opt/conda/envs/worker/bin/pip install --no-cache-dir -r /backend/requirements.txt
+RUN mkdir -p /backend && mkdir -p /worker/docking
 
 
 # Install autodockVINA requirements.
 WORKDIR /worker/docking
 COPY worker/docking/requirements.txt ./
-RUN /opt/conda/bin/conda create -y -n dock conda python==3.7 && \
-  /opt/conda/envs/dock/bin/conda install -y -c conda-forge openbabel numpy && \
-  /opt/conda/envs/dock/bin/conda clean -afy && \
-  /opt/conda/envs/dock/bin/pip install --no-input --no-cache-dir -r requirements.txt
+
+# Combine conda operations into a single RUN command to reduce layers
+# Use mamba instead of conda for faster resolution
+# Pin specific versions to avoid resolution issues
+RUN conda install -n base -c conda-forge mamba && \
+    mamba create -n dock python=3.7 && \
+    mamba install -n dock -c conda-forge -c defaults \
+        openbabel=3.1.1 \
+        numpy=1.21 \
+        tqdm \
+        seaborn \
+        vina \
+        biopython && \
+    mamba clean -afy && \
+    conda clean -afy
 RUN wget https://ccsb.scripps.edu/adfr/download/1038/ADFRsuite_x86_64Linux_1.0.tar.gz
 RUN tar zxvf ADFRsuite_x86_64Linux_1.0.tar.gz && \
   cd ADFRsuite_x86_64Linux_1.0 && \
   echo Y | ./install.sh -d /adfrsuite -c 0
-
-
-# Install decompress pkls requirements.
-RUN /opt/conda/envs/worker/bin/pip install --no-cache-dir --no-input install scipy
 
 
 # Install annotation requirements.
@@ -79,6 +85,8 @@ COPY backend/ /backend/
 COPY worker/*.sh /worker/
 COPY worker/*.py /worker/
 COPY worker/docking/* /worker/docking/
+
+WORKDIR /backend/src
 
 # Make sure to use the exec form of ENTRYPOINT, rather than the shell
 # form, so that SIGTERM gets propagated to rq.

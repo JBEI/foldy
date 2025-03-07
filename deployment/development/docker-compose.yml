@@ -1,5 +1,30 @@
 version: "3.6"
 
+x-worker-base: &worker-base
+  platform: linux/amd64
+  depends_on:
+    - db
+    - redis
+  environment: &worker-env
+    - FLASK_APP=rq_worker_main.py
+    - ENV=development
+    - DEBUG=True
+    - FRONTEND_URL=http://localhost:3000
+    - DATABASE_URL=postgresql+psycopg2://user:password@db:5432/postgres
+    - RQ_REDIS_URL=redis://redis:6379/0
+    - FOLDY_STORAGE_TYPE=Local
+    - FOLDY_LOCAL_STORAGE_DIR=/backend/src/integration_tests/testdata
+  networks:
+    - default
+  volumes: &worker-volumes
+    - ./backend/src/rq_worker_main.py:/backend/src/rq_worker_main.py
+    - ./backend/src/app:/backend/src/app
+    - ./backend/src/integration_tests:/backend/src/integration_tests
+    - ./backend/src/migrations:/backend/src/migrations
+    - ./backend/src/notebooks:/backend/src/notebooks
+    - ./worker:/worker
+  restart: always
+
 services:
   frontend:
     build:
@@ -24,7 +49,7 @@ services:
       - redis
     environment:
       - FLASK_APP=main.py
-      - FLASK_ENV=development
+      - ENV=development
       - DEBUG=True
       - SECRET_KEY=superrandomandveryhardtoguessstring
       - OAUTH_REDIRECT_URI=http://localhost:8080/api/authorize
@@ -35,17 +60,61 @@ services:
       - DISABLE_OAUTH_AUTHENTICATION=True
       - FOLDY_ADMIN_UPGRADE_LIST=tester@test.edu
       - FOLDY_STORAGE_TYPE=Local
-      - FOLDY_LOCAL_STORAGE_DIR=/app/integration_tests/testdata
+      - FOLDY_LOCAL_STORAGE_DIR=/src/integration_tests/testdata
     networks:
       - default
     ports:
       - 127.0.0.1:8080:8080
     volumes:
-      - ./backend/backend/app:/app/app
-      - ./backend/backend/integration_tests:/app/integration_tests
-      - ./backend/backend/migrations:/app/migrations
+      - ./backend/src/main.py:/src/main.py
+      - ./backend/src/app:/src/app
+      - ./backend/src/integration_tests:/src/integration_tests
+      - ./backend/src/migrations:/src/migrations
     restart: always
-    entrypoint: python /app/main.py
+    entrypoint: python /src/main.py
+
+  worker_esm:
+    <<: *worker-base
+    build:
+      context: .
+      dockerfile: worker/Dockerfile.esm
+    environment: *worker-env
+    volumes: *worker-volumes
+    entrypoint: /opt/conda/envs/worker/bin/python -m flask rq worker cpu esm
+
+  # worker_prosst:
+  #   <<: *worker-base
+  #   build:
+  #     context: .
+  #     dockerfile: worker/Dockerfile.prosst
+  #   environment: *worker-env
+  #   volumes: *worker-volumes
+  #   entrypoint: /opt/conda/envs/worker/bin/python -m flask rq worker prosst
+
+  worker_boltz:
+    <<: *worker-base
+    build:
+      context: .
+      dockerfile: worker/Dockerfile.boltz
+    environment: *worker-env
+    volumes:
+      - ./backend/src/rq_worker_main.py:/backend/src/rq_worker_main.py
+      - ./backend/src/app:/backend/src/app
+      - ./backend/src/integration_tests:/backend/src/integration_tests
+      - ./backend/src/migrations:/backend/src/migrations
+      - ./.boltz:/.boltz
+    entrypoint: /opt/conda/envs/worker/bin/python -m flask rq worker boltz
+
+  jupyter:
+    <<: *worker-base
+    build:
+      context: .
+      dockerfile: worker/Dockerfile.esm # Dockerfile.prosst
+    environment: *worker-env
+    volumes: *worker-volumes
+    ports:
+      - 127.0.0.1:8888:8888  # Expose Jupyter port
+    entrypoint: /opt/conda/envs/worker/bin/jupyter lab --ip=0.0.0.0 --port=8888 --no-browser --allow-root --notebook-dir=/backend/src --NotebookApp.token='thefoldytoken'
 
   db:
     environment:

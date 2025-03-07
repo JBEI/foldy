@@ -42,7 +42,7 @@ export function FoldyMascot(props: FoldyMascotProps) {
           right: "10px",
           zIndex: 1,
         }}
-        src={`${process.env.PUBLIC_URL}/pksito.gif`}
+        src={`/pksito.gif`}
         alt=""
       />
     </div>

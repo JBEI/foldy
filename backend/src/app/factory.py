@@ -1,0 +1,275 @@
+import json
+import os
+
+from flask import Flask, jsonify
+from flask.helpers import make_response
+from flask_admin.contrib.sqla import ModelView
+from flask_admin.form.fields import JSONField
+from flask_jwt_extended.view_decorators import (
+    jwt_required,
+    verify_jwt_in_request,
+)
+from flask_restx import Api
+from flask_restx import Resource
+from flask_cors import CORS
+from flask_jwt_extended.exceptions import JWTExtendedException
+from jwt.exceptions import ExpiredSignatureError
+from flask_jwt_extended import JWTManager
+from flask_jwt_extended.utils import get_jwt
+from markupsafe import Markup
+import werkzeug
+from werkzeug.exceptions import BadRequest, HTTPException
+from werkzeug.middleware.dispatcher import DispatcherMiddleware
+from prometheus_client import make_wsgi_app
+from wtforms import TextAreaField
+from wtforms.widgets import TextArea
+
+from app import models
+from app.extensions import admin, db, migrate, rq, compress
+from app.authorization import user_jwt_grants_edit_access
+import rq_dashboard
+
+
+app = Flask(__name__)
+
+
+def createRestxApi():
+    api = Api(doc="/doc/", validate=True)
+
+    # Handle authentication errors.
+    @api.errorhandler(JWTExtendedException)
+    @api.errorhandler(ExpiredSignatureError)
+    def handle_expired_signature(error):
+        return {"message": "Login failed: %s" % str(error)}, 401
+
+    return api
+
+
+def register_extensions(app):
+    """Registers Flask extensions."""
+
+    class VerifiedModelView(ModelView):
+        def is_accessible(self):
+            verify_jwt_in_request()
+            return user_jwt_grants_edit_access(get_jwt()["user_claims"])
+
+        # Add these defaults for all model views
+        column_display_pk = True
+        column_default_sort = "id"
+
+    class UserModelView(VerifiedModelView):
+        column_list = ["email", "created_at", "access_type", "num_folds", "attributes"]
+        column_editable_list = ["created_at", "access_type"]
+        column_sortable_list = ["email", "created_at", "access_type"]
+        column_searchable_list = ["email", "access_type"]
+        can_export = True
+        page_size = 50
+
+    class FoldModelView(VerifiedModelView):
+        can_export = True
+        page_size = 50
+        column_display_pk = True
+        column_default_sort = "id"
+        can_set_page_size = True
+        can_export = True
+        column_editable_list = [
+            # "name",
+            "user",
+            "tagstring",
+            "create_date",
+            "af2_model_preset",
+            "disable_relaxation",
+            "sequence",
+        ]
+        column_searchable_list = ["id", "name", "sequence", "tagstring"]
+        column_exclude_list = [
+            "features_log",
+            "models_log",
+        ]
+        column_default_sort = ("id", True)
+        form_overrides = {
+            "yaml_config": TextAreaField,
+        }
+        form_widget_args = {
+            "yaml_config": {
+                "rows": 10,
+                "style": "width: 100%;",
+            }
+        }
+
+        def _sequence_formatter(view, context, model, name):
+            return Markup(
+                f"<div style='overflow-x: auto; width: 100px'>{model.sequence}</div>"
+            )
+
+        # def _features_log_formatter(view, context, model, name):
+        #   return Markup(f"<div style='overflow-y: auto'>{model.features_log}</div>")
+        # def _models_log_formatter(view, context, model, name):
+        #   return Markup(f"<div style='overflow-y: auto'>{model.models_log}</div>")
+        column_formatters = {
+            "sequence": _sequence_formatter,
+            # 'features_log': _features_log_formatter,
+            # 'models_log': _models_log_formatter,
+        }
+
+    class InvokationModelView(VerifiedModelView):
+        column_searchable_list = ["id", "fold_id", "type", "state", "log", "command"]
+        column_editable_list = ["state"]
+
+    class DockModelView(VerifiedModelView):
+        can_export = True
+        page_size = 50
+        column_display_pk = True
+        column_default_sort = "id"
+        can_set_page_size = True
+        column_editable_list = [
+            # "name",
+            "ligand_name",
+            "ligand_smiles",
+            "tool",
+            "receptor_fold_id",
+            "receptor_fold",
+            "bounding_box_residue",
+            "bounding_box_radius_angstrom",
+        ]
+
+    class LogitModelView(VerifiedModelView):
+        column_list = [
+            "id",
+            "name",
+            "fold",
+            "fold.user",
+            "logit_model",
+            "use_structure",
+        ]
+        column_sortable_list = ["id", "name", "logit_model", "use_structure"]
+        column_searchable_list = ["name", "logit_model"]
+
+    class EmbeddingModelView(VerifiedModelView):
+        column_list = [
+            "id",
+            "name",
+            "fold",
+            "fold.user",
+            "embedding_model",
+            "extra_seq_ids",
+            "dms_starting_seq_ids",
+        ]
+        column_sortable_list = ["id", "name", "embedding_model"]
+        column_searchable_list = ["name", "embedding_model"]
+
+        # Add custom CSS to truncate/scroll long text in extra_seq_ids column
+        column_formatters = {
+            "extra_seq_ids": lambda v, c, m, p: Markup(
+                f'<div style="max-width:200px; overflow-x:auto; white-space:nowrap;">{m.extra_seq_ids}</div>'
+            )
+        }
+
+    class EvolutionModelView(VerifiedModelView):
+        column_list = [
+            "id",
+            "name",
+            "fold",
+            "fold.user",
+            "mode",
+            "embedding_files",
+            "finetuning_model_checkpoint",
+        ]
+        column_sortable_list = ["id", "name"]
+        column_searchable_list = ["name"]
+
+    admin.add_view(UserModelView(models.User, db.session))
+    admin.add_view(FoldModelView(models.Fold, db.session))
+    admin.add_view(InvokationModelView(models.Invokation, db.session))
+    admin.add_view(DockModelView(models.Dock, db.session))
+    admin.add_view(LogitModelView(models.Logit, db.session))
+    admin.add_view(EmbeddingModelView(models.Embedding, db.session))
+    admin.add_view(EvolutionModelView(models.Evolution, db.session))
+    admin.init_app(app)
+    db.init_app(app)
+    migrate.init_app(app, db)
+    rq.init_app(app)
+    compress.init_app(app)
+
+
+def create_app(config_object="settings"):
+    """Creates the app.
+
+    args:
+    test_config: optional dict of overrides to the defaults of flask config.
+    """
+    app = Flask(__name__.split(".")[0])
+
+    app.config.from_object(config_object)
+
+    if app.config.get("ENV") == "development":
+        print("ALLOWING CORS (security risk - do not enable when serving PHI!")
+        CORS(app)
+    else:
+        print("NOT ALLOWING CORS: environment is %s" % app.config.get("ENV"))
+
+    jwt = JWTManager(app)
+
+    from app.views.login_views import ns as login_views_ns, oauth
+    from app.views.admin_views import ns as admin_views_ns
+    from app.views.file_views import ns as file_views_ns
+    from app.views.esm_views import ns as esm_views_ns
+    from app.views.evolve_views import ns as evolve_views_ns
+    from app.views.other_views import ns as other_views_ns
+
+    api = createRestxApi()
+    register_extensions(app)
+
+    @api.route("/healthz", strict_slashes=False)
+    class HealthCheckResource(Resource):
+        def get(self):
+            return True
+
+    @app.errorhandler(ValueError)
+    @app.errorhandler(BadRequest)
+    @api.errorhandler(BadRequest)
+    @api.errorhandler(ValueError)
+    def handle_unexpected_error(error):
+        # Found here: https://newbedev.com/python-flask-json-error-message-format-code-example
+        if hasattr(error, "description"):
+            message = str(error.description)
+        else:
+            message = str(error)
+
+        return {"message": message}, 400
+
+    api.add_namespace(login_views_ns, "/api")
+    api.add_namespace(admin_views_ns, "/api")
+    api.add_namespace(file_views_ns, "/api")
+    api.add_namespace(esm_views_ns, "/api")
+    api.add_namespace(evolve_views_ns, "/api")
+    api.add_namespace(other_views_ns, "/api")
+
+    api.init_app(app)
+
+    oauth.init_app(app)
+
+    # https://github.com/Parallels/rq-dashboard/issues/464
+    rq_dashboard.web.setup_rq_connection(app)
+
+    # @rq_dashboard.blueprint.before_request
+    @jwt_required(fresh=True)
+    def before_request():
+        """Protect RQ pages."""
+        pass
+
+    app.register_blueprint(
+        rq_dashboard.blueprint,
+        url_prefix="/rq",
+    )
+
+    # Add prometheus wsgi middleware to route /metrics requests
+    app.wsgi_app = DispatcherMiddleware(app.wsgi_app, {"/metrics": make_wsgi_app()})
+
+    from app import metrics
+
+    return app
+
+
+if __name__ == "__main__":
+    app.run(debug=True, host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))

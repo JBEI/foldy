@@ -44,7 +44,7 @@ This view exposes information about the Redis Queue, which manages queued jobs. 
 
 ### Admin View
 
-Build on Flask-Admin, this view exposes the underlying databases directly. Flask-Admin is very configurable: to change the features, modify `backend/backend/app/app.py`. Here you can correct underlying data mistakes or make changes under the hood. Very useful in development mode.
+Build on Flask-Admin, this view exposes the underlying databases directly. Flask-Admin is very configurable: to change the features, modify `backend/src/app/app.py`. Here you can correct underlying data mistakes or make changes under the hood. Very useful in development mode.
 
 ![](views/interface_admin_view.png)
 

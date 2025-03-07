@@ -13,12 +13,12 @@ const About = (props: { userType: string | null }) => (
   >
     <h1>About</h1>
     <p>
-      Thanks for using <b>{process.env.REACT_APP_INSTITUTION} Foldy</b>, a
+      Thanks for using <b>{import.meta.env.VITE_INSTITUTION} Foldy</b>, a
       Keasling Lab project to get AlphaFold structures in the hands of more
       folks.
     </p>
     <p>
-      Users at {process.env.REACT_APP_INSTITUTION} have <b>editor</b> permission
+      Users at {import.meta.env.VITE_INSTITUTION} have <b>editor</b> permission
       to this Foldy instance, all others have <b>viewer</b> permissions.{" "}
       {props.userType ? getDescriptionOfUserType(props.userType) : null}
     </p>

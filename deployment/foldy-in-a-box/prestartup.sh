@@ -5,4 +5,4 @@
   --project-directory . \
   down
 
-/opt/deeplearning/install-driver.sh
+# /opt/deeplearning/install-driver.sh

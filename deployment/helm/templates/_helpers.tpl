@@ -88,10 +88,10 @@ spec:
   failedJobsHistoryLimit: 5                   # Optional. Default: 100. How many failed jobs should be kept.
   # envSourceContainerName: {container-name}    # Optional. Default: .spec.JobTargetRef.template.spec.containers[0]
   minReplicaCount: 0                          # Optional. Default: 0
-  maxReplicaCount: {{ if eq .RqQueueName "cpu" -}}
+  maxReplicaCount: {{ if (eq .RqQueueName "cpu") -}}
     10
   {{- else -}}
-    3
+    1
   {{- end }}
   rollout:
     strategy: gradual                         # Optional. Default: default. Which Rollout Strategy KEDA will use.
@@ -136,13 +136,17 @@ spec:
         volumes:
           - name: foldydbs
             persistentVolumeClaim:
-             claimName: foldydbs
+              claimName: foldydbs
+          - name: dshm
+            emptyDir:
+              medium: Memory
+              sizeLimit: 20Gi  
 
         nodeSelector:
           iam.gke.io/gke-metadata-server-enabled: "true"
-        {{- if or (eq .RqQueueName "gpu") (eq .RqQueueName "biggpu") }}
+        {{- if or (or (or (eq .RqQueueName "gpu") (eq .RqQueueName "biggpu")) (eq .RqQueueName "esm")) (eq .RqQueueName "boltz") }}
           cloud.google.com/gke-nodepool: spota100nodes
-        {{- else if eq .RqQueueName "cpu" }}
+        {{- else if (eq .RqQueueName "cpu") }}
           cloud.google.com/gke-nodepool: spothighmemnodes
         {{- end }}
 
@@ -154,12 +158,12 @@ spec:
 
         containers:
         - name: master
-          image: {{ .Values.GoogleCloudRegion }}-docker.pkg.dev/{{ .Values.GoogleProjectId }}/{{ .Values.ArtifactRepo }}/worker:{{  .Values.ImageVersion }}
-          command: ["/opt/conda/envs/worker/bin/flask"]
-          args: ["rq", "worker", {{ required "RqQueueName is required." .RqQueueName | quote }}, "--burst", "--max-jobs", "1"]
+          image: {{ .Values.GoogleCloudRegion }}-docker.pkg.dev/{{ .Values.GoogleProjectId }}/{{ .Values.ArtifactRepo }}/{{ required "image name is required" .ImageName }}:{{  .Values.ImageVersion }}
+          command: ["/opt/conda/envs/worker/bin/python"]
+          args: ["-m", "flask", "rq", "worker", {{ required "RqQueueName is required." .RqQueueName | quote }}, "--burst", "--max-jobs", "1"]
           env:
           - name: FLASK_APP
-            value: /backend/backend/rq_worker_main.py
+            value: rq_worker_main.py
           - name: RUN_AF2_PATH
             value: /worker/run_alphafold.sh
           - name: DECOMPRESS_PKLS_PATH
@@ -176,15 +180,17 @@ spec:
           volumeMounts:
           - mountPath: "/foldydbs"
             name: foldydbs
+          - mountPath: /dev/shm
+            name: dshm  # for example
           resources:
             {{- if eq .RqQueueName "emailparrot" }}
             requests:
               cpu: 100m
               memory: 100Mi
-            {{- else if eq .RqQueueName "cpu" }}
+            {{- else if (eq .RqQueueName "cpu") }}
             requests:
-              cpu: 7000m
-              memory: 50Gi
+              cpu: 15000m
+              memory: 115Gi
             {{- else }}
             requests:
               cpu: 10000m

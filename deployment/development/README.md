@@ -31,7 +31,7 @@ Make sure you have the following tools installed on your machine:
    docker compose \
      --file deployment/development/docker-compose.yml \
      --project-directory . \
-     exec backend flask db upgrade
+     exec backend python -m flask db upgrade
    ```
 
 5. Access the Foldy website at http://localhost:3000 in your browser.
@@ -55,17 +55,17 @@ docker compose \
 docker compose \
      --file deployment/development/docker-compose.yml \
      --project-directory . \
-     exec backend flask db upgrade
+     exec backend python -m flask db upgrade
 ```
 
 ### Development Tasks
 
 > Protein structure prediction tasks in the development environment are not actually performed.
 > Instead a few test cases have been precomputed that auto-complete once queued.
-> Example outputs are stored in a read-only on-disk object store, at `/backend/backend/integration_tests/testdata/`. You can queue the following proteins and docks to have their structures auto-populated in the UI:
+> Example outputs are stored in a read-only on-disk object store, at `/backend/src/integration_tests/testdata/`. You can queue the following proteins and docks to have their structures auto-populated in the UI:
 > * Fold 1
 >    * Name: <anything>
->    * Sequence: `MNKREILKRLLSYLFEDKKGFAIAAVFLLIAAAADVSGPWLIRIFLDDYVSKDHYPAMMLWALAIGYITVTILSGFLHYAYGIRFSRIAVSIVQTIRKKVYASIINQPLSSFDYVPAGKLVSRVTNDTESLKELYVQVVASFLQSLALITAMLTAMYLLSPTLTLVVAILLPSVVLVMYYYQRRSSDPYRESRDLLTDINGVMSESIQGMSLIQLMGQEQRFSERFASLNERHLGAEVRIVKINGIFLRPLIDLLSGIALVSLVAIFGWQGHEVIGVGVLYAFISYLGRVTEPLIELMQRLSLLQQAIMAGERLFELMDAKQHQYGEDDAPIARGDINVSDVNFSYDGTTPVLNNISVSVKEGGFLALVGHTGSGKSTLASLLMGFYPPSSGEIQLGGRPIASLSQNALRNGIALVQQDPHVLPSSFRDNVTLGRNVSDEAVWDALFLVDMADYVRELPNALNTLLGTGDVSLSAGQKQLLALARVLVDKPRILILDEATANIDSGTEERVQQALSALRNTMTIVVIAHRLSTIADADNIMVLHRGHVEEQGAHQALLAQQGRYWQMYQLQKTRAHLKELEEQARD`
+>    * Sequence: `MEHLYLSLVLLFVSSISLSLFFLFYKHKSMFTGANLPPGKIGYPLIGESLEFLSTGWKGHPEKFIFDRMSKYSSQIFKTSILGEPTAVFPGAVCNKFLFSNENKLVNAWWPASVDKIFPSSLQTSSKEEAKKMRKLLPQFLKPEALHRYIGIMDSIAQRHFADSWENKNQVIVFPLAKRYTFWLACRLFISVEDPTHVSRFADPFQLLAAGIISIPIDLPGTPFRKAINASQFIRKELLAIIRQRKIDLGEGKASPTQDILSHMLLTCDENGQYMNELDIADKILGLLVGGHDTASAACTFVVKFLAELPHIYEQVYKEQMEIAKSKVPGELLNWEDIQKMKYSWNVACEVMRLAPPLQGAFREAITDFVFNGFSIPKGWKLYWSANSTHKSPDYFPEPDKFDPTRFEGNGPAPYTFVPFGGGPRMCPGKEYARLEILVFMHNLVKRFKWEKLVPDEKIVVDPMPIPAKGLPVRLYPHKA`
 >    * Dock: 
 >      * Name: nadhd2
 >      * Tool: diffdock

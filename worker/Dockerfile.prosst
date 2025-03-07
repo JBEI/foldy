@@ -1,0 +1,75 @@
+# FROM nvidia/cuda:12.2.0-devel-ubuntu20.04
+FROM nvidia/cuda:11.8.0-cudnn8-devel-ubuntu22.04
+
+COPY backend/requirements.txt /backend/
+COPY worker/scripts/setup.sh /scripts/setup.sh
+RUN /scripts/setup.sh
+
+# COPY worker/schmirler_et_al_finetune.yml /schmirler_et_al_finetune.yml
+# RUN /opt/conda/bin/conda env update -n worker --file /schmirler_et_al_finetune.yml
+# Install OpenSSL development packages and build tools
+RUN apt-get update && apt-get install -y \
+    libssl-dev \
+    pkg-config \
+    gcc \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN /opt/conda/bin/conda create -y -n prosst python=3.10
+
+# 3) Install matching PyTorch & PyG for Python 3.10 & CUDA 11.8
+#    (For Torch 2.1.0; you can adjust versions if needed.)
+RUN /opt/conda/envs/prosst/bin/pip install --no-cache-dir \
+  --timeout 300 \
+  --retries 10 \
+  torch==2.1.0+cu118 torchvision==0.16.0+cu118 torchaudio==2.1.0+cu118 \
+     -f https://download.pytorch.org/whl/cu118/torch_stable.html
+
+RUN /opt/conda/envs/prosst/bin/pip install --no-cache-dir \
+  --timeout 300 \
+  --retries 10 \
+  pyg_lib torch_scatter torch_sparse torch_cluster torch_spline_conv torch_geometric \
+     -f https://data.pyg.org/whl/torch-2.1.0+cu118.html
+
+
+# 5) Remove pinned torch / PyG lines from your requirements so they won't overwrite
+RUN sed -i '/^torch==/d' /tmp/requirements.txt && \
+     sed -i '/^torch_geometric==/d' /tmp/requirements.txt && \
+     sed -i '/^torch-sparse==/d' /tmp/requirements.txt && \
+     sed -i '/^torch-scatter==/d' /tmp/requirements.txt && \
+     sed -i '/^torch-cluster==/d' /tmp/requirements.txt && \
+     sed -i '/^torch-spline-conv==/d' /tmp/requirements.txt && \
+     sed -i '/^pyg-lib==/d' /tmp/requirements.txt
+COPY worker/ProSST/requirements.txt /tmp/requirements.txt
+RUN /opt/conda/envs/prosst/bin/pip install -r /tmp/requirements.txt
+
+COPY worker/ProSST /worker/ProSST
+ENV PYTHONPATH=$PYTHONPATH:/worker/ProSST
+
+
+
+# RUN git clone https://github.com/ginnm/ProSST.git && \
+#     cd ProSST && \
+#     /opt/conda/envs/worker/bin/pip install -r requirements.txt
+# ENV PYTHONPATH=$PYTHONPATH:$(pwd)
+
+# # Download the huggingface models...
+# RUN HF_HUB_ENABLE_HF_TRANSFER=1 /opt/conda/envs/worker/bin/huggingface-cli download \
+#   --resume-download \
+#   --local-dir /hf-cache/ \
+#   EvolutionaryScale/esmc-300m-2024-12 data/weights/esmc_300m_2024_12_v0.pth
+
+# Copy application code.
+COPY backend/ /backend/
+COPY worker/*.sh /worker/
+COPY worker/*.py /worker/
+COPY worker/docking/* /worker/docking/
+
+# Gotta set the workdir so that the entrypoint can find the rq_worker_main.py.
+WORKDIR /backend/src
+
+# Make sure to use the exec form of ENTRYPOINT, rather than the shell
+# form, so that SIGTERM gets propagated to rq.
+# https://medium.com/@tasdikrahman/handling-signals-for-applications-running-in-kubernetes-dc6537f9b542
+# https://docs.docker.com/engine/reference/builder/#entrypoint
+ENTRYPOINT ["/opt/conda/envs/worker/bin/flask"]

@@ -62,7 +62,7 @@ mkdir $OUT_DIR/$PADDED_ID/pfam
     $OUT_DIR/$PADDED_ID/${PADDED_ID}.fasta
 # For debugging purposes...
 cat $OUT_DIR/$PADDED_ID/pfam/pfam.txt
-/opt/conda/bin/python \
+/opt/conda/envs/worker/bin/python \
     /worker/parse_hmmscan.py \
     $OUT_DIR/$PADDED_ID/pfam/pfam.txt \
     $OUT_DIR/$PADDED_ID/pfam/pfam.json

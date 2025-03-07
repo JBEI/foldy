@@ -142,3 +142,9 @@ db_creation_resources.yaml
 # Frontend files.
 **/node_modules
 **/secrets
+
+# Generally don't commit the local directory for foldy
+backend/src/integration_tests/testdata/
+backend/src/notebooks/*
+backend/src/integration_tests/testdata/*/evolve/*
+.boltz/

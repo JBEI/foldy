@@ -3,7 +3,7 @@ kind: ConfigMap
 metadata:
   name: foldy-configmap
 data:
-  FLASK_ENV: "production"
+  ENV: "production"
   DEBUG: "False"
   OAUTH_REDIRECT_URI: "https://{{ required "Must specify FoldyDomain" .Values.FoldyDomain }}/api/authorize"
   BACKEND_URL: "https://{{ required "Must specify FoldyDomain" .Values.FoldyDomain }}"
@@ -13,7 +13,7 @@ data:
   FOLDY_STORAGE_TYPE: "Cloud"
   FOLDY_GCLOUD_PROJECT: "{{ required "Must specify GoogleProjectId" .Values.GoogleProjectId }}"
   FOLDY_GSTORAGE_DIR: "{{ required "Must specify FoldyGstorageDir" .Values.FoldyGstorageDir }}"
-  RQ_REDIS_URL: "redis://redis:6379/0"
+  RQ_REDIS_URL: "redis://10.36.225.3:6379/0"
   PORT: "8080"  # Specifies the backend port.
 
 ---
@@ -41,44 +41,44 @@ metadata:
   name: foldy-ksa
   namespace: default
 
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: redis
-  labels:
-    app: redis
-spec:
-  ports:
-  - port: 6379
-    targetPort: 6379
-  selector:
-    app: redis
+# ---
+# apiVersion: v1
+# kind: Service
+# metadata:
+#   name: redis
+#   labels:
+#     app: redis
+# spec:
+#   ports:
+#   - port: 6379
+#     targetPort: 6379
+#   selector:
+#     app: redis
 
----
-apiVersion: apps/v1 #  for k8s versions before 1.9.0 use apps/v1beta2  and before 1.8.0 use extensions/v1beta1
-kind: Deployment
-metadata:
-  name: redis
-spec:
-  selector:
-    matchLabels:
-      app: redis
-  replicas: 1
-  template:
-    metadata:
-      labels:
-        app: redis
-    spec:
-      containers:
-      - name: master
-        image: redis:6.2.7-alpine # k8s.gcr.io/redis:e2e  # or just image: redis
-        resources:
-          requests:
-            cpu: 100m
-            memory: 100Mi
-        ports:
-        - containerPort: 6379
+# ---
+# apiVersion: apps/v1 #  for k8s versions before 1.9.0 use apps/v1beta2  and before 1.8.0 use extensions/v1beta1
+# kind: Deployment
+# metadata:
+#   name: redis
+# spec:
+#   selector:
+#     matchLabels:
+#       app: redis
+#   replicas: 1
+#   template:
+#     metadata:
+#       labels:
+#         app: redis
+#     spec:
+#       containers:
+#       - name: master
+#         image: redis:6.2.7-alpine # k8s.gcr.io/redis:e2e  # or just image: redis
+#         resources:
+#           requests:
+#             cpu: 100m
+#             memory: 100Mi
+#         ports:
+#         - containerPort: 6379
 
 
 ---
@@ -155,10 +155,10 @@ spec:
         resources:
           requests:
             cpu: 1000m
-            memory: 1Gi
+            memory: 2Gi
           limits:
             cpu: 1000m
-            memory: 1Gi
+            memory: 2Gi
         ports:
         - name: backend-port
           containerPort: 8080
@@ -302,16 +302,22 @@ spec:
 
 
 ---
-{{ include "foldy.createWorkerPool" (deepCopy . | merge (dict "RqQueueName" "cpu")) }}
+{{ include "foldy.createWorkerPool" (deepCopy . | merge (dict "RqQueueName" "cpu") | merge (dict "ImageName" "worker")) }}
 
 ---
-{{ include "foldy.createWorkerPool" (deepCopy . | merge (dict "RqQueueName" "emailparrot")) }}
+{{ include "foldy.createWorkerPool" (deepCopy . | merge (dict "RqQueueName" "esm") | merge (dict "ImageName" "worker_esm")) }}
 
 ---
-{{ include "foldy.createWorkerPool" (deepCopy . | merge (dict "RqQueueName" "gpu")) }}
+{{ include "foldy.createWorkerPool" (deepCopy . | merge (dict "RqQueueName" "boltz") | merge (dict "ImageName" "worker_boltz")) }}
 
 ---
-{{ include "foldy.createWorkerPool" (deepCopy . | merge (dict "RqQueueName" "biggpu")) }}
+{{ include "foldy.createWorkerPool" (deepCopy . | merge (dict "RqQueueName" "emailparrot") | merge (dict "ImageName" "worker")) }}
+
+---
+{{ include "foldy.createWorkerPool" (deepCopy . | merge (dict "RqQueueName" "gpu") | merge (dict "ImageName" "worker")) }}
+
+---
+{{ include "foldy.createWorkerPool" (deepCopy . | merge (dict "RqQueueName" "biggpu") | merge (dict "ImageName" "worker")) }}
 
 ---
 # Prometheus frontend proxy, based on instructions here:
