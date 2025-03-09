@@ -1,5 +1,7 @@
 import pandas as pd
 import json
+import logging
+from typing import Dict, Any, List, Tuple, Union, Optional, BinaryIO, cast
 
 import numpy as np
 from flask import request
@@ -10,6 +12,7 @@ from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import BadRequest
 from sklearn.ensemble import RandomForestRegressor
 from pathlib import Path
+from rq.job import Job
 
 from app.views.other_views import evolution_fields
 from app.authorization import verify_has_edit_access
@@ -41,7 +44,15 @@ upload_parser.add_argument(
 @ns.route("/evolve")
 class EvolveResource(Resource):
     @ns.marshal_with(evolution_fields)
-    def get(self, evolution_id: int):
+    def get(self, evolution_id: int) -> Evolution:
+        """Get evolution record by ID.
+        
+        Args:
+            evolution_id: ID of the evolution to retrieve
+            
+        Returns:
+            Evolution record
+        """
         evolution = Evolution.query.get(evolution_id)
         return evolution
 
@@ -49,20 +60,28 @@ class EvolveResource(Resource):
     @ns.expect(upload_parser)
     @ns.marshal_with(evolution_fields)
     # @ns.consumes('multipart/form-data')
-    def post(self):
+    def post(self) -> Evolution:
+        """Create a new evolution job with activity data file.
+        
+        Returns:
+            Newly created Evolution record
+            
+        Raises:
+            BadRequest: If required fields are missing or if fold is not found
+        """
         args = upload_parser.parse_args()
 
         # Get form data
-        name = args["name"]
-        fold_id = int(args["fold_id"])
-        activity_file = args["activity_file"]
-        evolve_directory = Path("evolve") / name
+        name: str = args["name"]
+        fold_id: int = int(args["fold_id"])
+        activity_file: FileStorage = args["activity_file"]
+        evolve_directory: Path = Path("evolve") / name
 
-        mode = args["mode"]
-        embedding_paths = (
+        mode: str = args["mode"]
+        embedding_paths: Optional[List[str]] = (
             json.loads(args["embedding_paths"]) if args["embedding_paths"] else None
         )
-        finetuning_model_checkpoint = (
+        finetuning_model_checkpoint: Optional[str] = (
             args["finetuning_model_checkpoint"]
             if args["finetuning_model_checkpoint"]
             else None
@@ -88,6 +107,7 @@ class EvolveResource(Resource):
         ).first()
         if existing_evolve:
             # Delete existing evolve job.
+            logging.info(f"Deleting existing evolution job {existing_evolve.id} for {name}")
             existing_evolve.delete()
 
         # 1. Upload the activity file to the storage manager.
@@ -99,16 +119,16 @@ class EvolveResource(Resource):
             fold_id=fold_id,
             file_path=str(
                 evolve_directory / "activity.xlsx"
-            ),  # or whatever path/extension you wan_t
+            ),  # or whatever path/extension you want
             contents=activity_file.read(),
             binary=True,
         )
 
         # 2. Create an invokation record for the evolve job.
-        new_invokation_id = get_job_type_replacement(fold, f"evolve_{name}")
+        new_invokation_id: int = get_job_type_replacement(fold, f"evolve_{name}")
 
         # 3. Create a new Evolution record.
-        evolve_record = Evolution.create(
+        evolve_record: Evolution = Evolution.create(
             name=name,
             fold_id=fold_id,
             mode=mode,
@@ -117,18 +137,22 @@ class EvolveResource(Resource):
             invokation_id=new_invokation_id,
         )
 
+        # 4. Start the job based on mode
+        enqueued_job: Job
+        
         if mode == "finetuning":
-            # 4. Start the job.
-            job = rq.get_queue("esm").enqueue(
+            enqueued_job = rq.get_queue("esm").enqueue(
                 esm_jobs.finetune_esm_model,
                 evolve_record.id,
                 job_timeout="12h",
                 result_ttl=48 * 60 * 60,  # 2 days
             )
+            logging.info(f"Queued finetuning job {enqueued_job.id} for evolution {evolve_record.id}")
         else:
-            # 4. Start the job.
-            job = rq.get_queue("cpu").enqueue(
+            enqueued_job = rq.get_queue("cpu").enqueue(
                 evolve_jobs.run_evolvepro,
                 evolve_record.id,
             )
+            logging.info(f"Queued {mode} job {enqueued_job.id} for evolution {evolve_record.id}")
+            
         return evolve_record

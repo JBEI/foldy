@@ -1,5 +1,7 @@
 import io
 import re
+import logging
+from typing import Dict, Any, List, Tuple, Union, Optional, cast
 
 from flask import Response, stream_with_context
 from flask import current_app, request, send_file, make_response
@@ -11,6 +13,7 @@ from flask_restx import fields
 from flask_restx import reqparse
 from sqlalchemy.sql.elements import and_
 from werkzeug.exceptions import BadRequest
+from rq.job import Job
 
 from app.jobs import other_jobs
 from app.jobs import esm_jobs
@@ -26,7 +29,7 @@ from app.views.other_views import logit_fields
 
 ns = Namespace("esm_views", decorators=[jwt_required(fresh=True)])
 
-ALLOWED_ESM_MODELS = [
+ALLOWED_ESM_MODELS: List[str] = [
     "esmc_600m",
     "esmc_300m",
     "esm3-open",
@@ -41,7 +44,7 @@ ALLOWED_ESM_MODELS = [
     "esm1v",
 ]
 
-ALLOWED_LOGITS_MODELS = ALLOWED_ESM_MODELS + ["esm1v_t33_650M_UR90S_ensemble"]
+ALLOWED_LOGITS_MODELS: List[str] = ALLOWED_ESM_MODELS + ["esm1v_t33_650M_UR90S_ensemble"]
 
 
 embeddings_fields = ns.model(
@@ -59,13 +62,24 @@ embeddings_fields = ns.model(
 class CalculateEmbeddingsResource(Resource):
     @verify_has_edit_access
     @ns.expect(embeddings_fields)
-    def post(self, fold_id):
+    def post(self, fold_id: int) -> bool:
+        """Create a new embedding calculation job for a fold.
+        
+        Args:
+            fold_id: ID of the fold to create embeddings for
+            
+        Returns:
+            True if the embedding job was successfully created
+            
+        Raises:
+            BadRequest: If embedding model is not allowed or fold doesn't exist
+        """
         req = request.get_json()
 
-        batch_name = req["batch_name"]
-        embedding_model = req["embedding_model"]
-        extra_seq_ids = req.get("extra_seq_ids", [])
-        dms_starting_seq_ids = req.get("dms_starting_seq_ids", [])
+        batch_name: str = req["batch_name"]
+        embedding_model: str = req["embedding_model"]
+        extra_seq_ids: List[str] = req.get("extra_seq_ids", [])
+        dms_starting_seq_ids: List[str] = req.get("dms_starting_seq_ids", [])
 
         extra_seq_ids = [seq_id.strip() for seq_id in extra_seq_ids if seq_id.strip()]
         dms_starting_seq_ids = [
@@ -78,6 +92,9 @@ class CalculateEmbeddingsResource(Resource):
             )
 
         fold = Fold.get_by_id(fold_id)
+        
+        if not fold:
+            raise BadRequest(f"Fold with ID {fold_id} not found")
 
         new_invokation_id = get_job_type_replacement(fold, f"embed_{batch_name}")
 
@@ -91,30 +108,14 @@ class CalculateEmbeddingsResource(Resource):
         )
 
         esm_q = rq.get_queue("esm")
-        esm_q.enqueue(
+        enqueued_job = esm_q.enqueue(
             esm_jobs.get_esm_embeddings,
             embed_record.id,
             job_timeout="12h",
             result_ttl=48 * 60 * 60,  # 2 days
         )
-
-        # name = Column(db.String, nullable=False)
-
-        # fold_id = Column(
-        #     db.Integer, db.ForeignKey("roles.id", ondelete="CASCADE", onupdate="CASCADE")
-        # )
-        # fold = relationship("Fold", back_populates="embeddings")
-
-        # embedding_model = Column(db.String, nullable=False)
-        # extra_seq_ids = Column(db.String)
-        # dms_starting_seq_ids = Column(db.String)
-
-        # # State tracking.
-        # invokation_id = Column(
-        #     db.Integer,
-        #     db.ForeignKey("invokation.id", ondelete="CASCADE", onupdate="CASCADE"),
-        # )
-
+        
+        logging.info(f"Queued embedding job {enqueued_job.id} for fold {fold_id}, model {embedding_model}")
         return True
 
 
@@ -123,13 +124,24 @@ class StartLogitsResource(Resource):
     @verify_has_edit_access
     @ns.expect(logit_fields)
     @ns.marshal_with(logit_fields)
-    def post(self, fold_id):
+    def post(self, fold_id: int) -> Logit:
+        """Create a new logit calculation job for a fold.
+        
+        Args:
+            fold_id: ID of the fold to create logits for
+            
+        Returns:
+            The created Logit record 
+            
+        Raises:
+            BadRequest: If logit model is not allowed or fold doesn't exist
+        """
         req = request.get_json()
 
-        name = req["name"]
-        logit_model = req["logit_model"]
-        use_structure = req.get("use_structure", False)
-        get_depth_two_logits = req.get("get_depth_two_logits", False)
+        name: str = req["name"]
+        logit_model: str = req["logit_model"]
+        use_structure: bool = req.get("use_structure", False)
+        get_depth_two_logits: bool = req.get("get_depth_two_logits", False)
 
         if logit_model not in ALLOWED_LOGITS_MODELS:
             raise BadRequest(
@@ -137,16 +149,20 @@ class StartLogitsResource(Resource):
             )
 
         fold = Fold.get_by_id(fold_id)
+        
+        if not fold:
+            raise BadRequest(f"Fold with ID {fold_id} not found")
 
         existing_logit = Logit.query.filter(
             Logit.name == name, Logit.fold_id == fold_id
         ).first()
         if existing_logit:
+            logging.info(f"Deleting existing logit job {existing_logit.id} for {name}")
             existing_logit.delete()
 
-        new_invokation_id = get_job_type_replacement(fold, f"logits_{name}")
+        new_invokation_id: int = get_job_type_replacement(fold, f"logits_{name}")
 
-        logit_record = Logit.create(
+        logit_record: Logit = Logit.create(
             name=name,
             fold_id=fold_id,
             logit_model=logit_model,
@@ -156,11 +172,16 @@ class StartLogitsResource(Resource):
         )
 
         esm_q = rq.get_queue("esm")
-        esm_q.enqueue(
+        enqueued_job = esm_q.enqueue(
             esm_jobs.get_esm_logits,
             logit_record.id,
             job_timeout="12h",
             result_ttl=48 * 60 * 60,  # 2 days
+        )
+        
+        logging.info(
+            f"Queued logit job {enqueued_job.id} for fold {fold_id}, model {logit_model}, "
+            f"use_structure={use_structure}, get_depth_two_logits={get_depth_two_logits}"
         )
 
         return logit_record

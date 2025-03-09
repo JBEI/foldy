@@ -4,6 +4,7 @@ Copied from https://github.com/cookiecutter-flask/cookiecutter-flask
 """
 
 from datetime import datetime, UTC
+from typing import List, Dict, Any, Optional, Union
 
 from sqlalchemy.ext.hybrid import hybrid_property, hybrid_method
 from sqlalchemy import func
@@ -31,7 +32,7 @@ class Invokation(PkModel):
     command = Column(db.Text, nullable=True)
     log = deferred(Column(db.Text, nullable=True))
 
-    def __init__(self, fold_id, type, state):
+    def __init__(self, fold_id: int, type: str, state: str) -> None:
         super().__init__(fold_id=fold_id, type=type, state=state)
 
 
@@ -49,15 +50,15 @@ class User(PkModel):
 
     folds = relationship("Fold", back_populates="user")
 
-    def __init__(self, email, access_type):
+    def __init__(self, email: str, access_type: str) -> None:
         """Create a new user."""
         super().__init__(email=email, access_type=access_type)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"{self.email}"
 
     @hybrid_property
-    def num_folds(self):
+    def num_folds(self) -> int:
         return self.folds.count(self)
 
 
@@ -132,7 +133,7 @@ class Fold(PkModel):
     disable_relaxation = Column(db.Boolean, nullable=True)
 
     @hybrid_property
-    def tags(self):
+    def tags(self) -> List[str]:
         if not self.tagstring:
             return []
         return self.tagstring.split(",")

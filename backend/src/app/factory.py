@@ -1,5 +1,6 @@
 import json
 import os
+from typing import Dict, Any, Optional, Tuple, Union, Type, List, Callable
 
 from flask import Flask, jsonify
 from flask.helpers import make_response
@@ -33,23 +34,37 @@ import rq_dashboard
 app = Flask(__name__)
 
 
-def createRestxApi():
+def createRestxApi() -> Api:
+    """Creates and configures a Flask-RestX API instance with error handlers.
+    
+    Returns:
+        Api: Configured Flask-RestX API instance
+    """
     api = Api(doc="/doc/", validate=True)
 
     # Handle authentication errors.
     @api.errorhandler(JWTExtendedException)
     @api.errorhandler(ExpiredSignatureError)
-    def handle_expired_signature(error):
-        return {"message": "Login failed: %s" % str(error)}, 401
+    def handle_expired_signature(error: Union[JWTExtendedException, ExpiredSignatureError]) -> Tuple[Dict[str, str], int]:
+        return {"message": f"Login failed: {str(error)}"}, 401
 
     return api
 
 
-def register_extensions(app):
-    """Registers Flask extensions."""
+def register_extensions(app: Flask) -> None:
+    """Registers Flask extensions and configures admin views.
+    
+    Args:
+        app: Flask application instance
+    """
 
     class VerifiedModelView(ModelView):
-        def is_accessible(self):
+        def is_accessible(self) -> bool:
+            """Checks if the current user has access to this admin view.
+            
+            Returns:
+                bool: True if user has edit access, False otherwise
+            """
             verify_jwt_in_request()
             return user_jwt_grants_edit_access(get_jwt()["user_claims"])
 
@@ -97,7 +112,18 @@ def register_extensions(app):
             }
         }
 
-        def _sequence_formatter(view, context, model, name):
+        def _sequence_formatter(view: Any, context: Any, model: models.Fold, name: str) -> Markup:
+            """Format sequence field for display in admin view.
+            
+            Args:
+                view: Admin view instance
+                context: Rendering context
+                model: Fold model instance
+                name: Field name
+                
+            Returns:
+                Markup: HTML-safe content for rendering
+            """
             return Markup(
                 f"<div style='overflow-x: auto; width: 100px'>{model.sequence}</div>"
             )
@@ -162,7 +188,7 @@ def register_extensions(app):
         column_formatters = {
             "extra_seq_ids": lambda v, c, m, p: Markup(
                 f'<div style="max-width:200px; overflow-x:auto; white-space:nowrap;">{m.extra_seq_ids}</div>'
-            )
+            ) if m.extra_seq_ids else ""
         }
 
     class EvolutionModelView(VerifiedModelView):
@@ -192,11 +218,14 @@ def register_extensions(app):
     compress.init_app(app)
 
 
-def create_app(config_object="settings"):
-    """Creates the app.
+def create_app(config_object: str = "settings") -> Flask:
+    """Creates and configures a Flask application instance.
 
-    args:
-    test_config: optional dict of overrides to the defaults of flask config.
+    Args:
+        config_object: Python module with configuration variables
+        
+    Returns:
+        Flask: Configured Flask application
     """
     app = Flask(__name__.split(".")[0])
 
@@ -222,14 +251,27 @@ def create_app(config_object="settings"):
 
     @api.route("/healthz", strict_slashes=False)
     class HealthCheckResource(Resource):
-        def get(self):
+        def get(self) -> bool:
+            """Simple health check endpoint.
+            
+            Returns:
+                bool: Always returns True if the service is running
+            """
             return True
 
     @app.errorhandler(ValueError)
     @app.errorhandler(BadRequest)
     @api.errorhandler(BadRequest)
     @api.errorhandler(ValueError)
-    def handle_unexpected_error(error):
+    def handle_unexpected_error(error: Union[ValueError, BadRequest]) -> Tuple[Dict[str, str], int]:
+        """Handle ValueError and BadRequest exceptions.
+        
+        Args:
+            error: The exception that was raised
+            
+        Returns:
+            Tuple containing error response dictionary and HTTP status code
+        """
         # Found here: https://newbedev.com/python-flask-json-error-message-format-code-example
         if hasattr(error, "description"):
             message = str(error.description)
@@ -254,8 +296,12 @@ def create_app(config_object="settings"):
 
     # @rq_dashboard.blueprint.before_request
     @jwt_required(fresh=True)
-    def before_request():
-        """Protect RQ pages."""
+    def before_request() -> None:
+        """Protect RQ dashboard pages with JWT authentication.
+        
+        Returns:
+            None: Function doesn't return anything, but has side effect of verifying JWT
+        """
         pass
 
     app.register_blueprint(

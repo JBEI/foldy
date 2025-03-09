@@ -4,38 +4,83 @@ import traceback
 import os
 import logging
 from contextlib import contextmanager
-from typing import Optional
+from typing import Optional, Callable, Any, Dict, List, Union, TypeVar, cast
 from app.models import Invokation
 
 
-PSQL_CHAR_LIMIT = 100 * 1000 * 1000
+PSQL_CHAR_LIMIT: int = 100 * 1000 * 1000
 
 
-def _tail(stdout, max_char=5000):
-    """Return just the last few lines of the stdout, a string."""
+def _tail(stdout: str, max_char: int = 5000) -> str:
+    """
+    Return just the last few lines of the stdout string.
+    
+    Args:
+        stdout: The complete stdout string
+        max_char: Maximum number of characters to include
+        
+    Returns:
+        A truncated string containing the last max_char characters
+    """
     if not stdout:
         return ""
     return stdout[-min(max_char, len(stdout)) :]
 
 
-def _psql_tail(stdout):
+def _psql_tail(stdout: str) -> str:
+    """
+    Truncate stdout to fit within PostgreSQL character limits.
+    
+    Args:
+        stdout: The complete stdout string
+        
+    Returns:
+        A truncated string that fits within PostgreSQL limits
+    """
     return _tail(stdout, PSQL_CHAR_LIMIT)
 
 
-def _live_update_tail(
-    stdout,
-):
-    """Choose a tail size that is appropriate for streaming / live updates (not the whole logs)."""
+def _live_update_tail(stdout: str) -> str:
+    """
+    Choose a tail size appropriate for streaming/live updates.
+    
+    Args:
+        stdout: The complete stdout string
+        
+    Returns:
+        A truncated string suitable for live updates
+    """
     return _tail(stdout, 30000)
 
 
-def try_run_job_with_logging(f, invokation):
-    final_state = "failed"
-    start_time = time.time()
-    logs = []
+# Define type for the add_log function
+AddLogFn = Callable[..., None]
 
-    def sanitize_log(log_str):
-        """Remove or replace problematic characters from log strings."""
+def try_run_job_with_logging(
+    f: Callable[[AddLogFn], None], 
+    invokation: Invokation
+) -> None:
+    """
+    Execute a job function with logging and exception handling.
+    
+    Args:
+        f: The job function to execute, which takes an add_log function
+        invokation: The Invokation model instance to update with logs and state
+    """
+    final_state: str = "failed"
+    start_time: float = time.time()
+    logs: List[str] = []
+
+    def sanitize_log(log_str: str) -> str:
+        """
+        Remove or replace problematic characters from log strings.
+        
+        Args:
+            log_str: The log string to sanitize
+            
+        Returns:
+            A sanitized string with problematic characters removed
+        """
         # Remove NUL characters
         sanitized = log_str.replace("\x00", "")
 
@@ -44,7 +89,19 @@ def try_run_job_with_logging(f, invokation):
 
         return sanitized
 
-    def add_log(msg, tail_function=_live_update_tail, **kwargs):
+    def add_log(
+        msg: str, 
+        tail_function: Callable[[str], str] = _live_update_tail, 
+        **kwargs: Any
+    ) -> None:
+        """
+        Add a log message and update the invokation record.
+        
+        Args:
+            msg: The log message to add
+            tail_function: Function to truncate logs for display
+            **kwargs: Additional fields to update in the invokation
+        """
         timestamp = datetime.now(UTC).isoformat(sep=" ", timespec="milliseconds")
         timestamped_msg = f"{timestamp} - {sanitize_log(msg)}"
         logs.append(timestamped_msg)
@@ -91,8 +148,16 @@ def try_run_job_with_logging(f, invokation):
             assert False, _psql_tail("\n".join(logs))
 
 
-def get_torch_cuda_is_available_and_add_logs(add_log):
-    """Return True if cuda is available and add logs about the GPU."""
+def get_torch_cuda_is_available_and_add_logs(add_log: Callable[[str], Any]) -> bool:
+    """
+    Check CUDA availability and log GPU diagnostics.
+    
+    Args:
+        add_log: Function to add log messages
+        
+    Returns:
+        True if CUDA is available, False otherwise
+    """
     import torch
 
     add_log("=== GPU Diagnostics ===")
@@ -121,8 +186,9 @@ def get_torch_cuda_is_available_and_add_logs(add_log):
 class LoggingRecorder(logging.Handler):
     """A logging handler that records logs to an Invokation."""
 
-    def __init__(self, invokation: Invokation, level: int = logging.INFO):
-        """Initialize the LoggingRecorder.
+    def __init__(self, invokation: Invokation, level: int = logging.INFO) -> None:
+        """
+        Initialize the LoggingRecorder.
 
         Args:
             invokation: The Invokation model instance to record logs to
@@ -130,11 +196,12 @@ class LoggingRecorder(logging.Handler):
         """
         super().__init__(level)
         self.invokation = invokation
-        self.logs = []
-        self.starttime = time.time()
-        self.final_state = (
-            "failed"  # Default state, will be set to "finished" on success
-        )
+        self.logs: List[str] = []
+        self.starttime: float = time.time()
+        self.final_state: str = "failed"  # Default state, will be set to "finished" on success
+        self._previous_level: int = logging.INFO
+        self._previous_handlers: List[logging.Handler] = []
+        
         try:
             self.invokation.update(
                 state="running",
@@ -143,8 +210,13 @@ class LoggingRecorder(logging.Handler):
         except Exception as e:
             logging.error(f"Failed to update invokation: {e}")
 
-    def emit(self, record):
-        """Process a log record by adding it to the invokation."""
+    def emit(self, record: logging.LogRecord) -> None:
+        """
+        Process a log record by adding it to the invokation.
+        
+        Args:
+            record: The logging record to process
+        """
         # Convert the log record to a string
         msg = self.format(record)
 
@@ -160,8 +232,13 @@ class LoggingRecorder(logging.Handler):
             timedelta=timedelta(seconds=time.time() - self.starttime),
         )
 
-    def __enter__(self):
-        """Set up logging when entering the context."""
+    def __enter__(self) -> 'LoggingRecorder':
+        """
+        Set up logging when entering the context.
+        
+        Returns:
+            The LoggingRecorder instance
+        """
         # Get the root logger
         logger = logging.getLogger()
 
@@ -177,8 +254,18 @@ class LoggingRecorder(logging.Handler):
         logger.addHandler(self)
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        """Restore previous logging state when exiting the context."""
+    def __exit__(self, exc_type: Optional[type], exc_val: Optional[Exception], exc_tb: Any) -> bool:
+        """
+        Restore previous logging state when exiting the context.
+        
+        Args:
+            exc_type: The type of exception raised, if any
+            exc_val: The exception instance raised, if any
+            exc_tb: The traceback information, if an exception was raised
+            
+        Returns:
+            False to propagate exceptions
+        """
         logger = logging.getLogger()
 
         try:

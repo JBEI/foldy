@@ -1,9 +1,8 @@
-from typing import Callable
+from typing import Callable, List, Dict, Tuple, Any, Union, Optional, cast
 import pandas as pd
 import re
 import json
 from app.helpers.jobs_util import get_torch_cuda_is_available_and_add_logs
-from typing import Optional
 import logging
 from app.helpers.sequence_util import (
     get_seq_ids_for_deep_mutational_scan,
@@ -16,7 +15,21 @@ def get_naturalness(
     logit_model: str,
     get_depth_two_logits: Optional[bool] = False,
     pdb_file_path: Optional[str] = None,
-):
+) -> Tuple[str, pd.DataFrame]:
+    """
+    Compute naturalness scores for a given wild-type amino acid sequence.
+    
+    Args:
+        wt_aa_seq: Wild-type amino acid sequence
+        logit_model: ESM model name to use for logit computation
+        get_depth_two_logits: If True, compute logits for all second-order mutants
+        pdb_file_path: Optional path to PDB file for structure-aware models
+        
+    Returns:
+        Tuple containing:
+            - JSON string of position probabilities (empty for depth-two logits)
+            - DataFrame with melted logit data
+    """
     # Import ESM client
     logging.info(f"Creating ESM client for {logit_model}")
     from app.helpers.esm_client import FoldyESMClient
@@ -52,7 +65,7 @@ def get_naturalness(
             f"Going to depth 2 mutants; getting logits for {len(base_seq_ids)} base mutants"
         )
 
-        melted_df_list = []
+        melted_df_list: List[pd.DataFrame] = []
         for ii, base_seq_id in enumerate(base_seq_ids):
             base_seq = seq_id_to_seq(wt_aa_seq, base_seq_id)
             melted_df = client.get_logits(base_seq, pdb_file_path)
@@ -69,8 +82,12 @@ def get_naturalness(
         # Process the melted dataframe to add WT marginal scores
         logging.info("Processing logits and preparing to save")
 
-        def seq_id_to_locus(seq_id):
-            return int(re.match(r".(\d+).*", seq_id).group(1))
+        def seq_id_to_locus(seq_id: str) -> int:
+            """Extract locus position from sequence ID."""
+            match = re.match(r".(\d+).*", seq_id)
+            if match is None:
+                raise ValueError(f"Invalid sequence ID format: {seq_id}")
+            return int(match.group(1))
 
         melted_df["locus"] = melted_df.seq_id.apply(seq_id_to_locus)
 
@@ -89,7 +106,7 @@ def get_naturalness(
         )
 
         # Create position_probs format for JSON
-        position_probs = []
+        position_probs: List[Dict[str, Any]] = []
         for pos in range(1, len(wt_aa_seq) + 1):
             pos_probs = melted_df[melted_df.locus == pos]
             wt_aa = wt_aa_seq[pos - 1]

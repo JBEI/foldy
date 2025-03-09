@@ -1,5 +1,6 @@
 import io
 import re
+from typing import Dict, Any, List, Tuple, Union, Optional, BinaryIO, Generator, Iterator
 
 from flask import Response, stream_with_context
 from flask import current_app, request, send_file, make_response
@@ -34,7 +35,16 @@ fold_pdb_fields = ns.model(
 @ns.route("/fold_pdb/<int:fold_id>/<int:model_number>")
 class FoldResource(Resource):
     @ns.marshal_with(fold_pdb_fields)
-    def get(self, fold_id, model_number):
+    def get(self, fold_id: int, model_number: int) -> Dict[str, str]:
+        """Get PDB string for a specific fold and model number.
+        
+        Args:
+            fold_id: ID of the fold
+            model_number: Model number to retrieve
+            
+        Returns:
+            Dict containing PDB string
+        """
         manager = FoldStorageManager()
         manager.setup()
         return {"pdb_string": manager.get_fold_pdb(fold_id, model_number)}
@@ -55,14 +65,24 @@ fold_file_zip_fields = ns.model(
 class FoldPdbZipResource(Resource):
     @ns.expect(fold_file_zip_fields)
     def post(self):
+        """Get zip file containing multiple fold files.
+        
+        Returns:
+            Zip file with requested fold files
+        """
         manager = FoldStorageManager()
         manager.setup()
+        
+        json_data = request.get_json()
+        fold_ids = json_data["fold_ids"]
+        relative_fpath = json_data["relative_fpath"]
+        output_dirname = json_data["output_dirname"]
 
         return send_file(
             manager.get_fold_file_zip(
-                request.get_json()["fold_ids"],
-                request.get_json()["relative_fpath"],
-                request.get_json()["output_dirname"],
+                fold_ids,
+                relative_fpath,
+                output_dirname,
             ),
             mimetype="application/octet-stream",
             download_name="fold_pdbs.zip",
@@ -72,7 +92,16 @@ class FoldPdbZipResource(Resource):
 
 @ns.route("/fold_pkl/<int:fold_id>/<int:model_number>")
 class FoldPklResource(Resource):
-    def post(self, fold_id, model_number):
+    def post(self, fold_id: int, model_number: int):
+        """Get pickle file for a specific fold and model number.
+        
+        Args:
+            fold_id: ID of the fold
+            model_number: Model number to retrieve
+            
+        Returns:
+            Pickle file of the model
+        """
         manager = FoldStorageManager()
         manager.setup()
         pkl_byte_str = manager.get_fold_pkl(fold_id, model_number)
@@ -88,8 +117,20 @@ class FoldPklResource(Resource):
 
 
 @ns.route("/dock_sdf/<int:fold_id>/<string:ligand_name>")
-class FoldPklResource(Resource):
-    def post(self, fold_id, ligand_name):
+class DockSdfResource(Resource):
+    def post(self, fold_id: int, ligand_name: str):
+        """Get SDF file for a specific dock.
+        
+        Args:
+            fold_id: ID of the fold/protein
+            ligand_name: Name of the ligand
+            
+        Returns:
+            File response with SDF data
+            
+        Raises:
+            BadRequest: If dock is not found
+        """
         print(f"Finding dock for {fold_id} for {ligand_name}", flush=True)
         dock = (
             db.session.query(Dock)
@@ -120,7 +161,15 @@ class FoldPklResource(Resource):
 
 @ns.route("/file/list/<int:fold_id>")
 class FoldFileResource(Resource):
-    def get(self, fold_id):
+    def get(self, fold_id: int) -> List[str]:
+        """List all files for a given fold.
+        
+        Args:
+            fold_id: ID of the fold
+            
+        Returns:
+            List of file paths
+        """
         manager = FoldStorageManager()
         manager.setup()
         return manager.storage_manager.list_files(fold_id)
@@ -145,7 +194,16 @@ class FoldFileResource(Resource):
 
 @ns.route("/file/download/<int:fold_id>/<path:subpath>")
 class FileDownloadResource(Resource):
-    def get(self, fold_id, subpath):
+    def get(self, fold_id: int, subpath: str) -> Union[Response, Tuple[Dict[str, str], int]]:
+        """Download a file from fold storage with streaming.
+        
+        Args:
+            fold_id: ID of the fold
+            subpath: Path to file within fold storage
+            
+        Returns:
+            Streaming response with file data or error message with status code
+        """
         print(f"Starting download for {subpath}...")
         manager = FoldStorageManager()
         manager.setup()
@@ -160,11 +218,16 @@ class FileDownloadResource(Resource):
 
         fname = subpath.split("/")[-1]
 
-        def generate():
+        def generate() -> Generator[bytes, None, None]:
+            """Generate file chunks for streaming.
+            
+            Yields:
+                Chunks of file data
+            """
             try:
                 with blob.open("rb") as f:
                     while True:
-                        chunk = f.read(1024 * 1024)  # Increase to 1MB chunks
+                        chunk = f.read(1024 * 1024)  # 1MB chunks
                         if not chunk:
                             break
                         yield chunk
