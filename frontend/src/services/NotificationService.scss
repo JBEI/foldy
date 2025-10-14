@@ -1,0 +1,31 @@
+.uk-notification {
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.uk-notification-message {
+    font-size: 14px;
+    padding: 12px 16px;
+    border-radius: 6px;
+    overflow-wrap: break-word;
+}
+
+.uk-notification-message-primary {
+    background: #f0f7ff;
+    color: #0066cc;
+}
+
+.uk-notification-message-success {
+    background: #f0fff4;
+    color: #38a169;
+}
+
+.uk-notification-message-warning {
+    background: #fffbeb;
+    color: #d97706;
+}
+
+.uk-notification-message-danger {
+    background: #fff5f5;
+    color: #e53e3e;
+}

@@ -1,0 +1,49 @@
+{
+    "venvPath": ".",
+    "venv": ".venv",
+    "extraPaths": ["backend"],
+    "include": ["backend"],
+    "executionEnvironments": [
+      {
+        "root": "backend",
+        "extraPaths": ["backend"]
+      }
+    ],
+    "typeCheckingMode": "basic",
+
+    // Strategic suppressions for library compatibility issues
+    "reportMissingImports": "none",
+    "reportMissingTypeStubs": "none",
+    "reportUnknownMemberType": "none",
+    "reportUnknownArgumentType": "none",
+    "reportUnknownParameterType": "none",
+    "reportUnknownVariableType": "none",
+    "reportUntypedNamedTuple": "none",
+    "reportUntypedClassDecorator": "none",
+    "reportUntypedFunctionDecorator": "none",
+
+    // Torch/PyTorch related suppressions
+    "reportArgumentType": "warning",
+    "reportCallIssue": "warning",
+    "reportIndexIssue": "warning",
+    "reportOperatorIssue": "warning",
+
+    // Pandas/NumPy related suppressions
+    "reportIncompatibleVariableOverride": "warning",
+    "reportIncompatibleMethodOverride": "warning",
+
+    // SQLAlchemy related suppressions
+    "reportAttributeAccessIssue": "warning",
+    "reportOptionalMemberAccess": "warning",
+    "reportOptionalSubscript": "warning",
+    "reportOptionalCall": "warning",
+    "reportOptionalIterable": "warning",
+    "reportOptionalContextManager": "warning",
+    "reportOptionalOperand": "warning",
+
+    // Application logic - keep as errors for real issues
+    "reportGeneralTypeIssues": "error",
+    "reportUndefinedVariable": "error",
+    "reportAssignmentType": "error",
+    "reportReturnType": "error"
+}

@@ -65,7 +65,7 @@ Create the name of the service account to use
 {{/*
 Create a ScaledJob to process RQ tasks from the specified queue.
 
-The passed context must include: 
+The passed context must include:
   .RqQueueName: the name of the RQ pool to listen on.
 
 Usage example:
@@ -84,20 +84,20 @@ metadata:
   namespace: default
 spec:
   # pollingInterval: 30                         # Optional. Default: 30 seconds
-  successfulJobsHistoryLimit: 5               # Optional. Default: 100. How many completed jobs should be kept.
-  failedJobsHistoryLimit: 5                   # Optional. Default: 100. How many failed jobs should be kept.
+  successfulJobsHistoryLimit: 20               # Optional. Default: 100. How many completed jobs should be kept.
+  failedJobsHistoryLimit: 20                   # Optional. Default: 100. How many failed jobs should be kept.
   # envSourceContainerName: {container-name}    # Optional. Default: .spec.JobTargetRef.template.spec.containers[0]
   minReplicaCount: 0                          # Optional. Default: 0
-  maxReplicaCount: {{ if eq .RqQueueName "cpu" -}}
+  maxReplicaCount: {{ if (eq .RqQueueName "cpu") -}}
     10
   {{- else -}}
-    3
+    1
   {{- end }}
   rollout:
     strategy: gradual                         # Optional. Default: default. Which Rollout Strategy KEDA will use.
     # propagationPolicy: foreground             # Optional. Default: background. Kubernetes propagation policy for cleaning up existing jobs during rollout.
   scalingStrategy:
-    strategy: "accurate"                        # Optional. Default: default. Which Scaling Strategy to use. 
+    strategy: "accurate"                        # Optional. Default: default. Which Scaling Strategy to use.
     # customScalingQueueLengthDeduction: 1      # Optional. A parameter to optimize custom ScalingStrategy.
     # customScalingRunningJobPercentage: "0.5"  # Optional. A parameter to optimize custom ScalingStrategy.
     # pendingPodConditions:                     # Optional. A parameter to calculate pending job count per the specified pod conditions
@@ -127,22 +127,33 @@ spec:
     # activeDeadlineSeconds: 600                 #  Specifies the duration in seconds relative to the startTime that the job may be active before the system tries to terminate it; value must be positive integer
     backoffLimit: 3                            # Specifies the number of retries before marking this job failed. Defaults to 6
 
+    # Uncomment to keep each Job for 24 h after it completes
+    ttlSecondsAfterFinished: 86400
+
     template:
       spec:
         serviceAccountName: foldy-ksa
 
         restartPolicy: Never
+        # allow 25 for clean shutdown. Spot nodes are terminated with only 30s notice...
+        terminationGracePeriodSeconds: 25
 
         volumes:
           - name: foldydbs
             persistentVolumeClaim:
-             claimName: foldydbs
+              claimName: foldydbs
+          - name: dshm
+            emptyDir:
+              medium: Memory
+              sizeLimit: 20Gi
 
         nodeSelector:
           iam.gke.io/gke-metadata-server-enabled: "true"
         {{- if or (eq .RqQueueName "gpu") (eq .RqQueueName "biggpu") }}
           cloud.google.com/gke-nodepool: spota100nodes
-        {{- else if eq .RqQueueName "cpu" }}
+        {{- else if or (eq .RqQueueName "esm") (eq .RqQueueName "boltz") }}
+          cloud.google.com/gke-nodepool: ondemanda100nodes
+        {{- else if (eq .RqQueueName "cpu") }}
           cloud.google.com/gke-nodepool: spothighmemnodes
         {{- end }}
 
@@ -154,20 +165,32 @@ spec:
 
         containers:
         - name: master
-          image: {{ .Values.GoogleCloudRegion }}-docker.pkg.dev/{{ .Values.GoogleProjectId }}/{{ .Values.ArtifactRepo }}/worker:{{  .Values.ImageVersion }}
-          command: ["/opt/conda/envs/worker/bin/flask"]
-          args: ["rq", "worker", {{ required "RqQueueName is required." .RqQueueName | quote }}, "--burst", "--max-jobs", "1"]
+          image: {{ .Values.GoogleCloudRegion }}-docker.pkg.dev/{{ .Values.GoogleProjectId }}/{{ .Values.ArtifactRepo }}/{{ required "image name is required" .ImageName }}:{{  .Values.ImageVersion }}
+          command: ["/opt/conda/envs/worker/bin/python"]
+          args: ["/backend/rq_worker_main.py", {{ required "RqQueueName is required." .RqQueueName | quote }}, "--burst", "--max-jobs", "1"]
           env:
           - name: FLASK_APP
-            value: /backend/backend/rq_worker_main.py
-          - name: RUN_AF2_PATH
-            value: /worker/run_alphafold.sh
-          - name: DECOMPRESS_PKLS_PATH
-            value: /worker/decompress_pkls.sh
+            value: rq_worker_main.py
           - name: RUN_ANNOTATE_PATH
             value: /worker/run_annotate.sh
           - name: RUN_DOCK
             value: /worker/run_dock.sh
+          - name: NODE_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: spec.nodeName
+          - name: NODE_IP
+            valueFrom:
+              fieldRef:
+                fieldPath: status.hostIP
+          - name: POD_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+          - name: POD_NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
           envFrom:
           - configMapRef:
               name: foldy-configmap
@@ -176,15 +199,17 @@ spec:
           volumeMounts:
           - mountPath: "/foldydbs"
             name: foldydbs
+          - mountPath: /dev/shm
+            name: dshm  # for example
           resources:
             {{- if eq .RqQueueName "emailparrot" }}
             requests:
               cpu: 100m
               memory: 100Mi
-            {{- else if eq .RqQueueName "cpu" }}
+            {{- else if (eq .RqQueueName "cpu") }}
             requests:
-              cpu: 7000m
-              memory: 50Gi
+              cpu: 15000m
+              memory: 115Gi
             {{- else }}
             requests:
               cpu: 10000m

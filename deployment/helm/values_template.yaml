@@ -39,6 +39,9 @@ ArtifactRepo: ${GOOGLE_ARTIFACT_REPO}
 # Name of the institution, displayed in the page.
 Institution: ${INSTITUTION}
 
+# Teselagen integration (optional)
+TeselagenBackendUrl: ${TESELAGEN_BACKEND_URL}
+
 Secrets:
   SECRET_KEY:
   GOOGLE_CLIENT_ID:

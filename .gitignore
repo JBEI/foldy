@@ -128,10 +128,8 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-.vscode
-
 # Secrets
-cluster_config.yaml
+cluster_config.yamlok
 config.yaml
 prod_secrets.yaml
 dev_secrets.env
@@ -142,3 +140,20 @@ db_creation_resources.yaml
 # Frontend files.
 **/node_modules
 **/secrets
+
+# Generally don't commit the local directory for foldy
+backend/notebooks/jacob/data/*
+backend/notebooks/jacob/sarah/*
+backend/notebooks/jacob/flip-aav.csv
+backend/folde/data/*
+backend/foldydata/*
+.boltz/
+
+backend/EvolveTest
+
+CLAUDE.md
+CLAUDE_NOTES.md
+
+**/.claude/settings.local.json
+
+frontend/stats.html

@@ -1,4 +1,23 @@
 // @import 'node_modules/uptick-demo-site/dist/uptick-demo-site'
 
-@import "node_modules/react-keyed-file-browser/dist/react-keyed-file-browser"; // $fa-font-path: "https://maxcdn.bootstrapcdn.com/font-awesome/4.6.3/fonts" !default
+// @import "node_modules/react-keyed-file-browser/dist/react-keyed-file-browser"; // $fa-font-path: "https://maxcdn.bootstrapcdn.com/font-awesome/4.6.3/fonts" !default
+// @import "~react-keyed-file-browser/dist/react-keyed-file-browser"; // $fa-font-path: "https://maxcdn.bootstrapcdn.com/font-awesome/4.6.3/fonts" !default
 // @import 'node_modules/font-awesome/scss/font-awesome'
+
+.la-vz-viewer-event-router {
+    position: relative !important; /* Override absolute positioning */
+}
+
+.table-container {
+    overflow-x: auto; /* Add horizontal scrolling */
+    max-width: 100%; /* Ensure it doesn't exceed the container */
+}
+
+.react-grid-HeaderRow {
+    overflow-y: hidden;
+}
+
+.react-grid-Cell {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+}

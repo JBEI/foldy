@@ -1,0 +1,158 @@
+version: "3.6"
+
+# Foldy Local Deployment
+#
+# Required Environment Variables:
+#   FOLDY_STORAGE_DIRECTORY - Path for persistent storage (postgres + blob data)
+#
+# Optional Environment Variables:
+#   FOLDY_VERSION          - Version tag for Docker images (default: latest)
+#   FOLDY_FRONTEND_PORT    - Port for frontend (default: 3000)
+#   FOLDY_SECRET_KEY       - Flask secret key (default: auto-generated)
+#   FOLDY_DOCKERHUB_USER   - DockerHub username (default: keasling)
+#
+# Usage:
+#   FOLDY_STORAGE_DIRECTORY=/path/to/data docker-compose up -d
+
+x-common-env: &common-env
+  ENV: development
+  DEBUG: "false"
+  FRONTEND_URL: http://localhost:${FOLDY_FRONTEND_PORT:-3000}
+  BACKEND_URL: http://localhost:${FOLDY_FRONTEND_PORT:-3000}
+  DATABASE_URL: postgresql+psycopg2://user:password@db.:5432/postgres
+  RQ_REDIS_URL: redis://redis.:6379/0
+  FOLDY_STORAGE_TYPE: Local
+  FOLDY_LOCAL_STORAGE_DIR: /data/blob_storage
+  SECRET_KEY: ${FOLDY_SECRET_KEY:-foldy-local-static-key-2024}
+
+x-worker-base: &worker-base
+  platform: linux/amd64
+  depends_on:
+    - db
+    - redis
+  environment:
+    <<: *common-env
+    FLASK_APP: rq_worker_main.py
+  networks:
+    - default
+  restart: always
+
+services:
+  frontend:
+    image: ${FOLDY_DOCKERHUB_USER:-keasling}/foldy-frontend:${FOLDY_VERSION:-latest}
+    platform: linux/amd64
+    networks:
+      - default
+    ports:
+      - "127.0.0.1:${FOLDY_FRONTEND_PORT:-3000}:80"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  backend:
+    image: ${FOLDY_DOCKERHUB_USER:-keasling}/foldy-backend:${FOLDY_VERSION:-latest}
+    runtime: ${FOLDY_GPU_RUNTIME:-}
+    platform: linux/amd64
+    depends_on:
+      - db
+      - redis
+      - frontend
+    environment:
+      <<: *common-env
+      FLASK_APP: main.py
+      OAUTH_REDIRECT_URI: http://localhost:${FOLDY_FRONTEND_PORT:-3000}/api/authorize
+      DISABLE_OAUTH_AUTHENTICATION: "true"
+      FOLDY_ADMIN_UPGRADE_LIST: tester@test.edu
+    networks:
+      - default
+    volumes:
+      - ${FOLDY_STORAGE_DIRECTORY:?FOLDY_STORAGE_DIRECTORY must be set}/blob_storage:/data/blob_storage
+      - ${FOLDY_STORAGE_DIRECTORY:?FOLDY_STORAGE_DIRECTORY must be set}/etc:/data/etc
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    entrypoint: /opt/conda/envs/worker/bin/python /backend/main.py
+
+  worker_esm:
+    <<: *worker-base
+    image: ${FOLDY_DOCKERHUB_USER:-keasling}/foldy-worker-esm:${FOLDY_VERSION:-latest}
+    runtime: ${FOLDY_GPU_RUNTIME:-}
+    volumes:
+      - ${FOLDY_STORAGE_DIRECTORY:?FOLDY_STORAGE_DIRECTORY must be set}/blob_storage:/data/blob_storage
+      - ${FOLDY_STORAGE_DIRECTORY:?FOLDY_STORAGE_DIRECTORY must be set}/etc:/data/etc
+      - ${FOLDY_STORAGE_DIRECTORY:?FOLDY_STORAGE_DIRECTORY must be set}/cache/esm_c:/root/.cache/torch/hub
+      - ${FOLDY_STORAGE_DIRECTORY:?FOLDY_STORAGE_DIRECTORY must be set}/cache/esm_hf:/root/.cache/huggingface
+    entrypoint: /opt/conda/envs/worker/bin/python /backend/rq_worker_main.py cpu esm
+
+  worker_boltz:
+    <<: *worker-base
+    image: ${FOLDY_DOCKERHUB_USER:-keasling}/foldy-worker-boltz:${FOLDY_VERSION:-latest}
+    runtime: ${FOLDY_GPU_RUNTIME:-}
+    volumes:
+      - ${FOLDY_STORAGE_DIRECTORY:?FOLDY_STORAGE_DIRECTORY must be set}/blob_storage:/data/blob_storage
+      - ${FOLDY_STORAGE_DIRECTORY:?FOLDY_STORAGE_DIRECTORY must be set}/etc:/data/etc
+      - ${FOLDY_STORAGE_DIRECTORY:?FOLDY_STORAGE_DIRECTORY must be set}/cache/boltz:/hf-cache
+    environment:
+      <<: *common-env
+      FLASK_APP: rq_worker_main.py
+      NVIDIA_VISIBLE_DEVICES: ${NVIDIA_VISIBLE_DEVICES:-}
+      NVIDIA_DRIVER_CAPABILITIES: ${NVIDIA_DRIVER_CAPABILITIES:-}
+    entrypoint: /opt/conda/envs/worker/bin/python /backend/rq_worker_main.py boltz
+
+  db:
+    image: postgres:15.14
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: postgres
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8"
+    networks:
+      - default
+    volumes:
+      - ${FOLDY_STORAGE_DIRECTORY:?FOLDY_STORAGE_DIRECTORY must be set}/postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7.2-alpine
+    restart: unless-stopped
+    command: redis-server --save 10 1 --loglevel warning
+    volumes:
+      - ${FOLDY_STORAGE_DIRECTORY:?FOLDY_STORAGE_DIRECTORY must be set}/redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # Initialize database on first run
+  db_init:
+    image: ${FOLDY_DOCKERHUB_USER:-keasling}/foldy-backend:${FOLDY_VERSION:-latest}
+    platform: linux/amd64
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      <<: *common-env
+      FLASK_APP: main.py
+    networks:
+      - default
+    volumes:
+      - ${FOLDY_STORAGE_DIRECTORY:?FOLDY_STORAGE_DIRECTORY must be set}/blob_storage:/data/blob_storage
+    command:
+      ["/opt/conda/envs/worker/bin/python", "-m", "flask", "db", "upgrade"]
+    restart: "no"
+
+networks:
+  default:
+    driver: bridge

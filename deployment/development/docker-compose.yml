@@ -1,5 +1,47 @@
 version: "3.6"
 
+x-common-env: &common-env
+  SECRET_KEY: superrandomandveryhardtoguessstring
+  ENV: development
+  DEBUG: True
+  BACKEND_URL: http://localhost:8080
+  FRONTEND_URL: http://localhost:3000
+  DATABASE_URL: postgresql+psycopg2://user:password@db:5432/postgres
+  RQ_REDIS_URL: redis://redis:6379/0
+  FOLDY_STORAGE_TYPE: Local
+  FOLDY_LOCAL_STORAGE_DIR: /backend/foldydata
+  WARNING_MESSAGE: "TEST WARNING MESSAGE."
+  # Teselagen integration (optional) - uncomment to enable
+  # TESELAGEN_BACKEND: https://jbei.teselagen.com
+
+x-worker-base: &worker-base
+  platform: linux/amd64
+  depends_on:
+    - db
+    - redis
+  environment: &worker-env
+    - FLASK_APP=rq_worker_main.py
+    - ENV=development
+    - DEBUG=True
+    - FRONTEND_URL=http://localhost:3000
+    - DATABASE_URL=postgresql+psycopg2://user:password@db:5432/postgres
+    - RQ_REDIS_URL=redis://redis:6379/0
+    - FOLDY_STORAGE_TYPE=Local
+    - FOLDY_LOCAL_STORAGE_DIR=/backend/foldydata
+    # Teselagen integration (optional) - uncomment to enable
+    - TESELAGEN_BACKEND=https://jbei.teselagen.com
+  networks:
+    - default
+  volumes: &worker-volumes
+    - ./backend/rq_worker_main.py:/backend/rq_worker_main.py
+    - ./backend/app:/backend/app
+    - ./backend/folde:/backend/folde
+    - ./backend/foldydata:/backend/foldydata
+    - ./backend/migrations:/backend/migrations
+    - ./backend/notebooks:/backend/notebooks
+    - ./worker:/worker
+  restart: always
+
 services:
   frontend:
     build:
@@ -9,57 +51,141 @@ services:
         - BACKEND_URL=http://localhost:8080
         - INSTITUTION=Local
         - HOST=0.0.0.0
+        # Teselagen integration (optional) - uncomment to enable
+        - VITE_TESELAGEN_BACKEND_URL=https://jbei.teselagen.com
     networks:
       - default
     ports:
       - 127.0.0.1:3000:3000
     volumes:
       - ./frontend/src:/app/src
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   backend:
-    build: backend/
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
     platform: linux/amd64
     depends_on:
       - db
       - redis
     environment:
-      - FLASK_APP=main.py
-      - FLASK_ENV=development
-      - DEBUG=True
-      - SECRET_KEY=superrandomandveryhardtoguessstring
-      - OAUTH_REDIRECT_URI=http://localhost:8080/api/authorize
-      - BACKEND_URL=http://localhost:8080
-      - FRONTEND_URL=http://localhost:3000
-      - DATABASE_URL=postgresql+psycopg2://user:password@db:5432/postgres
-      - RQ_REDIS_URL=redis://redis:6379/0
-      - DISABLE_OAUTH_AUTHENTICATION=True
-      - FOLDY_ADMIN_UPGRADE_LIST=tester@test.edu
-      - FOLDY_STORAGE_TYPE=Local
-      - FOLDY_LOCAL_STORAGE_DIR=/app/integration_tests/testdata
+      <<: *common-env
+      FLASK_APP: main.py
+      OAUTH_REDIRECT_URI: http://localhost:8080/api/authorize
+      DISABLE_OAUTH_AUTHENTICATION: "true"
+      FOLDY_ADMIN_UPGRADE_LIST: tester@test.edu
     networks:
       - default
     ports:
       - 127.0.0.1:8080:8080
     volumes:
-      - ./backend/backend/app:/app/app
-      - ./backend/backend/integration_tests:/app/integration_tests
-      - ./backend/backend/migrations:/app/migrations
+      - ./backend/main.py:/backend/main.py
+      - ./backend/app:/backend/app
+      - ./backend/folde:/backend/folde
+      - ./backend/foldydata:/backend/foldydata
+      - ./backend/migrations:/backend/migrations
     restart: always
-    entrypoint: python /app/main.py
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    entrypoint: /opt/conda/envs/worker/bin/python /backend/main.py
+
+  worker_esm:
+    <<: *worker-base
+    build:
+      context: .
+      dockerfile: worker/Dockerfile.esm
+    environment: *worker-env
+    volumes: *worker-volumes
+    entrypoint: /opt/conda/envs/worker/bin/python /backend/rq_worker_main.py cpu esm
+
+  # worker_prosst:
+  #   <<: *worker-base
+  #   build:
+  #     context: .
+  #     dockerfile: worker/Dockerfile.prosst
+  #   environment: *worker-env
+  #   volumes: *worker-volumes
+  #   entrypoint: /opt/conda/envs/worker/bin/python -m flask rq worker prosst
+
+  worker_boltz:
+    <<: *worker-base
+    build:
+      context: .
+      dockerfile: worker/Dockerfile.boltz
+    environment: *worker-env
+    volumes:
+      - ./backend/rq_worker_main.py:/backend/rq_worker_main.py
+      - ./backend/app:/backend/app
+      - ./backend/folde:/backend/folde
+      - ./backend/foldydata:/backend/foldydata
+      - ./backend/migrations:/backend/migrations
+      - ./.boltz:/.boltz
+    entrypoint: /opt/conda/envs/worker/bin/python /backend/rq_worker_main.py boltz
 
   db:
     environment:
       POSTGRES_USER: user
       POSTGRES_PASSWORD: password
       POSTGRES_DB: dbname
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8"
     image: postgres:15.6
     networks:
       - default
     ports:
       - 127.0.0.1:5432:5432
     restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d dbname"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   redis:
     image: "redis:7.2-alpine"
     ports:
       - 127.0.0.1:6379:6379
+    restart: always
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # Initialize database on first run
+  db_init:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    platform: linux/amd64
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      <<: *common-env
+      FLASK_APP: main.py
+    networks:
+      - default
+    volumes:
+      - ./backend/migrations:/backend/migrations
+    command:
+      ["/opt/conda/envs/worker/bin/python", "-m", "flask", "db", "upgrade"]
+    restart: "no"
+
+  # jupyter:
+  #   <<: *worker-base
+  #   build:
+  #     context: .
+  #     dockerfile: worker/Dockerfile.esm # Dockerfile.prosst
+  #   environment: *worker-env
+  #   volumes: *worker-volumes
+  #   ports:
+  #     - 127.0.0.1:8888:8888  # Expose Jupyter port
+  #   entrypoint: /opt/conda/envs/worker/bin/jupyter lab --ip=0.0.0.0 --port=8888 --no-browser --allow-root --notebook-dir=/backend --NotebookApp.token='thefoldytoken'

@@ -1,0 +1,7 @@
+{
+    "recommendations": [
+        "detachhead.basedpyright",
+        "ms-python.python",
+        "ms-tools.vscode-jupyter-notebooks",
+    ]
+}

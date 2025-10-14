@@ -1,69 +1,80 @@
-import React from "react";
-import { AiOutlineCloseCircle, AiOutlinePlus } from "react-icons/ai";
-import UIkit from "uikit";
+import React, { useState } from "react";
+import { Tag, Input, Button, Space } from "antd";
+import { PlusOutlined } from "@ant-design/icons";
+import { notify } from "../services/NotificationService";
 
 export interface EditableTagListProps {
-  tags: string[];
-  addTag: (tag: string) => void;
-  deleteTag: (tag: string) => void;
-  handleTagClick: (tag: string) => void;
+    tags: string[];
+    addTag: (tag: string) => void;
+    deleteTag: (tag: string) => void;
+    handleTagClick: (tag: string) => void;
+    viewOnly?: boolean;
 }
 
 export function EditableTagList(props: EditableTagListProps) {
-  const addNewTag = () => {
-    UIkit.modal.prompt("New tag:", "").then(
-      (newTag: string | null) => {
-        if (newTag) {
-          const allowedCharsRegex = /^[a-zA-Z0-9_-]+$/;
-          if (allowedCharsRegex.test(newTag)) {
-            props.addTag(newTag);
-          } else {
-            UIkit.notification(
-              `Invalid tag: ${newTag} contains a character which is not a letter, number, hyphen, or underscore.`
-            );
-          }
-        }
-      },
-      () => {
-        console.log("No new tag.");
-      }
-    );
-  };
+    const [inputVisible, setInputVisible] = useState(false);
+    const [inputValue, setInputValue] = useState('');
 
-  return (
-    <div
-      className="uk-input uk-text-nowrap hiddenscrollbar" // uk-text-truncate
-      onInput={(e) => console.log(e)}
-      style={{ borderRadius: "100px", overflow: "scroll" }}
-    >
-      <span className="uk-margin-small-right uk-text-light">Tags:</span>
-      {props.tags.map((tag: string) => {
-        return (
-          <span
-            key={tag}
-            className="uk-badge uk-badge-bigger uk-margin-small-right"
-            uk-tooltip="Tags help sort and manage collections or batches of folds. Tags must only contain letters."
-          >
-            <span
-              style={{ padding: "0 3px 0 8px" }}
-              onClick={() => props.handleTagClick(tag)}
-            >
-              {tag}
-            </span>
-            <AiOutlineCloseCircle
-              style={{ cursor: "pointer" }}
-              onClick={() => props.deleteTag(tag)}
-            />
-          </span>
-        );
-      })}
-      <span
-        className="uk-badge uk-badge-bigger uk-margin-small-right"
-        style={{ background: "#999999", cursor: "pointer" }}
-        onClick={() => addNewTag()}
-      >
-        <AiOutlinePlus />
-      </span>
-    </div>
-  );
+    const handleInputConfirm = () => {
+        if (inputValue) {
+            const allowedCharsRegex = /^[a-zA-Z0-9_-]+$/;
+            if (allowedCharsRegex.test(inputValue)) {
+                props.addTag(inputValue);
+                setInputValue('');
+                setInputVisible(false);
+            } else {
+                notify.error(`Invalid tag: ${inputValue} contains a character which is not a letter, number, hyphen, or underscore.`);
+            }
+        } else {
+            setInputVisible(false);
+        }
+    };
+
+    const showInput = () => {
+        setInputVisible(true);
+    };
+
+    return (
+        <Space size={[0, 8]} >
+            {props.tags.map((tag: string) => (
+                <Tag
+                    key={tag}
+                    closable={!props.viewOnly}
+                    onClose={props.viewOnly ? undefined : () => props.deleteTag(tag)}
+                    style={{ paddingRight: "15px" }}
+                >
+                    <a
+                        href={`/tag/${tag}`}
+                        onClick={(e) => {
+                            if (!e.ctrlKey && !e.metaKey) {
+                                e.preventDefault();
+                                props.handleTagClick(tag);
+                            }
+                        }}
+                        style={{ cursor: 'pointer' }}
+                    >
+                        {tag}
+                    </a>
+                </Tag>
+            ))}
+            {!props.viewOnly && (
+                inputVisible ? (
+                    <Input
+                        type="text"
+                        size="small"
+                        style={{ width: 100 }}
+                        value={inputValue}
+                        onChange={(e) => setInputValue(e.target.value)}
+                        onBlur={handleInputConfirm}
+                        onPressEnter={handleInputConfirm}
+                        autoFocus
+                    />
+                ) : (
+                    <Tag onClick={showInput} style={{ background: '#fff', borderStyle: 'dashed' }}>
+                        <PlusOutlined /> New Tag
+                    </Tag>
+                )
+            )}
+        </Space>
+    );
 }

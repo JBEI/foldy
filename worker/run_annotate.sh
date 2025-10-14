@@ -40,8 +40,8 @@ echo "Downloading fastas..."
 # Make sure the receiving directory already exists.
 mkdir -p $OUT_DIR/$PADDED_ID/logs
 if [ "$STORAGE_TYPE" = "Cloud" ]; then
-    /google-cloud-sdk/bin/gsutil rsync -r -x '.*\.pdb$|logs/.*|msa.*|.*pkl|.*npy' \
-    $GS_OUT_FOLDER/$PADDED_ID/ $OUT_DIR/$PADDED_ID
+    # Download just the fasta file
+    /google-cloud-sdk/bin/gsutil cp $GS_OUT_FOLDER/$PADDED_ID/${PADDED_ID}.fasta $OUT_DIR/$PADDED_ID/
 fi
 
 ##############################################################
@@ -62,7 +62,7 @@ mkdir $OUT_DIR/$PADDED_ID/pfam
     $OUT_DIR/$PADDED_ID/${PADDED_ID}.fasta
 # For debugging purposes...
 cat $OUT_DIR/$PADDED_ID/pfam/pfam.txt
-/opt/conda/bin/python \
+/opt/conda/envs/worker/bin/python \
     /worker/parse_hmmscan.py \
     $OUT_DIR/$PADDED_ID/pfam/pfam.txt \
     $OUT_DIR/$PADDED_ID/pfam/pfam.json
@@ -70,6 +70,6 @@ cat $OUT_DIR/$PADDED_ID/pfam/pfam.txt
 ##############################################################
 # Rsync.
 if [ "$STORAGE_TYPE" = "Cloud" ]; then
-    echo "Running final rsync to $GS_OUT_FOLDER/$PADDED_ID"
-    /google-cloud-sdk/bin/gsutil rsync -r $OUT_DIR/$PADDED_ID $GS_OUT_FOLDER/$PADDED_ID
+    echo "Running final rsync to $GS_OUT_FOLDER/$PADDED_ID/pfam"
+    /google-cloud-sdk/bin/gsutil rsync -r $OUT_DIR/$PADDED_ID/pfam $GS_OUT_FOLDER/$PADDED_ID/pfam
 fi

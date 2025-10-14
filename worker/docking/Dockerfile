@@ -18,5 +18,5 @@ RUN tar zxvf ADFRsuite_x86_64Linux_1.0.tar.gz && \
   cd ADFRsuite_x86_64Linux_1.0 && \
   echo Y | ./install.sh -d /adfrsuite -c 0
 
- 
+
 COPY . /code

@@ -1,4 +1,11 @@
 **/.git
 **/venv
+**/.venv
+**/.mypy_cache
+**/.pytest_cache
 **/node_modules
 **/.vscode
+.boltz/
+backend/notebooks/
+backend/folde/data/
+backend/foldydata/

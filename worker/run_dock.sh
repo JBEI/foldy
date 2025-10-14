@@ -24,12 +24,12 @@ if [ "$STORAGE_TYPE" = "Local" ]; then
         exit 1
     fi
 elif [ "$STORAGE_TYPE" = "Cloud" ]; then
-    if [ $# -eq 6 ]; then
+    if [ $# -ge 6 ]; then
         GS_OUT_FOLDER=$6
         OTHER_ARGS=("${@:7}")
         echo "Using cloud storage at $GS_OUT_FOLDER"
     else
-        echo "Invalid: There are six arguments, but the fifth argument is not 'Cloud'."
+        echo "Error: The specified storage type is 'Cloud', but there was no google cloud storage output folder specified."
         exit 1
     fi
 else
@@ -45,7 +45,7 @@ echo "Downloading PDBs..."
 # Make sure the receiving directory already exists.
 mkdir -p $OUT_DIR/$PADDED_ID/logs
 if [ "$STORAGE_TYPE" = "Cloud" ]; then
-  /google-cloud-sdk/bin/gsutil cp $GS_OUT_FOLDER/$PADDED_ID/ranked_0.pdb $OUT_DIR/$PADDED_ID/
+  /google-cloud-sdk/bin/gsutil cp $GS_OUT_FOLDER/$PADDED_ID/ranked_0.cif $OUT_DIR/$PADDED_ID/
 fi
 
 ##############################################################
@@ -60,7 +60,7 @@ then
       /worker/docking/dock.py \
       --adfrsuite_path /adfrsuite \
       "${OTHER_ARGS[@]}" \
-      $OUT_DIR/$PADDED_ID/ranked_0.pdb \
+      $OUT_DIR/$PADDED_ID/ranked_0.cif \
       $LIGAND_SMILES \
       $OUT_DIR/$PADDED_ID/dock/${LIGAND_NAME}
 else
@@ -71,7 +71,7 @@ else
   TORCH_HOME=/foldydbs/diffdockdbs/torch \
       /opt/conda/envs/diffdock/bin/python \
       /worker/diffdock/DiffDock/inference.py \
-      --protein_path $OUT_DIR/$PADDED_ID/ranked_0.pdb \
+      --protein_path $OUT_DIR/$PADDED_ID/ranked_0.cif \
       --ligand "$LIGAND_SMILES" \
       --complex_name ${LIGAND_NAME} \
       --out_dir $OUT_DIR/$PADDED_ID/dock \
@@ -79,7 +79,7 @@ else
       --samples_per_complex 40 \
       --batch_size 10 \
       --actual_steps 18 \
-      --no_final_step_noise 
+      --no_final_step_noise
   cd -
 
   # Combine all the ranked SDFs into one SDF for easy downloading.

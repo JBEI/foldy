@@ -1,0 +1,22 @@
+{
+    "editor.formatOnSave": true,
+    "python.formatting.provider": "none",
+    "[python]": {
+        "editor.defaultFormatter": "ms-python.black-formatter"
+    },
+    "jupyter.notebookFileRoot": "${workspaceFolder}/backend",
+    "files.exclude": {
+        "**/.git": false
+    },
+    "python.analysis.typeCheckingMode": "off",
+    "python.analysis.autoImportCompletions": true,
+    "python.analysis.extraPaths": [
+        "\"${workspaceFolder}/backend\""
+    ],
+    "python.languageServer": "None",
+    "python.pythonPath": "./.venv/bin/python",
+    "editor.detectIndentation": false,
+    "docker.enableDockerComposeLanguageService": false,
+    "cursor.general.disableHttp2": true,
+}
+// BasedPyright settings in vscode are ignored when using pyrightconfig.json is provided.
