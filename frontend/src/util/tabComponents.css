@@ -1,0 +1,144 @@
+/* Mobile-first responsive design improvements */
+
+/* Better touch targets for mobile */
+@media (max-width: 768px) {
+    .uk-button {
+        min-height: 44px; /* Apple's recommended minimum touch target */
+        padding: 8px 16px;
+    }
+
+    .uk-input, .uk-select, .uk-textarea {
+        min-height: 44px;
+        font-size: 16px; /* Prevents zoom on iOS */
+    }
+
+    /* Better table scrolling indicators */
+    .responsive-table-container {
+        position: relative;
+    }
+
+    .responsive-table-container::before,
+    .responsive-table-container::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        width: 20px;
+        pointer-events: none;
+        z-index: 1;
+    }
+
+    .responsive-table-container::before {
+        left: 0;
+        background: linear-gradient(90deg, rgba(0,0,0,0.1) 0%, transparent 100%);
+    }
+
+    .responsive-table-container::after {
+        right: 0;
+        background: linear-gradient(270deg, rgba(0,0,0,0.1) 0%, transparent 100%);
+    }
+
+    /* Improve spacing for mobile */
+    .tab-container {
+        padding: 12px !important;
+    }
+
+    .section-card {
+        margin-bottom: 15px !important;
+        padding: 12px !important;
+    }
+
+    /* Stack form fields on mobile */
+    .form-row {
+        flex-direction: column !important;
+        gap: 15px !important;
+    }
+
+    .form-field {
+        min-width: 100% !important;
+        flex: 1 1 100% !important;
+    }
+
+    /* Better collapsible headers for mobile */
+    .collapsible-header {
+        padding: 15px !important;
+        font-size: 16px;
+    }
+
+    /* Improve button groups for mobile */
+    .button-group {
+        flex-direction: column !important;
+        align-items: stretch !important;
+    }
+
+    .button-group .uk-button {
+        width: 100% !important;
+        margin-bottom: 8px;
+    }
+}
+
+/* Tablet adjustments */
+@media (min-width: 769px) and (max-width: 1024px) {
+    .form-row {
+        gap: 15px !important;
+    }
+
+    .form-field {
+        min-width: 280px !important;
+    }
+}
+
+/* Desktop enhancements */
+@media (min-width: 1025px) {
+    .tab-container {
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+
+    .form-row {
+        align-items: flex-end;
+    }
+}
+
+/* Improved focus states for accessibility */
+.uk-button:focus,
+.uk-input:focus,
+.uk-select:focus,
+.uk-textarea:focus {
+    outline: 2px solid #007bff;
+    outline-offset: 2px;
+}
+
+/* Better hover states */
+.collapsible-header:hover {
+    background-color: #e9ecef !important;
+    transition: background-color 0.2s ease;
+}
+
+/* Loading states */
+.loading-spinner {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100px;
+}
+
+/* Error states */
+.error-message {
+    background-color: #f8d7da;
+    border: 1px solid #f5c6cb;
+    color: #721c24;
+    padding: 12px;
+    border-radius: 4px;
+    margin: 10px 0;
+}
+
+/* Success states */
+.success-message {
+    background-color: #d4edda;
+    border: 1px solid #c3e6cb;
+    color: #155724;
+    padding: 12px;
+    border-radius: 4px;
+    margin: 10px 0;
+}

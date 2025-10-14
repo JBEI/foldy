@@ -38,7 +38,7 @@ Every resource within Kubernetes is managed in the single “foldy/manifest.yaml
 * frontend: a compiled React app is served by an nginx docker container in the frontend deployment
 * backend: a single flask application serves all user and structure data, and puts jobs on the RedisQueue
 * redisqueue: a Redis instance tracks multiple job queues, where jobs are separated by the necessary hardware, including:
-  
+
   Queue | Jobs | Hardware
   --- | --- | ---
   emailparrot | Jobs requiring a tiny machine, such as sending an email | Minimal amount of CPU
@@ -53,10 +53,9 @@ Every resource within Kubernetes is managed in the single “foldy/manifest.yaml
 Each new fold that is submitted is broken down into several sub-tasks:
 * Features: the features sub-task performs a search of large genetic databases in order to generate a multiple sequence alignment (MSA) of the query protein sequences. This task is handled in the cpu queue.
 * Models: the models sub-task performs protein structure prediction using AlphaFold given the MSA from the Features sub-task. This task is handled either in the gpu or biggpu queue depending on the size of the query protein. The threshold for a models sub-task to be sent to the biggpu queue is 900 amino acids.
-* Annotate: the annotate sub-task performs sequence annotation with antiSMASH and pfam hmmscan. This task is handled in the cpu queue. 
-* Decompress Pickles: the decompress pickles sub-task extracts the intermediate information in the AlphaFold model that enables contact probability calculations. The contact probability calculations are performed using the residue-residue distance probability distribution function. This task is handled in the cpu queue. 
-* Furthermore, any docking tasks that are submitted get created as a sub-task of the parent fold task. Docking tasks are handled in the cpu queue. 
+* Annotate: the annotate sub-task performs sequence annotation with antiSMASH and pfam hmmscan. This task is handled in the cpu queue.
+* Decompress Pickles: the decompress pickles sub-task extracts the intermediate information in the AlphaFold model that enables contact probability calculations. The contact probability calculations are performed using the residue-residue distance probability distribution function. This task is handled in the cpu queue.
+* Furthermore, any docking tasks that are submitted get created as a sub-task of the parent fold task. Docking tasks are handled in the cpu queue.
 
 ## Local Compute
 Local resources can be enlisted as RedisQueue Workers by proxying the redis and postgres ports to local compute resources, and making new scripts akin to “worker/run_AlphaFold.sh”, “worker/run_dock.sh”, “worker/run_annotate.sh.”
-

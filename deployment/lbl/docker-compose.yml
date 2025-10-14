@@ -1,0 +1,173 @@
+version: "3.6"
+
+# Foldy Local Deployment
+#
+# Required Environment Variables:
+#   FOLDY_STORAGE_DIRECTORY - Path for persistent storage (postgres + blob data)
+#
+# Optional Environment Variables:
+#   FOLDY_VERSION          - Version tag for Docker images (default: latest)
+#   FOLDY_FRONTEND_PORT    - Port for frontend (default: 3000)
+#   FOLDY_SECRET_KEY       - Flask secret key (default: auto-generated)
+#   FOLDY_DOCKERHUB_USER   - DockerHub username (default: jbrlbl)
+#
+# Usage:
+#   FOLDY_STORAGE_DIRECTORY=/path/to/data docker-compose up -d
+
+x-common-env: &common-env
+  ENV: production
+  DEBUG: true
+  FRONTEND_URL: ${FOLDY_FRONTEND_URL:-https://foldy.lbl.gov}
+  BACKEND_URL: ${FOLDY_BACKEND_URL:-https://foldy.lbl.gov}
+  DATABASE_URL: postgresql+psycopg2://user:password@db:5432/postgres
+  RQ_REDIS_URL: redis://redis:6379/0
+  OAUTH_REDIRECT_URI: "https://foldy.lbl.gov/api/authorize"
+  FOLDY_USER_EMAIL_DOMAIN: "lbl.gov"
+  FOLDY_ADMIN_UPGRADE_LIST: ${FOLDY_ADMIN_EMAILS}"
+  FOLDY_STORAGE_TYPE: "Cloud"
+  FOLDY_GCLOUD_PROJECT: ${FOLDY_CLOUD_PROJECT}
+  FOLDY_GSTORAGE_DIR: "gs://folds/out"
+  FOLDY_VERSION: lbnl-latest
+  SECRET_KEY: ${FOLDY_SECRET_KEY}
+  GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+  GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+  GOOGLE_APPLICATION_CREDENTIALS: ${GOOGLE_APPLICATION_CREDENTIALS}
+  WARNING_MESSAGE: "A migration happened recently, please let jbr@lbl.gov know if you have any issues."
+  EMAIL_USERNAME: ${EMAIL_USERNAME}
+  EMAIL_PASSWORD: ${EMAIL_PASSWORD}
+  RUN_ANNOTATE_PATH: /worker/run_annotate.sh
+  RUN_DOCK: /worker/run_dock.sh
+
+x-worker-base: &worker-base
+  pull_policy: always
+  platform: linux/amd64
+  depends_on:
+    - db
+    - redis
+  environment:
+    <<: *common-env
+    FLASK_APP: rq_worker_main.py
+  networks:
+    - default
+  volumes:
+    - ${FOLDY_STORAGE_DIRECTORY:?FOLDY_STORAGE_DIRECTORY must be set}/etc:/data/etc
+  restart: always
+
+services:
+  frontend:
+    pull_policy: always
+    image: ${FOLDY_DOCKERHUB_USER}/foldy-frontend:${FOLDY_VERSION}
+    platform: linux/amd64
+    networks:
+      - default
+    ports:
+      - "127.0.0.1:${FOLDY_FRONTEND_PORT:-3000}:80"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  backend:
+    pull_policy: always
+    image: ${FOLDY_DOCKERHUB_USER}/foldy-backend:${FOLDY_VERSION}
+    runtime: ${FOLDY_GPU_RUNTIME:-}
+    platform: linux/amd64
+    depends_on:
+      - db
+      - redis
+      - frontend
+    environment:
+      <<: *common-env
+      FLASK_APP: main.py
+    networks:
+      - default
+    volumes:
+      - ${FOLDY_STORAGE_DIRECTORY:?FOLDY_STORAGE_DIRECTORY must be set}/etc:/data/etc
+      #- ${FOLDY_STORAGE_DIRECTORY:?FOLDY_STORAGE_DIRECTORY must be set}/blob_storage:/data/blob_storage
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    entrypoint: /opt/conda/envs/worker/bin/python /backend/main.py
+
+  worker_esm:
+    <<: *worker-base
+    pull_policy: always
+    image: ${FOLDY_DOCKERHUB_USER}/foldy-worker-esm:${FOLDY_VERSION}
+    runtime: ${FOLDY_GPU_RUNTIME:-}
+    volumes:
+      - ${FOLDY_STORAGE_DIRECTORY:?FOLDY_STORAGE_DIRECTORY must be set}/etc:/data/etc
+      - ${FOLDY_STORAGE_DIRECTORY:?FOLDY_STORAGE_DIRECTORY must be set}/cache/esm_c:/root/.cache/torch/hub
+      - ${FOLDY_STORAGE_DIRECTORY:?FOLDY_STORAGE_DIRECTORY must be set}/cache/esm_hf:/root/.cache/huggingface
+    entrypoint: /opt/conda/envs/worker/bin/python /backend/rq_worker_main.py cpu esm
+
+  worker_boltz:
+    <<: *worker-base
+    image: ${FOLDY_DOCKERHUB_USER}/foldy-worker-boltz:${FOLDY_VERSION}
+    runtime: ${FOLDY_GPU_RUNTIME:-}
+    volumes:
+      - ${FOLDY_STORAGE_DIRECTORY:?FOLDY_STORAGE_DIRECTORY must be set}/etc:/data/etc
+      - ${FOLDY_STORAGE_DIRECTORY:?FOLDY_STORAGE_DIRECTORY must be set}/cache/boltz:/hf-cache
+    environment:
+      <<: *common-env
+      FLASK_APP: rq_worker_main.py
+      NVIDIA_VISIBLE_DEVICES: ${NVIDIA_VISIBLE_DEVICES:-}
+      NVIDIA_DRIVER_CAPABILITIES: ${NVIDIA_DRIVER_CAPABILITIES:-}
+    entrypoint: /opt/conda/envs/worker/bin/python /backend/rq_worker_main.py boltz
+
+  db:
+    image: postgres:15.14
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: postgres
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8"
+    networks:
+      - default
+    volumes:
+      - ${FOLDY_STORAGE_DIRECTORY:?FOLDY_STORAGE_DIRECTORY must be set}/pgdata:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7.2-alpine
+    restart: unless-stopped
+    command: redis-server --save 10 1 --loglevel warning
+    volumes:
+      - ${FOLDY_STORAGE_DIRECTORY:?FOLDY_STORAGE_DIRECTORY must be set}/redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # Initialize database on first run
+  db_init:
+    image: ${FOLDY_DOCKERHUB_USER}/foldy-backend:${FOLDY_VERSION}
+    pull_policy: always
+    platform: linux/amd64
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      <<: *common-env
+      FLASK_APP: main.py
+    networks:
+      - default
+    #volumes:
+    #  - ${FOLDY_STORAGE_DIRECTORY:?FOLDY_STORAGE_DIRECTORY must be set}/blob_storage:/data/blob_storage
+    command:
+      ["/opt/conda/envs/worker/bin/python", "-m", "flask", "db", "upgrade"]
+    restart: "no"
+
+networks:
+  default:
+    driver: bridge

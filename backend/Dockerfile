@@ -1,14 +1,17 @@
-# Use the official lightweight Python image.
-# https://hub.docker.com/_/python
-FROM --platform=linux/amd64 python:3.7.13
+# We use the same CUDA image in all our Dockerfiles.
+FROM nvidia/cuda:12.2.0-devel-ubuntu20.04
 
-ENV APP_HOME /app
+COPY worker/scripts/base_setup.sh /scripts/base_setup.sh
+RUN /scripts/base_setup.sh
+
+COPY backend/requirements.txt /backend/
+COPY worker/scripts/conda_env_setup.sh /scripts/conda_env_setup.sh
+RUN /scripts/conda_env_setup.sh
+
+ENV APP_HOME /backend
 WORKDIR $APP_HOME
 
-# Install production dependencies.
-COPY requirements.txt .
-RUN pip install -r requirements.txt
-
+RUN /opt/conda/envs/worker/bin/pip install gunicorn
 # Copy local code to the container image.
 COPY backend/ ./
 
@@ -18,4 +21,4 @@ COPY backend/ ./
 # to be equal to the cores available.
 # CMD flask rq worker --burst all
 # CMD exec gunicorn --bind :$PORT --workers 1 --threads 8 --timeout 0 main:app_dispatch
-CMD exec gunicorn --bind :$PORT --workers 1 --threads 3 --timeout 0 --log-level=debug --keep-alive 30 main:app_dispatch
+CMD exec /opt/conda/envs/worker/bin/gunicorn --bind :$PORT --workers 3 --threads 3 --timeout 60 --log-level=debug --keep-alive 30 main:app_dispatch

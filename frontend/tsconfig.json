@@ -20,6 +20,7 @@
     "jsx": "react",
     // https://github.com/wmonk/create-react-app-typescript/issues/93#issuecomment-396885127
     "types": ["node"],
+    "baseUrl": ".",
     "paths": {
       "*": ["./src/local-types/*", "*"]
     }

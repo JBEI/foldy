@@ -1,0 +1,91 @@
+version: "3.6"
+
+services:
+  backend-tests:
+    build: backend/
+    platform: linux/amd64
+    environment:
+      - PYTHONPATH=/backend
+      - FLASK_APP=main.py
+      - ENV=development
+      - DEBUG=True
+      - DATABASE_URL=postgresql+psycopg2://user:password@db:5432/postgres
+      - RQ_REDIS_URL=redis://redis:6379/0
+      - FOLDY_STORAGE_TYPE=Local
+      - FOLDY_LOCAL_STORAGE_DIR=/tmp/test_storage
+    volumes:
+      - ./backend:/backend
+    entrypoint:
+      - "ptw"
+      - "--poll"
+      - "--ignore"
+      - "/backend/app/tests/test_esm_util.py"
+      - "--ignore"
+      - "/backend/app/tests/test_esm_client.py"
+      - "--ignore"
+      - "/backend/app/tests/test_esm_finetuning.py"
+      - "--ignore"
+      - "/backend/app/tests/test_esm_jobs.py"
+      - "--ignore"
+      - "/backend/app/tests/test_evolve_jobs.py"
+      - "--ignore"
+      - "/backend/folde/tests"
+
+  cpu-worker-tests:
+    build: backend/
+    platform: linux/amd64
+    environment:
+      - PYTHONPATH=/backend
+      - FLASK_APP=main.py
+      - ENV=development
+      - DEBUG=True
+      - DATABASE_URL=postgresql+psycopg2://user:password@db:5432/postgres
+      - RQ_REDIS_URL=redis://redis:6379/0
+      - FOLDY_STORAGE_TYPE=Local
+      - FOLDY_LOCAL_STORAGE_DIR=/tmp/test_storage
+    volumes:
+      - ./backend:/backend
+    entrypoint:
+      - "ptw"
+      - "--poll"
+      - "/backend"
+      - "/backend/app/tests/test_evolve_jobs.py"
+
+  esm-worker-tests:
+    build:
+      context: .
+      dockerfile: worker/Dockerfile.esm
+    platform: linux/amd64
+    environment:
+      - PYTHONPATH=/backend
+      - FLASK_APP=main.py
+      - ENV=development
+      - DEBUG=True
+      - DATABASE_URL=postgresql+psycopg2://user:password@db:5432/postgres
+      - RQ_REDIS_URL=redis://redis:6379/0
+      - FOLDY_STORAGE_TYPE=Local
+      - FOLDY_LOCAL_STORAGE_DIR=/tmp/test_storage
+    volumes:
+      - ./backend:/backend
+    entrypoint:
+      - "/opt/conda/envs/worker/bin/ptw"
+      - "--poll"
+      - "/backend"
+      - "/backend/app/tests/test_esm_util.py"
+      - "/backend/app/tests/test_esm_client.py"
+      - "/backend/app/tests/test_esm_finetuning.py"
+      - "/backend/app/tests/test_esm_jobs.py"
+      - "/backend/folde/tests"
+  frontend-tests:
+    build:
+      context: frontend/
+      target: build-stage
+      args:
+        - BACKEND_URL=http://localhost:8080
+        - INSTITUTION=Local
+        - HOST=0.0.0.0
+    environment:
+      - CI=true
+    volumes:
+      - ./frontend:/app
+    command: npm test -- --watchAll

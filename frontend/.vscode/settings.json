@@ -1,0 +1,6 @@
+{
+    "files.exclude": {
+        "build/**": true
+    },
+    "editor.tabSize": 2
+}

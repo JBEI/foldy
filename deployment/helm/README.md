@@ -7,7 +7,7 @@ following the procedure below.
 
 
 <figure align="center">
-  <img src="../../scripts/architecture.png"  />
+  <img src="scripts/architecture.png"  />
   <p align="center"><i>Foldy architecture. Kubernetes cluster resources are deployed and managed by Helm. Other resources are deployed and managed manually, instructions below.</i></p>
 </figure>
 
@@ -130,7 +130,7 @@ These variables will be used throughout this procedure. Once completed, execute 
      gcloud auth configure-docker us-central1-docker.pkg.dev
      ```
 
-   - **Create node pools** by running: `bash scripts/create_nodepools.sh`
+   - **Create node pools** by running: `bash deployment/helm/scripts/create_nodepools.sh`
 
 1. Fill out template files
 
@@ -166,7 +166,7 @@ These variables will be used throughout this procedure. Once completed, execute 
 1. Initialize tables in PostgreSQL database
 
    ```bash
-   kubectl exec service/backend -- env FLASK_APP=main.py flask db upgrade
+   kubectl exec service/backend -- env FLASK_APP=main.py python -m flask db upgrade
    ```
 
 1. Fill out `db_creation_resources.yaml` with appropriate variables and download alphafold databases into a persistent volume with
@@ -201,7 +201,7 @@ _Note, using the `us-central1-c` region is required because most google A100s ar
 1. Rebuild the docker images:
 
    ```bash
-   scripts/build_and_deploy_containers.sh ${PROJECT_ID} ${GOOGLE_ARTIFACT_REPO} ${IMAGE_VERSION}
+   scripts/build_and_deploy_containers.sh
    ```
 
 1. Update the helm chart `helm upgrade foldy deployment/helm`

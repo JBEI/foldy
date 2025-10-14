@@ -1,0 +1,61 @@
+FROM nvidia/cuda:12.2.0-devel-ubuntu20.04
+
+COPY worker/scripts/base_setup.sh /scripts/base_setup.sh
+RUN /scripts/base_setup.sh
+
+COPY backend/requirements.txt /backend/
+COPY worker/scripts/conda_env_setup.sh /scripts/conda_env_setup.sh
+RUN /scripts/conda_env_setup.sh
+
+# COPY worker/schmirler_et_al_finetune.yml /schmirler_et_al_finetune.yml
+# RUN /opt/conda/bin/conda env update -n worker --file /schmirler_et_al_finetune.yml
+# Install OpenSSL development packages and build tools
+RUN apt-get update && apt-get install -y \
+    libssl-dev \
+    pkg-config \
+    gcc \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Rust and set up PATH
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+ENV PATH="/root/.cargo/bin:${PATH}"
+
+# Install special requirements.
+# RUN /opt/conda/envs/worker/bin/pip install esm tokenizers==0.13.2 transformers==4.26.1 datasets==2.9.0 evaluate==0.4.0 peft==0.9.0 deepspeed==0.8.1
+RUN /root/.local/bin/uv pip install --python /opt/conda/envs/worker/bin/python --no-cache \
+    tokenizers==0.15.2 \
+    transformers==4.37.2 \
+    datasets==2.16.1 \
+    evaluate==0.4.1 \
+    peft==0.9.0 \
+    deepspeed==0.13.1 \
+    accelerate==0.27.2 \
+    esm==3.1.3
+
+# TODO(jacob): Move this into setup.sh.
+RUN /opt/conda/bin/conda install -y -n worker -c conda-forge libgcc-ng libstdcxx-ng
+RUN /root/.local/bin/uv pip install --python /opt/conda/envs/worker/bin/python nvidia-ml-py
+# RUN echo 'export LD_LIBRARY_PATH=$CONDA_PREFIX/lib:$LD_LIBRARY_PATH' >> /etc/profile.d/conda.sh
+ENV LD_LIBRARY_PATH="/opt/conda/envs/worker/lib:${LD_LIBRARY_PATH}"
+
+# # Download the huggingface models...
+# RUN HF_HUB_ENABLE_HF_TRANSFER=1 /opt/conda/envs/worker/bin/huggingface-cli download \
+#   --resume-download \
+#   --local-dir /hf-cache/ \
+#   EvolutionaryScale/esmc-300m-2024-12 data/weights/esmc_300m_2024_12_v0.pth
+
+# Copy application code.
+COPY backend/ /backend/
+COPY worker/*.sh /worker/
+COPY worker/*.py /worker/
+COPY worker/docking/* /worker/docking/
+
+# Gotta set the workdir so that the entrypoint can find the rq_worker_main.py.
+WORKDIR /backend
+
+# Make sure to use the exec form of ENTRYPOINT, rather than the shell
+# form, so that SIGTERM gets propagated to rq.
+# https://medium.com/@tasdikrahman/handling-signals-for-applications-running-in-kubernetes-dc6537f9b542
+# https://docs.docker.com/engine/reference/builder/#entrypoint
+ENTRYPOINT ["/opt/conda/envs/worker/bin/flask"]
