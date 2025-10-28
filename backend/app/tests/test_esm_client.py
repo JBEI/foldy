@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 import pytest
 import torch
+
 from app.helpers.esm_client import (
     FoldyESM1and2Client,
     FoldyESM3Client,

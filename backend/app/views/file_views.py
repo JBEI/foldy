@@ -14,10 +14,6 @@ from typing import (
     cast,
 )
 
-from app.api_fields import fold_file_zip_fields
-from app.extensions import db
-from app.helpers.fold_storage_manager import FoldStorageManager
-from app.models import Dock, Fold, Invokation
 from flask import (
     Response,
     current_app,
@@ -30,6 +26,11 @@ from flask_jwt_extended import jwt_required
 from flask_restx import Namespace, Resource, fields
 from sqlalchemy.sql.elements import and_
 from werkzeug.exceptions import BadRequest
+
+from app.api_fields import fold_file_zip_fields
+from app.extensions import db
+from app.helpers.fold_storage_manager import FoldStorageManager
+from app.models import Dock, Fold, Invokation
 
 ns = Namespace("file_views", decorators=[jwt_required(fresh=True)])
 

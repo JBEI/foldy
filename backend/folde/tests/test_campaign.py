@@ -14,6 +14,7 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 import pandas as pd
 import pytest
+
 from folde.campaign import (
     CampaignWorldState,
     _evaluate_metrics,

@@ -91,7 +91,7 @@ spec:
   maxReplicaCount: {{ if (eq .RqQueueName "cpu") -}}
     10
   {{- else -}}
-    1
+    3
   {{- end }}
   rollout:
     strategy: gradual                         # Optional. Default: default. Which Rollout Strategy KEDA will use.

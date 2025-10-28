@@ -23,12 +23,13 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from folde.util import get_top_percentile_recall_score
 from scipy.stats import spearmanr
 from sklearn.metrics import roc_auc_score
 from sklearn.model_selection import train_test_split
 from torch.cuda.amp import GradScaler, autocast
 from torch.utils.data import DataLoader, Dataset, TensorDataset
+
+from folde.util import get_top_percentile_recall_score
 
 logger = logging.getLogger(__name__)
 

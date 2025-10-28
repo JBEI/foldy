@@ -6,10 +6,11 @@ Copied from https://github.com/cookiecutter-flask/cookiecutter-flask
 from datetime import UTC, datetime
 from typing import Any, Dict, List, Optional, Union
 
-from app.database import Column, PkModel, db, reference_col, relationship
 from sqlalchemy import Index, func
 from sqlalchemy.ext.hybrid import hybrid_method, hybrid_property
 from sqlalchemy.orm import deferred
+
+from app.database import Column, PkModel, db, reference_col, relationship
 
 
 class Invokation(PkModel):

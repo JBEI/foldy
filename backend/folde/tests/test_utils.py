@@ -9,6 +9,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
+
 from folde.few_shot_models import FewShotModel, register_few_shot_model
 from folde.zero_shot_models import ZeroShotModel, register_zeroshot_model
 

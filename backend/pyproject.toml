@@ -6,6 +6,9 @@ target-version = ['py312']
 profile = "black"
 line_length = 100
 
+[tool.setuptools]
+packages = ["folde", "app", "rq_util", "notebooks", "migrations"]
+
 # BasedPyright settings in pyproject.toml are ignored if we set pyrightconfig.json.
 # [tool.pyright]
 # pythonVersion = "3.12"

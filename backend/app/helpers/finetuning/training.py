@@ -11,7 +11,6 @@ import numpy as np
 import pandas as pd
 import torch
 import torch.nn.functional as F
-from app.helpers.sequence_util import seq_id_to_seq
 from datasets import Dataset
 from scipy.stats import spearmanr
 from sklearn.metrics import accuracy_score
@@ -27,6 +26,8 @@ from transformers import (
 )
 from transformers.integrations import TensorBoardCallback
 from transformers.trainer_callback import TrainerCallback
+
+from app.helpers.sequence_util import seq_id_to_seq
 
 # from .modeling_esm import load_esm_model
 # from .ranking_trainer import RankingTrainer

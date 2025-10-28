@@ -1,9 +1,10 @@
-from app.api_fields import queue_job_fields
-from app.authorization import verify_has_edit_access
-from app.util import start_stage
 from flask import request
 from flask_jwt_extended import jwt_required
 from flask_restx import Namespace, Resource
+
+from app.api_fields import queue_job_fields
+from app.authorization import verify_has_edit_access
+from app.util import start_stage
 
 ns = Namespace("other_views", decorators=[jwt_required(fresh=True)])
 

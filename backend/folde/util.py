@@ -1,12 +1,11 @@
 import json
 import logging
 from pathlib import Path
-from typing import Any, List, Tuple, Union, cast
+from typing import Any, Dict, List, Optional, Tuple, Union, cast
 
 import numpy as np
 import pandas as pd
 import torch
-from folde.types import FolDEModelConfig, ModelDiff, ModelEvaluation
 from numpy.typing import NDArray
 from pandas import DataFrame
 from pandas.core.frame import DataFrame
@@ -14,17 +13,12 @@ from scipy.cluster.hierarchy import leaves_list, linkage
 from scipy.spatial.distance import squareform
 from scipy.special import softmax
 from sklearn.metrics import recall_score
+from sklearn.neighbors import KNeighborsRegressor
+
+from app.helpers.sequence_util import is_homolog_seq_id
+from folde.types import FolDEModelConfig, ModelDiff, ModelEvaluation
 
 DMS_SHORTNAMES = {
-    #   'A0A140D2T1_ZIKV_Sourisseau_2019': "A0A140D2T1_ZIKV",
-    #   'A0A2Z5U3Z0_9INFA_Doud_2016': "A0A2Z5U3Z0_9INFA",
-    #   'ADRB2_HUMAN_Jones_2020': "ADRB2",
-    #   'BLAT_ECOLX_Stiffler_2015': "BLAT_ECOLX",
-    #   'C6KNH7_9INFA_Lee_2018': "C6KNH7",
-    #   'IF1_ECOLI_Kelsic_2016': "IF1_ECOLI",
-    #   'MK01_HUMAN_Brenan_2016': "MK01_HUMAN",
-    #   'P53_HUMAN_Giacomelli_2018_Null_Etoposide': "P53",
-    #   'PHOT_CHLRE_Chen_2023': "PHOT_CHLRE",
     "BLAT_ECOLX_Firnberg_2014": "BLAT_ECOLX",
     "ANCSZ_Hobbs_2022": "ANCSZ",
     "HXK4_HUMAN_Gersing_2022_activity": "HXK4_HUMAN",
@@ -35,11 +29,9 @@ DMS_SHORTNAMES = {
     "P53_HUMAN_Giacomelli_2018_Null_Nutlin": "P53_Null",
     "HSP82_YEAST_Flynn_2019": "HSP82_YEAST",
     "P53_HUMAN_Giacomelli_2018_WT_Nutlin": "P53_WT",
-    # "MK01_HUMAN_Brenan_2016": "MK01_HUMAN",
     "HEM3_HUMAN_Loggerenberg_2023": "HEM3_HUMAN",
     "PPM1D_HUMAN_Miller_2022": "PPM1D_HUMAN",
     "SPG1_STRSG_Olson_2014": "SPG1",
-    # VALIDATION TARGETS
     "ADRB2_HUMAN_Jones_2020": "ADRB2_HUMAN",
     "P53_HUMAN_Giacomelli_2018_Null_Nutlin": "P53_HUMAN_Null",
     "P53_HUMAN_Giacomelli_2018_WT_Nutlin": "P53_HUMAN_WT",
@@ -47,14 +39,10 @@ DMS_SHORTNAMES = {
     "KCNJ2_MOUSE_Coyote-Maestas_2022_function": "KCNJ2_MOUSE",
     "CAS9_STRP1_Spencer_2017_positive": "CAS9_STRP1",
     "SC6A4_HUMAN_Young_2021": "SC6A4_HUMAN",
-    # 'OXDA_RHOTO_Vanella_2023_expression',
-    # 'HSP82_YEAST_Mishra_2016',
     "PTEN_HUMAN_Mighell_2018": "PTEN_HUMAN",
     "S22A1_HUMAN_Yee_2023_activity": "S22A1_HUMAN",
     "KKA2_KLEPN_Melnikov_2014": "KKA2_KLEPN",
-    # Include some "easy to engineer" targets.
     "PPARG_HUMAN_Majithia_2016": "PPARG_HUMAN",
-    # 'P53_HUMAN_Giacomelli_2018_Null_Etoposide',
     "MET_HUMAN_Estevam_2023": "MET_HUMAN",
     "MTHR_HUMAN_Weile_2021": "MTHR_HUMAN",
     "LGK_LIPST_Klesmith_2015": "LGK_LIPST",
@@ -365,7 +353,9 @@ def convert_compaign_result_collection_to_df(
                             "cumulative_1pct_hits": (mutants_so_far.percentile >= 0.99).sum(),
                             "cumulative_10pct_hits": (mutants_so_far.percentile >= 0.90).sum(),
                             "new_1pct_hits": (mutants_this_round.percentile >= 0.99).sum(),
+                            "frac_1pct_hits": (mutants_this_round.percentile >= 0.99).mean(),
                             "new_10pct_hits": (mutants_this_round.percentile >= 0.90).sum(),
+                            "frac_10pct_hits": (mutants_this_round.percentile >= 0.90).mean(),
                             "has_found_top_1pct": (mutants_so_far.percentile >= 0.99).sum() > 0,
                             **round_metrics.model_dump(),
                             **round_metrics.misc,
@@ -594,3 +584,110 @@ def load_checkpointed_model_eval(
         raise ValueError(f"Failed to find any matching files.")
 
     return composite_result
+
+
+class NaturalnessImputer(object):
+    def __init__(self):
+        self.is_pretrained = False
+        self.single_mutant_naturalness_df: Optional[pd.DataFrame] = None
+        self.knns: Dict[str, KNeighborsRegressor] = {}
+
+    def pretrain(self, naturalness_df: pd.DataFrame, embedding_series: pd.Series):
+        if self.is_pretrained:
+            raise ValueError("Model is already pretrained.")
+
+        self.knns = {}
+        for naturalness_column in naturalness_df.columns:
+            naturalness_series = naturalness_df[naturalness_column]
+            assert naturalness_series.index.equals(embedding_series.index)
+            assert embedding_series.index.is_unique, "embedding_series contains duplicate indices"
+
+            assert not naturalness_series.isna().any(), "naturalness_series contains NANs"
+
+            X = np.array([np.array(emb) for emb in embedding_series.values])
+            y = naturalness_series.values
+
+            # Fit KNN regressor
+            knn = KNeighborsRegressor(n_neighbors=5)
+            knn.fit(X, y)
+            self.knns[naturalness_column] = knn
+
+        # Also store the naturalness series for prediction later.
+        self.single_mutant_naturalness_df = naturalness_df
+        self.is_pretrained = True
+
+    def impute(self, naturalness_df: pd.DataFrame, embedding_series: pd.Series) -> List[pd.Series]:
+        assert self.single_mutant_naturalness_df is not None
+        assert len(naturalness_df.columns) == len(self.knns)
+        assert set(naturalness_df.columns) == set(self.single_mutant_naturalness_df.columns)
+
+        # Get the ensemble of naturalness scores with missing values imputed.
+
+        ensemble_of_computed_naturalness: List[pd.Series] = []
+
+        for naturalness_column in naturalness_df.columns:
+
+            naturalness_series = naturalness_df[naturalness_column]
+            single_mutant_naturalness_series = self.single_mutant_naturalness_df[naturalness_column]
+            knn = self.knns[naturalness_column]
+
+            def get_naturalness(seq_id, direct_naturalness) -> float:
+                """Try computing naturalness for mutants even if none was provided by extrapolating for multimutants."""
+                if direct_naturalness is not None and not pd.isna(direct_naturalness):
+                    return direct_naturalness
+
+                if is_homolog_seq_id(seq_id):
+                    return np.nan
+
+                # Break it down into single mutants.
+                seq_id_parts = seq_id.split("_")
+
+                # For multimutants, we compute naturalness as the product of the naturalness of the single mutants.
+                computed_naturalness = single_mutant_naturalness_series.loc[seq_id_parts].sum()
+                if pd.isna(computed_naturalness):
+                    raise ValueError(
+                        f"Computed naturalness is NAN for {seq_id} with parts {seq_id_parts}"
+                    )
+                return computed_naturalness
+
+            naturalness_series.index.name = "seq_id"
+            computed_naturalness_series = naturalness_series.reset_index(name="wt_marginal").apply(
+                lambda r: get_naturalness(r.seq_id, r.wt_marginal), axis=1
+            )
+            computed_naturalness_series.index = naturalness_series.index
+
+            # Do KNN imputation to fill in NANs from homologs.
+            if computed_naturalness_series.isna().any():
+                if not self.is_pretrained:
+                    raise ValueError(
+                        "Model is not pretrained, so cannot fill in NANs from homologs."
+                    )
+
+                logging.info(
+                    f"Filling in NANs from homologs for {computed_naturalness_series.isna().sum()}/{len(computed_naturalness_series)} naturalness values."
+                )
+                assert embedding_series is not None
+                embedding_array = np.array([np.array(emb) for emb in embedding_series.values])
+                naturalness_array = computed_naturalness_series.values
+
+                # Find indices for known and missing
+                missing_mask = computed_naturalness_series.isna().to_numpy()
+                X_missing = embedding_array[missing_mask]
+
+                imputed_values = knn.predict(X_missing)
+
+                # Fill in the missing values
+                imputed_naturalness = naturalness_array.copy()
+                imputed_naturalness[missing_mask] = imputed_values
+
+                # Convert back to Series
+                computed_naturalness_series = pd.Series(
+                    imputed_naturalness, index=naturalness_series.index
+                )
+
+            if computed_naturalness_series.isna().any():
+                raise ValueError(
+                    f"Computed naturalness series still has NANs: {computed_naturalness_series.isna().sum()}/{len(computed_naturalness_series)}"
+                )
+            ensemble_of_computed_naturalness.append(computed_naturalness_series)
+        return ensemble_of_computed_naturalness

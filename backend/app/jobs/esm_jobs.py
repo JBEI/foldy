@@ -13,6 +13,10 @@ from io import BytesIO, StringIO
 from pathlib import Path
 
 import pandas as pd
+from Bio import SeqIO
+from flask import current_app
+from werkzeug.exceptions import BadRequest
+
 from app.helpers.boltz_yaml_helper import BoltzYamlHelper
 from app.helpers.esm_client import FoldyESMClient
 from app.helpers.esm_util import get_naturalness
@@ -34,9 +38,6 @@ from app.helpers.sequence_util import (
     seq_id_to_seq,
 )
 from app.models import Dock, Embedding, FewShot, Fold, Invokation, Naturalness
-from Bio import SeqIO
-from flask import current_app
-from werkzeug.exceptions import BadRequest
 
 
 def load_fasta_to_dict(homolog_fasta: str) -> dict[str, str]:
@@ -329,6 +330,7 @@ def finetune_esm_model(few_shot_id: int):
 
         logging.info("Loading training code.")
         import torch
+
         from app.helpers.finetuning.training import score_sequences, train_per_protein
 
         if not fold.yaml_config:

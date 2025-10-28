@@ -2,12 +2,6 @@ import logging
 from typing import Any, Dict, List, Optional, Tuple, Union, cast
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
-from app.authorization import (
-    email_should_get_edit_permission_by_default,
-    email_should_get_upgraded_to_admin,
-)
-from app.extensions import db
-from app.models import User
 from authlib.integrations.flask_client import OAuth
 from flask import Response, current_app, jsonify, redirect, request, url_for
 from flask_jwt_extended import (
@@ -16,6 +10,13 @@ from flask_jwt_extended import (
     unset_jwt_cookies,
 )
 from flask_restx import Namespace, Resource, fields
+
+from app.authorization import (
+    email_should_get_edit_permission_by_default,
+    email_should_get_upgraded_to_admin,
+)
+from app.extensions import db
+from app.models import User
 
 ns = Namespace("login_views")
 

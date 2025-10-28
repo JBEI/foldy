@@ -12,6 +12,16 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union, cast
 
 import numpy as np
+from dnachisel import biotools
+from flask import abort, current_app
+from google.cloud.storage.client import Client
+from redis import Redis
+from rq import Callback
+from rq.job import Job, Retry
+from sqlalchemy.orm import joinedload
+from sqlalchemy.sql.elements import or_
+from werkzeug.exceptions import BadRequest
+
 from app.extensions import compress, db
 from app.helpers.fold_storage_manager import FoldStorageManager
 from app.helpers.rq_helpers import (
@@ -23,15 +33,6 @@ from app.helpers.rq_helpers import (
 from app.helpers.sequence_util import back_translate, validate_aa_sequence
 from app.jobs import boltz_jobs, other_jobs
 from app.models import Dock, Fold, Invokation, User
-from dnachisel import biotools
-from flask import abort, current_app
-from google.cloud.storage.client import Client
-from redis import Redis
-from rq import Callback
-from rq.job import Job, Retry
-from sqlalchemy.orm import joinedload
-from sqlalchemy.sql.elements import or_
-from werkzeug.exceptions import BadRequest
 
 
 def get_job_type_replacement(fold: Fold, job_type: str) -> int:

@@ -14,16 +14,17 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple
 
 import requests
+from Bio import SeqIO
+from Bio.Seq import Seq
+from Bio.SeqFeature import FeatureLocation, SeqFeature
+from Bio.SeqRecord import SeqRecord
+
 from app.helpers.sequence_util import (
     allele_set_to_seq_id,
     get_locus_from_allele_id,
     maybe_get_allele_id_error_message,
     sort_seq_id_list_no_verification,
 )
-from Bio import SeqIO
-from Bio.Seq import Seq
-from Bio.SeqFeature import FeatureLocation, SeqFeature
-from Bio.SeqRecord import SeqRecord
 
 
 def calculate_mutations_from_genbank(wt_aa_sequence: str, genbank_content: str) -> str:

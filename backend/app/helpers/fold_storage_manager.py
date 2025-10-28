@@ -14,10 +14,6 @@ from re import fullmatch
 from typing import Any, Dict, Iterable, List, Optional, Union
 
 import numpy as np
-from app.extensions import compress, db
-from app.helpers.boltz_yaml_helper import BoltzYamlHelper
-from app.helpers.sequence_util import back_translate
-from app.models import Dock, Fold, Invokation, User
 from dnachisel import biotools
 from flask import abort, current_app
 from google.cloud.storage import Blob
@@ -27,6 +23,11 @@ from rq.job import Retry
 from sqlalchemy.orm import joinedload, selectinload
 from sqlalchemy.sql.elements import or_
 from werkzeug.exceptions import BadRequest
+
+from app.extensions import compress, db
+from app.helpers.boltz_yaml_helper import BoltzYamlHelper
+from app.helpers.sequence_util import back_translate
+from app.models import Dock, Fold, Invokation, User
 
 
 class LocalBlob:

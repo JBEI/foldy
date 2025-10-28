@@ -14,6 +14,13 @@ from typing import Any, Dict, List, Optional, Tuple, Type, Union, cast
 import numpy as np
 import pandas as pd
 import torch
+from numpy.typing import NDArray
+from pandas import DataFrame, Series
+from sklearn.ensemble import RandomForestRegressor as SklearnRandomForestRegressor
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+from sklearn.model_selection import KFold
+from sklearn.neural_network import MLPRegressor as SklearnMLPRegressor
+
 from app.helpers.preference_ranking import (
     BradleyTerryMLP,
     PreferenceTrainer,
@@ -21,17 +28,12 @@ from app.helpers.preference_ranking import (
 )
 from app.helpers.sequence_util import sort_seq_id_list
 from folde.util import (
+    NaturalnessImputer,
     cluster_sort_seq_ids,
     constant_liar_sample,
     get_consensus_scores,
     internal_sample_n_indices,
 )
-from numpy.typing import NDArray
-from pandas import DataFrame, Series
-from sklearn.ensemble import RandomForestRegressor as SklearnRandomForestRegressor
-from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
-from sklearn.model_selection import KFold
-from sklearn.neural_network import MLPRegressor as SklearnMLPRegressor
 
 # Registry of available models
 _FEW_SHOT_MODELS = {}
@@ -227,6 +229,53 @@ class RandomFewShotModel(FewShotModel):
     def predict(self, naturalness_df: pd.DataFrame, embedding_series: pd.Series) -> List[pd.Series]:
         np.random.seed(self.random_state)
         return [pd.Series(np.random.rand(naturalness_df.shape[0]), index=naturalness_df.index)]
+
+    def get_debug_info(self) -> Dict[str, Any]:
+        return {}
+
+
+@register_few_shot_model
+class NaturalnessFewShotModel(FewShotModel):
+    """Use naturalness scores as activity scores."""
+
+    def __init__(self, random_state: int, **kwargs):
+        super().__init__(**kwargs)
+        self.random_state = random_state
+        self.naturalness_imputer = NaturalnessImputer()
+
+    def fit(
+        self,
+        naturalness_df: pd.DataFrame,
+        embedding_series: pd.Series,
+        measured_activity_series: pd.Series,
+        test_naturalness_df: pd.DataFrame | None = None,
+        test_embedding_series: pd.Series | None = None,
+        test_activity_series: Optional[pd.Series] = None,
+    ) -> "NaturalnessFewShotModel":
+        return self
+
+    def pretrain(
+        self,
+        naturalness_df: pd.DataFrame,
+        embedding_series: pd.Series,
+    ) -> "NaturalnessFewShotModel":
+        self.naturalness_imputer.pretrain(naturalness_df, embedding_series)
+        return self
+
+    def predict(
+        self, naturalness_df: pd.DataFrame, embedding_series: Optional[pd.Series] = None
+    ) -> List[pd.Series]:
+        """Predict using naturalness scores.
+
+        Args:
+            naturalness_series: Series containing naturalness scores, some of which may be NAN.
+            embedding_series: Optional Series containing protein embeddings
+
+        Returns:
+            Array of prediction scores based on naturalness
+        """
+        assert embedding_series is not None
+        return self.naturalness_imputer.impute(naturalness_df, embedding_series)
 
     def get_debug_info(self) -> Dict[str, Any]:
         return {}

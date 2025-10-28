@@ -9,13 +9,13 @@ from io import StringIO
 
 import docker
 import pandas as pd
+from flask import current_app
+
+from app import email_to
 from app.database import db
 from app.helpers.fold_storage_manager import FoldStorageManager
 from app.helpers.jobs_util import _live_update_tail, _psql_tail, _tail
 from app.models import Dock, Fold, Invokation
-from flask import current_app
-
-from app import email_to
 
 
 def start_generic_script(invokation_id, process_args):

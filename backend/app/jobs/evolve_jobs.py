@@ -12,6 +12,9 @@ from pathlib import Path
 import joblib
 import numpy as np
 import pandas as pd
+from sklearn.ensemble import RandomForestRegressor
+from werkzeug.exceptions import BadRequest
+
 from app.helpers.boltz_yaml_helper import BoltzYamlHelper
 from app.helpers.fold_storage_manager import FoldStorageManager
 from app.helpers.jobs_util import (
@@ -26,8 +29,6 @@ from app.helpers.sequence_util import (
 )
 from app.models import FewShot, Fold, Invokation
 from folde.few_shot_models import get_few_shot_model, is_valid_few_shot_model_name
-from sklearn.ensemble import RandomForestRegressor
-from werkzeug.exceptions import BadRequest
 
 
 def get_embedding_df_from_file(

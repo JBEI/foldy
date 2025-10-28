@@ -27,10 +27,14 @@ You can find more information about employing the different deployment options i
 |Deployment Type|Description|Ease of setup|Setup|
 |---|---|---|---|
 |Local|Full featured, single command|Very easy|[Instructions](deployment/local/README.md)|
-|Development|Run locally when making code changes|Extremely easy|[Instructions](deployment/development/README.md)|
+|Development|Run locally when making code changes|Medium|[Instructions](deployment/development/README.md)|
 |Helm|Scalable to hundreds of users|Hard|[Instructions](deployment/helm/README.md)|
 
-## The Interface
+## FolDE Low-N Protein Optimization Workflow
+
+The FolDE workflow, and the simulation code used in the FolDE paper, are in `backend/folde`. There is more information about running protein optimization simulations in [`backend/folde/README.md`](backend/folde/README.md).
+
+## Interface
 
 See [docs/interface.md](docs/interface.md).
 

@@ -8,6 +8,7 @@ the testing utilities work correctly.
 import numpy as np
 import pandas as pd
 import pytest
+
 from folde.tests.test_utils import (
     MockFewShotModel,
     MockZeroShotModel,

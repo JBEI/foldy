@@ -1,7 +1,8 @@
 import os
 
-from app.helpers.rq_helpers import get_queue
 from prometheus_client import Gauge
+
+from app.helpers.rq_helpers import get_queue
 
 
 def get_queue_size(queue_name: str) -> int:
