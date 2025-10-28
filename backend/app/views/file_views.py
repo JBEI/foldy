@@ -239,7 +239,10 @@ class FancyFileDownloadResource(Resource):
             # Ensure file_size is an int, not a callable
             size_value = blob.size
             if callable(size_value):
-                file_size = size_value()
+                result = size_value()
+                if not isinstance(result, int):
+                    raise TypeError(f"Expected int from size(), got {type(result)}")
+                file_size = result
             else:
                 file_size = int(size_value)
         else:
