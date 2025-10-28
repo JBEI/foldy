@@ -4,16 +4,17 @@ import logging
 from datetime import UTC, datetime
 from typing import Dict, List, Optional
 
-from app.authorization import user_jwt_grants_edit_access, verify_has_edit_access
-from app.extensions import db
-from app.helpers.fold_storage_manager import FoldStorageManager
-from app.models import Campaign, CampaignRound, Fold
 from flask import abort, request
 from flask_jwt_extended import jwt_required
 from flask_jwt_extended.utils import get_jwt
 from flask_restx import Namespace, Resource, fields
 from werkzeug.exceptions import BadRequest
 from werkzeug.utils import secure_filename
+
+from app.authorization import user_jwt_grants_edit_access, verify_has_edit_access
+from app.extensions import db
+from app.helpers.fold_storage_manager import FoldStorageManager
+from app.models import Campaign, CampaignRound, Fold
 
 ns = Namespace("campaign_views", decorators=[jwt_required(fresh=True)])
 

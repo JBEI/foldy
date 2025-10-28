@@ -2,14 +2,15 @@
 
 import logging
 
-from app.api_fields import dna_build_response_fields
-from app.helpers.boltz_yaml_helper import BoltzYamlHelper
-from app.helpers.dna_build_util import create_dna_build
-from app.models import Fold
 from flask import current_app, request
 from flask_jwt_extended import jwt_required
 from flask_restx import Namespace, Resource
 from werkzeug.exceptions import BadRequest
+
+from app.api_fields import dna_build_response_fields
+from app.helpers.boltz_yaml_helper import BoltzYamlHelper
+from app.helpers.dna_build_util import create_dna_build
+from app.models import Fold
 
 ns = Namespace(
     "dna-build",

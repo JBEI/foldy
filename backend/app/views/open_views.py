@@ -1,7 +1,8 @@
+from flask_restx import Namespace, Resource
+
 from app.extensions import db
 from app.helpers.rq_helpers import get_queue
 from app.models import Invokation
-from flask_restx import Namespace, Resource
 
 ns = Namespace("open_views")
 

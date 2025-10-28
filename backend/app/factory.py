@@ -4,8 +4,6 @@ from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union
 
 import rq_dashboard
 import werkzeug
-from app.authorization import user_jwt_grants_edit_access
-from app.extensions import admin, compress, db, migrate  # , rq
 from flask import Flask, jsonify, request
 from flask.helpers import make_response
 from flask_admin.contrib.sqla import ModelView
@@ -25,6 +23,8 @@ from wtforms import TextAreaField
 from wtforms.widgets import TextArea
 
 from app import models
+from app.authorization import user_jwt_grants_edit_access
+from app.extensions import admin, compress, db, migrate  # , rq
 
 app = Flask(__name__)
 
@@ -304,6 +304,7 @@ def create_app(config_object: str = "settings") -> Flask:
 
     jwt = JWTManager(app)
 
+    from app import api_fields
     from app.views.admin_views import messages_ns
     from app.views.admin_views import ns as admin_views_ns
     from app.views.campaign_views import ns as campaign_views_ns
@@ -316,8 +317,6 @@ def create_app(config_object: str = "settings") -> Flask:
     from app.views.login_views import ns as login_views_ns
     from app.views.login_views import oauth
     from app.views.other_views import ns as other_views_ns
-
-    from app import api_fields
 
     api = createRestxApi()
     register_extensions(app)

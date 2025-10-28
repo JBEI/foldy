@@ -7,18 +7,19 @@ from typing import (
     Union,
 )
 
-from app.api_fields import dock_fields
-from app.authorization import verify_has_edit_access
-from app.helpers.rq_helpers import get_queue
-from app.jobs import other_jobs
-from app.models import Dock, Fold
-from app.util import get_job_type_replacement
 from flask import (
     request,
 )
 from flask_jwt_extended import jwt_required
 from flask_restx import Namespace, Resource
 from werkzeug.exceptions import BadRequest
+
+from app.api_fields import dock_fields
+from app.authorization import verify_has_edit_access
+from app.helpers.rq_helpers import get_queue
+from app.jobs import other_jobs
+from app.models import Dock, Fold
+from app.util import get_job_type_replacement
 
 ns = Namespace("dock_views", decorators=[jwt_required(fresh=True)])
 

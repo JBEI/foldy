@@ -5,13 +5,6 @@ import subprocess
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from app.helpers.boltz_yaml_helper import BoltzYamlHelper
-from app.helpers.fold_storage_manager import FoldStorageManager
-from app.helpers.jobs_util import (
-    LoggingRecorder,
-    get_torch_cuda_is_available_and_add_logs,
-)
-from app.models import Fold, Invokation
 from Bio.PDB.MMCIFParser import (
     MMCIFParser,  # type: ignore[reportPrivateImportUsage] # Bio.PDB module structure quirk
 )
@@ -19,6 +12,14 @@ from Bio.PDB.PDBIO import (
     PDBIO,  # type: ignore[reportPrivateImportUsage] # Bio.PDB module structure quirk
 )
 from werkzeug.exceptions import BadRequest
+
+from app.helpers.boltz_yaml_helper import BoltzYamlHelper
+from app.helpers.fold_storage_manager import FoldStorageManager
+from app.helpers.jobs_util import (
+    LoggingRecorder,
+    get_torch_cuda_is_available_and_add_logs,
+)
+from app.models import Fold, Invokation
 
 
 def try_check_smiles_string_validity(smiles_string):

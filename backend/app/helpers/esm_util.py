@@ -4,6 +4,7 @@ import re
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union, cast
 
 import pandas as pd
+
 from app.helpers.jobs_util import get_torch_cuda_is_available_and_add_logs
 from app.helpers.sequence_util import (
     get_seq_ids_for_deep_mutational_scan,
@@ -34,6 +35,7 @@ def get_naturalness(
     # Import ESM client
     logging.info(f"Creating ESM client for {logit_model}")
     import torch
+
     from app.helpers.esm_client import FoldyESMClient
 
     # Log cache directories

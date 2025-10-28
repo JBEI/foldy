@@ -1,12 +1,13 @@
 import logging
 from typing import Optional
 
-from app.email_to import EmailServer
-from app.models import Fold
 from flask import current_app
 from redis import Redis
 from rq import Queue
 from rq.job import Job
+
+from app.email_to import EmailServer
+from app.models import Fold
 
 
 def get_redis_connection(redis_url: Optional[str] = None):

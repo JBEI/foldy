@@ -13,22 +13,17 @@ from typing import Any, Dict, List, Optional, Tuple, Type
 
 import numpy as np
 import pandas as pd
-from app.helpers.sequence_util import is_homolog_seq_id
-from folde.util import constant_liar_sample, get_consensus_scores, internal_sample_n_indices
 from sklearn.neighbors import KNeighborsRegressor
+
+from folde.util import (
+    NaturalnessImputer,
+    constant_liar_sample,
+    get_consensus_scores,
+    internal_sample_n_indices,
+)
 
 # Registry of available zero-shot models
 _ZERO_SHOT_MODELS = {}
-
-
-# def register_zeroshot_model(name):
-#     """Decorator to register a zero-shot model class."""
-
-#     def decorator(cls):
-#         _ZERO_SHOT_MODELS[name] = cls
-#         return cls
-
-#     return decorator
 
 
 class ZeroShotModel(ABC):
@@ -217,38 +212,14 @@ class NaturalnessZeroShotModel(ZeroShotModel):
             **kwargs: Additional parameters
         """
         super().__init__(**kwargs)
-        self.is_pretrained = False
-        self.single_mutant_naturalness_df: Optional[pd.DataFrame] = None
-        self.knns: Dict[str, KNeighborsRegressor] = {}
+        self.naturalness_imputer = NaturalnessImputer()
 
     def pretrain(
         self,
         naturalness_df: pd.DataFrame,
         embedding_series: pd.Series,
     ) -> "NaturalnessZeroShotModel":
-        if self.is_pretrained:
-            raise ValueError("Model is already pretrained.")
-
-        self.knns = {}
-        for naturalness_column in naturalness_df.columns:
-            naturalness_series = naturalness_df[naturalness_column]
-            assert naturalness_series.index.equals(embedding_series.index)
-            assert embedding_series.index.is_unique, "embedding_series contains duplicate indices"
-
-            assert not naturalness_series.isna().any(), "naturalness_series contains NANs"
-
-            X = np.array([np.array(emb) for emb in embedding_series.values])
-            y = naturalness_series.values
-
-            # Fit KNN regressor
-            knn = KNeighborsRegressor(n_neighbors=5)
-            knn.fit(X, y)
-            self.knns[naturalness_column] = knn
-
-        # Also store the naturalness series for prediction later.
-        self.single_mutant_naturalness_df = naturalness_df
-        self.is_pretrained = True
-
+        self.naturalness_imputer.pretrain(naturalness_df, embedding_series)
         return self
 
     def predict(
@@ -263,81 +234,8 @@ class NaturalnessZeroShotModel(ZeroShotModel):
         Returns:
             Array of prediction scores based on naturalness
         """
-        assert self.single_mutant_naturalness_df is not None
-        assert len(naturalness_df.columns) == len(self.knns)
-        assert set(naturalness_df.columns) == set(self.single_mutant_naturalness_df.columns)
-
-        # Get the ensemble of naturalness scores with missing values imputed.
-
-        ensemble_of_computed_naturalness: List[pd.Series] = []
-
-        for naturalness_column in naturalness_df.columns:
-
-            naturalness_series = naturalness_df[naturalness_column]
-            single_mutant_naturalness_series = self.single_mutant_naturalness_df[naturalness_column]
-            knn = self.knns[naturalness_column]
-
-            def get_naturalness(seq_id, direct_naturalness) -> float:
-                """Try computing naturalness for mutants even if none was provided by extrapolating for multimutants."""
-                if direct_naturalness is not None and not pd.isna(direct_naturalness):
-                    return direct_naturalness
-
-                if is_homolog_seq_id(seq_id):
-                    return np.nan
-
-                # Break it down into single mutants.
-                seq_id_parts = seq_id.split("_")
-
-                # For multimutants, we compute naturalness as the product of the naturalness of the single mutants.
-                computed_naturalness = single_mutant_naturalness_series.loc[seq_id_parts].sum()
-                if pd.isna(computed_naturalness):
-                    raise ValueError(
-                        f"Computed naturalness is NAN for {seq_id} with parts {seq_id_parts}"
-                    )
-                return computed_naturalness
-
-            naturalness_series.index.name = "seq_id"
-            computed_naturalness_series = naturalness_series.reset_index(name="wt_marginal").apply(
-                lambda r: get_naturalness(r.seq_id, r.wt_marginal), axis=1
-            )
-            computed_naturalness_series.index = naturalness_series.index
-
-            # Do KNN imputation to fill in NANs from homologs.
-            if computed_naturalness_series.isna().any():
-                if not self.is_pretrained:
-                    raise ValueError(
-                        "Model is not pretrained, so cannot fill in NANs from homologs."
-                    )
-
-                logging.info(
-                    f"Filling in NANs from homologs for {computed_naturalness_series.isna().sum()}/{len(computed_naturalness_series)} naturalness values."
-                )
-                assert embedding_series is not None
-                embedding_array = np.array([np.array(emb) for emb in embedding_series.values])
-                naturalness_array = computed_naturalness_series.values
-
-                # Find indices for known and missing
-                missing_mask = computed_naturalness_series.isna().to_numpy()
-                X_missing = embedding_array[missing_mask]
-
-                imputed_values = knn.predict(X_missing)
-
-                # Fill in the missing values
-                imputed_naturalness = naturalness_array.copy()
-                imputed_naturalness[missing_mask] = imputed_values
-
-                # Convert back to Series
-                computed_naturalness_series = pd.Series(
-                    imputed_naturalness, index=naturalness_series.index
-                )
-
-            if computed_naturalness_series.isna().any():
-                raise ValueError(
-                    f"Computed naturalness series still has NANs: {computed_naturalness_series.isna().sum()}/{len(computed_naturalness_series)}"
-                )
-            ensemble_of_computed_naturalness.append(computed_naturalness_series)
-
-        return ensemble_of_computed_naturalness
+        assert embedding_series is not None
+        return self.naturalness_imputer.impute(naturalness_df, embedding_series)
 
     def get_debug_info(self) -> Dict[str, Any]:
         """Get debug information about the model.

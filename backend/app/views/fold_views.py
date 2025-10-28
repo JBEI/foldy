@@ -17,6 +17,20 @@ from typing import (
 )
 
 import numpy as np
+from flask import (
+    Response,
+    current_app,
+    make_response,
+    request,
+    send_file,
+    stream_with_context,
+)
+from flask_jwt_extended import jwt_required
+from flask_jwt_extended.utils import get_jwt, get_jwt_identity
+from flask_restx import Namespace, Resource, fields, reqparse
+from sqlalchemy.sql.elements import and_
+from werkzeug.exceptions import BadRequest
+
 from app.api_fields import (
     contact_prob_fields,
     embedding_fields,
@@ -41,19 +55,6 @@ from app.helpers.rq_helpers import get_queue
 from app.jobs import esm_jobs, other_jobs
 from app.models import Dock, Fold, Invokation, User
 from app.util import get_job_type_replacement, make_new_folds, start_stage
-from flask import (
-    Response,
-    current_app,
-    make_response,
-    request,
-    send_file,
-    stream_with_context,
-)
-from flask_jwt_extended import jwt_required
-from flask_jwt_extended.utils import get_jwt, get_jwt_identity
-from flask_restx import Namespace, Resource, fields, reqparse
-from sqlalchemy.sql.elements import and_
-from werkzeug.exceptions import BadRequest
 
 ns = Namespace("fold_views", decorators=[jwt_required(fresh=True)])
 

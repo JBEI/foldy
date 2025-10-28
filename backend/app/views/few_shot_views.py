@@ -6,6 +6,16 @@ from typing import IO, Any, BinaryIO, Dict, List, Optional, Tuple, Union, cast
 
 import numpy as np
 import pandas as pd
+from flask import request
+from flask_jwt_extended import jwt_required
+from flask_restx import Namespace, Resource, fields
+from google.cloud.storage import Blob
+from google.cloud.storage.blob import BlobReader
+from rq import Callback
+from rq.job import Job
+from sklearn.ensemble import RandomForestRegressor
+from werkzeug.exceptions import BadRequest
+
 from app.api_fields import few_shot_fields, few_shot_input_fields
 from app.authorization import verify_has_edit_access
 from app.extensions import db
@@ -22,16 +32,7 @@ from app.helpers.sequence_util import (
 from app.jobs import esm_jobs, evolve_jobs
 from app.models import CampaignRound, FewShot, Fold, Invokation
 from app.util import get_job_type_replacement
-from flask import request
-from flask_jwt_extended import jwt_required
-from flask_restx import Namespace, Resource, fields
 from folde.few_shot_models import is_valid_few_shot_model_name
-from google.cloud.storage import Blob
-from google.cloud.storage.blob import BlobReader
-from rq import Callback
-from rq.job import Job
-from sklearn.ensemble import RandomForestRegressor
-from werkzeug.exceptions import BadRequest
 
 ns = Namespace("few_shot_views", decorators=[jwt_required(fresh=True)])
 

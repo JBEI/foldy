@@ -4,12 +4,13 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 import pandas as pd
 import pytest
+from flask import Flask
+from werkzeug.exceptions import BadRequest
+
 from app.extensions import db
 from app.helpers.fold_storage_manager import FoldStorageManager
 from app.jobs.boltz_jobs import run_boltz
 from app.models import Evolution, Fold, Invokation, User
-from flask import Flask
-from werkzeug.exceptions import BadRequest
 
 
 @pytest.fixture

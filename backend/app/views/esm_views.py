@@ -3,6 +3,15 @@
 import logging
 from typing import List
 
+from flask import (
+    request,
+)
+from flask_jwt_extended import jwt_required
+from flask_restx import Namespace, Resource
+from rq import Callback
+from sqlalchemy.sql.elements import and_
+from werkzeug.exceptions import BadRequest
+
 from app.api_fields import embedding_fields, naturalness_fields
 from app.authorization import verify_has_edit_access
 from app.helpers.boltz_yaml_helper import BoltzYamlHelper
@@ -16,14 +25,6 @@ from app.helpers.sequence_util import VALID_AMINO_ACIDS, maybe_get_seq_id_error_
 from app.jobs import esm_jobs
 from app.models import Embedding, Fold, Naturalness
 from app.util import get_job_type_replacement
-from flask import (
-    request,
-)
-from flask_jwt_extended import jwt_required
-from flask_restx import Namespace, Resource
-from rq import Callback
-from sqlalchemy.sql.elements import and_
-from werkzeug.exceptions import BadRequest
 
 ns = Namespace("esm_views", decorators=[jwt_required(fresh=True)])
 

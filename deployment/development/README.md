@@ -200,6 +200,80 @@ cd frontend
 npm test
 ```
 
+#### Syncing with Upstream Repository
+
+When you need to selectively merge changes from a source repository into an upstream repository (e.g., merging internal development work into a public repository):
+
+**Process:**
+
+1. **Create a branch from your source repository:**
+   ```bash
+   git checkout -b sync-upstream
+   ```
+
+2. **Pull in the upstream changes:**
+   ```bash
+   git pull <upstream-remote> <upstream-branch>
+   # Example: git pull origin main
+   ```
+
+3. **Find the merge-base commit** (the point where the branches diverged):
+   ```bash
+   git merge-base <upstream-remote>/<upstream-branch> HEAD
+   # This outputs a commit hash like: 32b3bc7a1b2c3d4e5f6g7h8i9j0k
+   ```
+
+4. **Soft reset to the merge-base** (keeps all changes staged):
+   ```bash
+   git reset --soft <merge-base-commit-hash>
+   ```
+
+   At this point, all differences between the upstream and your current branch are staged and ready to commit.
+
+5. **Selectively stage only the files you want to sync:**
+   ```bash
+   # First, unstage everything
+   git reset
+
+   # Then add only the files/directories you want to include
+   git add backend/folde/
+   git add frontend/src/components/NewFeature.tsx
+   # etc.
+
+   # Use git status to verify what will be committed
+   git status
+
+   # Unstage specific files if needed
+   git restore --staged path/to/unwanted/file
+   ```
+
+6. **Commit and push:**
+   ```bash
+   git commit -m "Sync selected changes from internal development"
+   git push <upstream-remote> sync-upstream
+   ```
+
+7. **Create a pull request** to merge into the upstream repository:
+   ```bash
+   gh pr create --base <upstream-branch> --head sync-upstream
+   ```
+
+**Example workflow:**
+```bash
+git checkout -b public-sync
+git pull origin main
+git merge-base origin/main HEAD  # Note the output hash
+git reset --soft <hash-from-previous-command>
+git reset  # Unstage all
+git add backend/folde/ frontend/src/  # Add only desired files
+git status  # Review what will be committed
+git commit -m "Add folde library improvements and UI updates"
+git push origin public-sync
+gh pr create
+```
+
+This approach allows you to maintain separate development and public repositories while selectively sharing improvements.
+
 ### 6. Development Features
 
 #### Test Data

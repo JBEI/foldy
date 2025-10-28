@@ -533,11 +533,53 @@ class FoldyESM1and2Client(FoldyESMClient):
             sys.modules.pop("esm")
 
         self.model_name = model_name
+
+        # Load model from torch hub
         self.model, self.alphabet = torch.hub.load("facebookresearch/esm:main", model_name)  # type: ignore[reportGeneralTypeIssues]
         self.batch_converter = self.alphabet.get_batch_converter()
         self.model.eval()  # Set to evaluation mode
 
-        if torch.cuda.is_available():
+        # For 15B model, use accelerate to split across GPU + CPU only on smaller GPUs
+        if model_name == "esm2_t48_15B_UR50D" and torch.cuda.is_available():
+            # Check available GPU memory
+            total_memory_gb = torch.cuda.get_device_properties(0).total_memory / (1024**3)
+
+            if total_memory_gb < 50:  # Only use CPU offloading on GPUs with <50GB
+                try:
+                    import accelerate
+                    from accelerate import dispatch_model, infer_auto_device_map
+
+                    # Calculate max memory (adjust for CUDA overhead ~2GB)
+                    max_memory = {0: "42GiB", "cpu": "100GiB"}  # Adjust based on your system
+
+                    device_map = infer_auto_device_map(
+                        self.model,
+                        max_memory=max_memory,
+                        no_split_module_classes=[
+                            "ESM1bLayerNorm",
+                            "TransformerLayer",
+                        ],  # Keep layers intact
+                    )
+
+                    self.model = dispatch_model(self.model, device_map=device_map)
+                    self.device = torch.device("cuda")  # Primary device
+
+                    logging.info(
+                        f"Loaded {model_name} with device_map across GPU + CPU (GPU memory: {total_memory_gb:.1f}GB)"
+                    )
+                    logging.info(f"Device map: {device_map}")
+
+                except ImportError:
+                    logging.warning("accelerate not available, falling back to CPU for 15B model")
+                    self.device = torch.device("cpu")
+            else:
+                # Large GPU (≥50GB) - load entirely on GPU for best performance
+                self.model = self.model.cuda()
+                self.device = torch.device("cuda")
+                logging.info(
+                    f"Loaded {model_name} entirely on GPU (GPU memory: {total_memory_gb:.1f}GB)"
+                )
+        elif torch.cuda.is_available():
             self.model = self.model.cuda()
             self.device = torch.device("cuda")
         else:

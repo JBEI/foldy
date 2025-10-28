@@ -14,10 +14,6 @@ from typing import (
     cast,
 )
 
-from app.api_fields import fold_file_zip_fields
-from app.extensions import db
-from app.helpers.fold_storage_manager import FoldStorageManager
-from app.models import Dock, Fold, Invokation
 from flask import (
     Response,
     current_app,
@@ -30,6 +26,11 @@ from flask_jwt_extended import jwt_required
 from flask_restx import Namespace, Resource, fields
 from sqlalchemy.sql.elements import and_
 from werkzeug.exceptions import BadRequest
+
+from app.api_fields import fold_file_zip_fields
+from app.extensions import db
+from app.helpers.fold_storage_manager import FoldStorageManager
+from app.models import Dock, Fold, Invokation
 
 ns = Namespace("file_views", decorators=[jwt_required(fresh=True)])
 
@@ -238,7 +239,10 @@ class FancyFileDownloadResource(Resource):
             # Ensure file_size is an int, not a callable
             size_value = blob.size
             if callable(size_value):
-                file_size = size_value()
+                result = size_value()
+                if not isinstance(result, int):
+                    raise TypeError(f"Expected int from size(), got {type(result)}")
+                file_size = result
             else:
                 file_size = int(size_value)
         else:

@@ -7,6 +7,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Callable
 
 import pytz
+
 from app.models import Invokation
 
 PSQL_CHAR_LIMIT: int = 100 * 1000 * 1000
