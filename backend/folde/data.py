@@ -17,9 +17,11 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
+from numpy.typing import NDArray
 
 from app.helpers.sequence_util import (
     allele_set_to_seq_id,
+    get_allele_set,
     get_loci_set,
     is_homolog_seq_id,
     maybe_get_allele_id_error_message,
@@ -137,6 +139,45 @@ def _parse_embedding_columns_inplace(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+def load_embedding_csv_in_chunks(path: str, chunk_rows: int = 20000) -> pd.DataFrame:
+    """Read a large embedding CSV without ever holding every embedding string at once.
+
+    ``pd.read_csv`` materializes the whole embedding column as Python strings before anything
+    parses them. On a 12 GB embedding CSV that alone exceeds a 16 GB machine (measured peak RSS
+    is ~2.2x file size), so the dense multi-mutation pools were unloadable. Reading in chunks
+    and parsing each chunk immediately keeps peak at (parsed pool + one chunk).
+
+    Produces exactly what the single-shot path produces: ``np.array(json.loads(...))``, i.e.
+    float64, so results are unchanged. The ``seq`` column is skipped -- it holds the full
+    protein sequence per row and nothing downstream reads it -- but every other column,
+    including ``embedding_layer_*`` variants, is preserved.
+    """
+    header = pd.read_csv(path, nrows=0)
+    columns = [c for c in header.columns if c != "seq"]
+    embedding_columns = [c for c in columns if c == "embedding" or c.startswith("embedding_layer_")]
+    collected: Dict[str, List[Any]] = {c: [] for c in columns}
+    n_chunks = 0
+    for chunk in pd.read_csv(path, usecols=columns, chunksize=chunk_rows):
+        for column in columns:
+            values = chunk[column].to_numpy()
+            if column in embedding_columns:
+                collected[column].extend(
+                    np.array(json.loads(v)) if isinstance(v, str) else v for v in values
+                )
+            else:
+                collected[column].extend(values)
+        n_chunks += 1
+        del chunk
+    frame = pd.DataFrame({columns[0]: collected[columns[0]]})
+    for column in columns[1:]:
+        frame[column] = collected[column]
+    logger.info(
+        f"Chunk-loaded {len(frame)} embedding rows from {os.path.basename(path)} "
+        f"in {n_chunks} chunks of {chunk_rows}"
+    )
+    return frame
+
+
 def try_load_sharded_embedding_file(embeddings_dir: str, prefix: str) -> pd.DataFrame:
     """Load sharded embedding files matching pattern <prefix>-(#)_of_(#).csv.
 
@@ -231,6 +272,206 @@ def try_load_sharded_embedding_file(embeddings_dir: str, prefix: str) -> pd.Data
     return pd.concat(shard_dfs, ignore_index=True)
 
 
+# Sentinel embedding_model_id that builds one-hot encodings from the DMS file itself
+# instead of reading precomputed protein-language-model embeddings from disk. Used by the
+# ALDE baseline (Yang et al. 2025), whose default and wet-lab-validated encoding is one-hot,
+# and which therefore needs no PLM artifacts at all.
+ONEHOT_EMBEDDING_MODEL_ID = "onehot"
+
+AMINO_ACIDS = "ACDEFGHIKLMNPQRSTVWY"
+_AA_TO_INDEX = {aa: i for i, aa in enumerate(AMINO_ACIDS)}
+_ALLELE_RE = re.compile(r"^([A-Z])(\d+)([A-Z])$")
+
+
+class OneHotVector:
+    """A one-hot encoded variant, stored as set-bit indices and densified on demand.
+
+    Behaves like a 1-D float32 array to anything that calls ``np.asarray`` on it, but
+    occupies ~1/40th the memory and pickles ~1/40th the bytes, which is what makes the
+    large multi-mutation pools fit in the process pool. ``indices`` holds exactly one
+    column per mutated position.
+    """
+
+    __slots__ = ("indices", "dim")
+
+    def __init__(self, indices: NDArray[np.int32], dim: int):
+        self.indices = indices
+        self.dim = dim
+
+    def __array__(self, dtype=None, copy=None):
+        dense = np.zeros(self.dim, dtype=np.float32)
+        dense[self.indices] = 1.0
+        return dense if dtype is None else dense.astype(dtype, copy=False)
+
+    def __len__(self) -> int:
+        return self.dim
+
+    @property
+    def shape(self):
+        return (self.dim,)
+
+    def __reduce__(self):
+        return (OneHotVector, (self.indices, self.dim))
+
+
+def build_onehot_dataset(
+    dms_id: str, wt_aa_seq: str, naturalness_model_id: Optional[str] = None
+) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    """Build one-hot embeddings and placeholder naturalness directly from a DMS file.
+
+    The candidate pool is every variant in the ProteinGym DMS file. We take the union of
+    all mutated positions across the pool and encode each variant as the concatenation of
+    per-position 20-dim one-hot vectors, using the wild-type residue wherever a variant is
+    unmutated. This is the natural generalization of ALDE's "concatenate the k mutated
+    residues" encoding to a pool whose mutated positions are not a fixed small set.
+
+    Returns:
+        Tuple of (embedding_df, naturalness_df), both indexed by seq_id. The naturalness
+        frame carries a constant ``log_wt_marginal`` column: ALDE never consults naturalness,
+        but downstream code requires the column to exist and to be non-null.
+    """
+    dms_file_path = os.path.join(DMS_DIR, f"{dms_id}.csv")
+    if not os.path.exists(dms_file_path):
+        raise FileNotFoundError(f"DMS file not found: {dms_file_path}")
+
+    activity_df = pd.read_csv(dms_file_path)
+    seq_ids = activity_df["mutant"].apply(lambda x: allele_set_to_seq_id(set(x.split(":"))))
+
+    naturalness_path = (
+        os.path.join(NATURALNESS_DIR, f"{dms_id}_naturalness_{naturalness_model_id}.csv")
+        if naturalness_model_id and naturalness_model_id != ONEHOT_EMBEDDING_MODEL_ID
+        else None
+    )
+    if naturalness_path is not None and not os.path.exists(naturalness_path):
+        # A config asking for real naturalness must get it or fail. Silently substituting a
+        # constant placeholder makes a verification run look fine and mean nothing.
+        raise FileNotFoundError(
+            f"Naturalness file not found: {naturalness_path} "
+            f"(naturalness_model_id={naturalness_model_id!r})"
+        )
+
+    raw_naturalness: Optional[pd.DataFrame] = None
+    if naturalness_path:
+        raw_naturalness = pd.read_csv(naturalness_path)
+        raw_naturalness["seq_id"] = raw_naturalness["seq_id"].apply(
+            lambda x: maybe_modify_seq_id(dms_id, x)
+        )
+        raw_naturalness = raw_naturalness[~raw_naturalness["seq_id"].duplicated()].set_index(
+            "seq_id", drop=False
+        )
+        raw_naturalness["log_wt_marginal"] = raw_naturalness["wt_marginal"].apply(
+            lambda x: np.log(max(x, 1e-20))
+        )
+
+        # NaturalnessImputer scores a multi-mutant as the sum over its constituent single
+        # mutants, so every constituent must be present in the returned frames -- but a
+        # multi-mutation DMS file routinely omits them as standalone variants (GRB2 is missing
+        # 14, PABP 8). The embedding path never hits this because its pool is
+        # embeddings & (naturalness | activity), and the naturalness CSV supplies every single.
+        # Mirror that here. These carry no activity, so _finish_proteingym_dataset admits them
+        # with a null activity and they never enter the candidate world -- they exist purely so
+        # the imputer's lookup resolves. Appended after the pool so pool ordering, and therefore
+        # the seeded bootstrap, is unchanged.
+        pool_seq_ids = set(seq_ids)
+        needed_singles: set = set()
+        for seq_id in pool_seq_ids:
+            needed_singles |= get_allele_set(seq_id)
+        extra_singles = sorted((needed_singles - pool_seq_ids) & set(raw_naturalness.index))
+        if extra_singles:
+            logger.info(
+                f"{dms_id}: adding {len(extra_singles)} constituent single mutants absent from "
+                "the DMS file so NaturalnessImputer can derive multi-mutant scores"
+            )
+            seq_ids = pd.concat([seq_ids, pd.Series(extra_singles)], ignore_index=True)
+
+    # Parse every allele once, and collect the union of mutated positions.
+    parsed_per_variant: List[List[Tuple[int, str]]] = []
+    positions: set = set()
+    for seq_id in seq_ids:
+        alleles = []
+        for allele in get_allele_set(seq_id):
+            match = _ALLELE_RE.match(allele)
+            if match is None:
+                continue
+            _, locus, mut_aa = match.groups()
+            if mut_aa not in _AA_TO_INDEX:
+                continue
+            alleles.append((int(locus), mut_aa))
+            positions.add(int(locus))
+        parsed_per_variant.append(alleles)
+
+    sorted_positions = sorted(positions)
+    position_to_slot = {locus: slot for slot, locus in enumerate(sorted_positions)}
+    n_positions = len(sorted_positions)
+    logger.info(
+        f"One-hot encoding {dms_id}: {len(seq_ids)} variants over {n_positions} mutated "
+        f"positions -> {n_positions * len(AMINO_ACIDS)} dimensions"
+    )
+
+    # Baseline row: wild-type residue at every mutated position (1-indexed loci).
+    baseline = np.zeros((n_positions, len(AMINO_ACIDS)), dtype=np.float32)
+    for locus, slot in position_to_slot.items():
+        wt_aa = wt_aa_seq[locus - 1]
+        if wt_aa in _AA_TO_INDEX:
+            baseline[slot, _AA_TO_INDEX[wt_aa]] = 1.0
+
+    # Store each variant as the indices of its set bits rather than a dense float row.
+    # A one-hot row has exactly one 1 per mutated position, so the sparse form is
+    # n_positions int32s instead of n_positions * 20 float32s -- a 40x reduction. For the
+    # largest benchmark pools that is the difference between ~30 MB and ~1.2 GB, and the pool
+    # is pickled once per queued simulation by the process pool, so the dense form multiplied
+    # that cost by the number of simulations and exhausted memory. OneHotVector densifies on
+    # demand via __array__, so every existing `np.asarray(emb)` consumer still works.
+    baseline_indices = np.array(
+        [slot * len(AMINO_ACIDS) + int(baseline[slot].argmax()) for slot in range(n_positions)],
+        dtype=np.int32,
+    )
+    dim = n_positions * len(AMINO_ACIDS)
+    embeddings = []
+    for alleles in parsed_per_variant:
+        idx = baseline_indices.copy()
+        for locus, mut_aa in alleles:
+            slot = position_to_slot[locus]
+            idx[slot] = slot * len(AMINO_ACIDS) + _AA_TO_INDEX[mut_aa]
+        embeddings.append(OneHotVector(idx, dim))
+
+    embedding_df = pd.DataFrame({"seq_id": seq_ids.to_numpy()})
+    embedding_df["embedding"] = embeddings
+    embedding_df = embedding_df[~embedding_df["seq_id"].duplicated()]
+
+    if raw_naturalness is not None:
+        # Real naturalness alongside one-hot embeddings. This is the configuration that
+        # isolates the effect of the round-1 strategy: the surrogate still sees one-hot
+        # inputs, exactly as in the ALDE baseline, but the zero-shot model gets the same
+        # naturalness FolDE uses. Only one variable changes between the two runs.
+        naturalness_df = raw_naturalness[["seq_id", "log_wt_marginal"]].reindex(
+            embedding_df["seq_id"]
+        )
+        naturalness_df["seq_id"] = embedding_df["seq_id"].to_numpy()
+        # Leave uncovered variants NaN on purpose. The naturalness files score single mutants
+        # only; NaturalnessImputer.impute() turns a NaN multi-mutant into the sum of its
+        # constituent single-mutant log wt-marginals, which is the additive rule behind the
+        # published multi-mutation zero-shot line and needs only the singles to derive every
+        # double. Median-filling here handed the imputer a real number, so it passed it
+        # straight through and every multi-mutant tied at the median -- making doubles
+        # unselectable and the one-hot path inconsistent with the embedding path.
+        missing = int(naturalness_df["log_wt_marginal"].isna().sum())
+        if missing:
+            logger.info(
+                f"{dms_id}: {missing}/{len(naturalness_df)} pool variants have no direct "
+                "naturalness; NaturalnessImputer derives them from their single mutants"
+            )
+        naturalness_df = naturalness_df.reset_index(drop=True)
+    else:
+        naturalness_df = pd.DataFrame(
+            {
+                "seq_id": embedding_df["seq_id"].to_numpy(),
+                "log_wt_marginal": np.zeros(len(embedding_df), dtype=np.float64),
+            }
+        )
+    return embedding_df, naturalness_df
+
+
 def get_proteingym_dataset(
     dms_id: str, embedding_model_id: str, naturalness_model_id: str
 ) -> Tuple[str, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
@@ -256,15 +497,43 @@ def get_proteingym_dataset(
     wt_aa_seq = dms_metadata["target_seq"].iloc[0]
 
     # #########################################################
+    # ONE-HOT SHORTCUT #########################################
+    # No PLM artifacts on disk are needed or consulted in this mode; both the embeddings and
+    # a placeholder naturalness frame are derived from the DMS file. See ALDEFewShotModel.
+    if embedding_model_id == ONEHOT_EMBEDDING_MODEL_ID:
+        embedding_df, incomplete_naturalness_df = build_onehot_dataset(
+            dms_id, wt_aa_seq, naturalness_model_id
+        )
+        embedding_df = embedding_df.set_index("seq_id", drop=False)
+        seq_ids_with_embeddings = set(embedding_df.index)
+        incomplete_naturalness_df = incomplete_naturalness_df.set_index("seq_id", drop=False)
+        seq_ids_with_naturalness = set(incomplete_naturalness_df.index)
+        naturalness_df = incomplete_naturalness_df.reindex(embedding_df.index)
+        return _finish_proteingym_dataset(
+            dms_id=dms_id,
+            wt_aa_seq=wt_aa_seq,
+            embedding_df=embedding_df,
+            naturalness_df=naturalness_df,
+            seq_ids_with_embeddings=seq_ids_with_embeddings,
+            seq_ids_with_naturalness=seq_ids_with_naturalness,
+        )
+
+    # #########################################################
     # LOAD EMBEDDING DATA ######################################
     embedding_file_path = os.path.join(
         EMBEDDINGS_DIR, f"{dms_id}_embedding_{embedding_model_id}.csv"
     )
 
     if os.path.exists(embedding_file_path):
-        # Single file case
-        embedding_df = pd.read_csv(embedding_file_path)
-        _parse_embedding_columns_inplace(embedding_df)
+        # Single file case. Chunk-load above a threshold: a single read_csv of a multi-GB
+        # embedding CSV peaks at roughly 2.2x the file size because every embedding is first a
+        # Python string. Below the threshold the single-shot read is faster, and both paths
+        # produce identical float64 arrays.
+        if os.path.getsize(embedding_file_path) > 2_000_000_000:
+            embedding_df = load_embedding_csv_in_chunks(embedding_file_path)
+        else:
+            embedding_df = pd.read_csv(embedding_file_path)
+            _parse_embedding_columns_inplace(embedding_df)
     else:
         # Try loading sharded files (parsing happens inside)
         prefix = f"{dms_id}_embedding_{embedding_model_id}"
@@ -334,6 +603,33 @@ def get_proteingym_dataset(
 
     seq_ids_with_naturalness = set(incomplete_naturalness_df.index)
     naturalness_df = incomplete_naturalness_df.reindex(embedding_df.index)
+
+    return _finish_proteingym_dataset(
+        dms_id=dms_id,
+        wt_aa_seq=wt_aa_seq,
+        embedding_df=embedding_df,
+        naturalness_df=naturalness_df,
+        seq_ids_with_embeddings=seq_ids_with_embeddings,
+        seq_ids_with_naturalness=seq_ids_with_naturalness,
+        incomplete_naturalness_df=incomplete_naturalness_df,
+    )
+
+
+def _finish_proteingym_dataset(
+    dms_id: str,
+    wt_aa_seq: str,
+    embedding_df: pd.DataFrame,
+    naturalness_df: pd.DataFrame,
+    seq_ids_with_embeddings: set,
+    seq_ids_with_naturalness: set,
+    incomplete_naturalness_df: Optional[pd.DataFrame] = None,
+) -> Tuple[str, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    """Attach activity and category data and align everything to a common seq_id index.
+
+    Shared by the PLM-embedding path and the one-hot path of get_proteingym_dataset.
+    """
+    if incomplete_naturalness_df is None:
+        incomplete_naturalness_df = naturalness_df
 
     # #########################################################
     # LOAD ACTIVITY DATA ######################################

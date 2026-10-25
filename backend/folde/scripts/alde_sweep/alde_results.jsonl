@@ -1,0 +1,16 @@
+{"dms_id": "A4GRB6_PSEAI_Chen_2020", "pool_size": 2502, "elapsed_sec": 507.0, "top10_count": 9.0, "p_top1": 0.5, "best_percentile": 0.9678657074340528, "n_sims": 10}
+{"dms_id": "KKA2_KLEPN_Melnikov_2014", "pool_size": 2480, "elapsed_sec": 547.3, "top10_count": 5.7, "p_top1": 0.8, "best_percentile": 0.9850403225806451, "n_sims": 10}
+{"dms_id": "MET_HUMAN_Estevam_2023", "pool_size": 2696, "elapsed_sec": 491.5, "top10_count": 6.2, "p_top1": 0.5, "best_percentile": 0.9825667655786351, "n_sims": 10}
+{"dms_id": "MLAC_ECOLI_MacRae_2023", "pool_size": 2003, "elapsed_sec": 587.5, "top10_count": 10.6, "p_top1": 0.7, "best_percentile": 0.9877683474787817, "n_sims": 10}
+{"dms_id": "RNC_ECOLI_Weeks_2023", "pool_size": 2138, "elapsed_sec": 535.2, "top10_count": 8.7, "p_top1": 0.6, "best_percentile": 0.9898971000935453, "n_sims": 10}
+{"dms_id": "AMIE_PSEAE_Wrenbeck_2017", "pool_size": 3113, "elapsed_sec": 591.2, "top10_count": 11.2, "p_top1": 0.7, "best_percentile": 0.9872791519434626, "n_sims": 10}
+{"dms_id": "PAI1_HUMAN_Huttinger_2021", "pool_size": 2672, "elapsed_sec": 815.1, "top10_count": 6.6, "p_top1": 0.7, "best_percentile": 0.9858158682634732, "n_sims": 10}
+{"dms_id": "PTEN_HUMAN_Mighell_2018", "pool_size": 3630, "elapsed_sec": 837.4, "top10_count": 6.0, "p_top1": 0.4, "best_percentile": 0.9845454545454546, "n_sims": 10}
+{"dms_id": "KCNJ2_MOUSE_Coyote-Maestas_2022_function", "pool_size": 3481, "elapsed_sec": 825.0, "top10_count": 5.8, "p_top1": 0.6, "best_percentile": 0.9866417696064349, "n_sims": 10}
+{"dms_id": "LGK_LIPST_Klesmith_2015", "pool_size": 3945, "elapsed_sec": 828.3, "top10_count": 8.4, "p_top1": 0.5, "best_percentile": 0.9831812420785806, "n_sims": 10}
+{"dms_id": "PPARG_HUMAN_Majithia_2016", "pool_size": 4788, "elapsed_sec": 1008.8, "top10_count": 14.5, "p_top1": 0.6, "best_percentile": 0.9853696741854637, "n_sims": 10}
+{"dms_id": "S22A1_HUMAN_Yee_2023_activity", "pool_size": 5047, "elapsed_sec": 795.9, "top10_count": 7.2, "p_top1": 0.4, "best_percentile": 0.9795522092332078, "n_sims": 10}
+{"dms_id": "SC6A4_HUMAN_Young_2021", "pool_size": 5788, "elapsed_sec": 376.9, "top10_count": 6.9, "p_top1": 0.3, "best_percentile": 0.9774879060124395, "n_sims": 10}
+{"dms_id": "MTHR_HUMAN_Weile_2021", "pool_size": 6232, "elapsed_sec": 387.4, "top10_count": 6.3, "p_top1": 0.7, "best_percentile": 0.9902679717586649, "n_sims": 10}
+{"dms_id": "CAS9_STRP1_Spencer_2017_positive", "pool_size": 4058, "elapsed_sec": 728.5, "top10_count": 5.5, "p_top1": 0.2, "best_percentile": 0.9696402168555938, "n_sims": 10}
+{"dms_id": "HMDH_HUMAN_Jiang_2019", "pool_size": 8426, "elapsed_sec": 661.7, "top10_count": 6.9, "p_top1": 0.5, "best_percentile": 0.9887787799667697, "n_sims": 10}

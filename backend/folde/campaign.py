@@ -11,7 +11,7 @@ import random
 import re
 from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
-from typing import Dict, List
+from typing import Any, Dict, List
 
 import numpy as np
 import pandas as pd
@@ -128,6 +128,9 @@ def _run_single_simulation(
     random_seed: int,
     wt_aa_seq: str,
     max_rounds: int = 10,
+    sim_idx: int | None = None,
+    dms_id: str | None = None,
+    round_observer: Any = None,
 ) -> SimulationResult:
     """Run a single campaign simulation.
 
@@ -253,6 +256,22 @@ def _run_single_simulation(
                 held_out_embedding_series,
                 held_out_activity_series,
             )
+
+            # Optional instrumentation hook. Fires after fit() and BEFORE selection, so the
+            # observer sees exactly the model the campaign is about to select with, and a
+            # measured set covering rounds 1..round_num-1. It must not touch the global RNG
+            # (run_single_sim_parallel seeds np.random per simulation and the selection logic
+            # draws from it), and predict() consumes no randomness, so an observer using its
+            # own RandomState leaves the campaign bit-identical. No-op when unset.
+            if round_observer is not None:
+                round_observer(
+                    round_num=round_num,
+                    sim_idx=sim_idx,
+                    dms_id=dms_id,
+                    few_shot_model=few_shot_model,
+                    world_state=world_state,
+                    whole_world_activity_series=whole_world_activity_series,
+                )
 
             # Use the get_top_n method from FewShotModel
             top_seq_ids, predicted_activity_ensemble = few_shot_model.get_top_n(
@@ -436,6 +455,7 @@ def run_single_sim_parallel(
         activity_series,
         naturalness_df,
         embedding_series,
+        sim_idx=sim_idx,
         random_seed=sim_random_seed,
         **kwargs,
     )
@@ -451,6 +471,7 @@ def simulate_campaign(
     max_rounds: int = 10,
     random_seed: int = 42,
     num_workers: int = 10,
+    round_observer: Any = None,
 ) -> CampaignResult:
     """Simulate protein engineering campaigns with different model configurations.
 
@@ -541,53 +562,90 @@ def simulate_campaign(
         print(
             f"NUMBER OF WORKERS: {num_workers} NUMBER OF WORKERS: {num_workers} NUMBER OF WORKERS: {num_workers} NUMBER OF WORKERS: {num_workers}"
         )
-        with ProcessPoolExecutor(max_workers=num_workers) as executor:
-            # with ThreadPoolExecutor() as executor:
-            futures = []
-            for sim_idx in range(number_of_simulations):
-                if model_config.data_split_mode:
-                    if not model_config.data_split_mode in category_df.columns:
-                        raise ValueError(
-                            f"Data split mode {model_config.data_split_mode} not found in category_df.columns: {category_df.columns}"
-                        )
-                    full_seq_id_list = list(
-                        category_df[category_df[model_config.data_split_mode]].index.values
-                    )
-                else:
-                    full_seq_id_list = list(
-                        activity_df[activity_df[activity_column].notna()].index.values
-                    )
-
-                world_size = int(len(full_seq_id_list) * 0.5)
-
-                if world_size < max_rounds * round_size:
+        # Build every simulation's arguments first, then dispatch. ProcessPoolExecutor
+        # pickles max_workers+1 argument tuples at a time, and each tuple carries the FULL
+        # candidate pool, so a dense 300m multi-mutation pool (4.1 GB for SPG1) costs several
+        # times that in pickles no matter how few workers are configured. With num_workers == 1
+        # we run in-process instead and the pool is passed by reference. Identical function,
+        # identical arguments, so identical results -- the bootstrap uses a private
+        # RandomState seeded per simulation, so execution order cannot matter.
+        sim_arg_list = []
+        for sim_idx in range(number_of_simulations):
+            if model_config.data_split_mode:
+                if not model_config.data_split_mode in category_df.columns:
                     raise ValueError(
-                        f"World size {world_size} is less than max_rounds * round_size {max_rounds * round_size}"
+                        f"Data split mode {model_config.data_split_mode} not found in category_df.columns: {category_df.columns}"
                     )
-
-                rng = np.random.RandomState(random_seed + 1000 * sim_idx)
-                bootstrapped_seq_ids = rng.choice(
-                    full_seq_id_list,
-                    size=world_size,
-                    replace=False,
+                full_seq_id_list = list(
+                    category_df[category_df[model_config.data_split_mode]].index.values
+                )
+            else:
+                full_seq_id_list = list(
+                    activity_df[activity_df[activity_column].notna()].index.values
                 )
 
-                futures.append(
+            world_size = int(len(full_seq_id_list) * 0.5)
+
+            if world_size < max_rounds * round_size:
+                raise ValueError(
+                    f"World size {world_size} is less than max_rounds * round_size {max_rounds * round_size}"
+                )
+
+            rng = np.random.RandomState(random_seed + 1000 * sim_idx)
+            bootstrapped_seq_ids = rng.choice(
+                full_seq_id_list,
+                size=world_size,
+                replace=False,
+            )
+
+            sim_arg_list.append(
+                dict(
+                    sim_idx=sim_idx,
+                    available_seq_ids=bootstrapped_seq_ids.tolist(),
+                    sim_random_seed=random_seed + sim_idx,
+                )
+            )
+
+        # NB: run_single_sim_parallel is passed directly rather than via a local wrapper --
+        # a closure is not picklable, so wrapping would break the multi-worker path.
+        def _sim_args(a: Dict[str, Any]) -> tuple:
+            return (
+                a["sim_idx"],
+                a["available_seq_ids"],
+                activity_series,
+                naturalness_ensemble_df,
+                embedding_series,
+            )
+
+        _sim_kwargs = dict(
+            round_size=round_size,
+            config=model_config,
+            max_rounds=max_rounds,
+            wt_aa_seq=wt_aa_seq,
+            dms_id=dms_id,
+            round_observer=round_observer,
+        )
+
+        if num_workers == 1:
+            # In-process: the pool is passed by reference and never pickled.
+            single_model_campaign_results = [
+                run_single_sim_parallel(
+                    *_sim_args(a), sim_random_seed=a["sim_random_seed"], **_sim_kwargs
+                )
+                for a in sim_arg_list
+            ]
+        else:
+            with ProcessPoolExecutor(max_workers=num_workers) as executor:
+                futures = [
                     executor.submit(
                         run_single_sim_parallel,
-                        sim_idx,
-                        bootstrapped_seq_ids.tolist(),  # type: ignore
-                        activity_series,
-                        naturalness_ensemble_df,
-                        embedding_series,
-                        sim_random_seed=random_seed + sim_idx,
-                        round_size=round_size,
-                        config=model_config,
-                        max_rounds=max_rounds,
-                        wt_aa_seq=wt_aa_seq,
+                        *_sim_args(a),
+                        sim_random_seed=a["sim_random_seed"],
+                        **_sim_kwargs,
                     )
-                )
-            single_model_campaign_results = [f.result() for f in futures]
+                    for a in sim_arg_list
+                ]
+                single_model_campaign_results = [f.result() for f in futures]
 
         campaign_result.config_results.append(
             SingleConfigCampaignResult(
