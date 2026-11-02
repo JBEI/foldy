@@ -45,7 +45,9 @@ This repository includes the benchmark simulations used in the FolDE paper. Thes
 This benchmark evaluates FolDE on 17 single-mutant DMS datasets with 6 rounds of 16 variants each:
 
 ```bash
-python backend/notebooks/jacob/251003_test_benchmark.py
+# Run from the backend directory: checkpoint_dir is relative to it.
+cd backend
+python folde/scripts/251003_test_benchmark.py
 ```
 
 **Key parameters:**
@@ -56,7 +58,7 @@ python backend/notebooks/jacob/251003_test_benchmark.py
 
 **Expected runtime:** ~2-4 hours (depending on hardware and parallelization)
 
-**Output:** Results saved to `backend/notebooks/jacob/model_evals/251003-test-benchmark_*.json`
+**Output:** Results saved to `backend/folde/model_evals/251003-test-benchmark_*.json`
 
 ### Customizing Benchmarks
 
